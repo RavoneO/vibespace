@@ -6,6 +6,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 export const metadata: Metadata = {
   title: "Vibespace",
   description: "A modern social content sharing app.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
