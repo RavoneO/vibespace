@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Story } from '@/lib/types';
 import { getUserById } from './userService';
 import { users as mockUsers } from '@/lib/data'; // fallback
@@ -14,6 +14,7 @@ async function getFullUser(userId: string) {
 export async function getStories(): Promise<Story[]> {
   try {
     const storiesCollection = collection(db, 'stories');
+    // To-do: Add a where clause to only fetch stories from the last 24 hours
     const q = query(storiesCollection, orderBy('timestamp', 'desc'));
     const querySnapshot = await getDocs(q);
     
@@ -38,4 +39,21 @@ export async function getStories(): Promise<Story[]> {
     // Return mock data as fallback
     return (await import('@/lib/data')).stories;
   }
+}
+
+export async function createStory(storyData: {
+    userId: string;
+    type: 'image' | 'video';
+    contentUrl: string;
+    duration: number;
+}) {
+    try {
+        await addDoc(collection(db, 'stories'), {
+            ...storyData,
+            timestamp: serverTimestamp(),
+        });
+    } catch (error) {
+        console.error("Error creating story:", error);
+        throw new Error("Failed to create story.");
+    }
 }
