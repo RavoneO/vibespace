@@ -61,6 +61,7 @@ export const Icons = {
   sharingAndReuse: Repeat,
   yourActivity: History,
   editProfile: UserCircle,
+  messages: MessageSquare,
   messagesAndStoryReplies: MessageSquare,
   plus: Plus,
 };

@@ -41,3 +41,18 @@ export type Story = {
     timestamp: string | Timestamp;
     dataAiHint?: string;
 }
+
+export type Message = {
+    id: string;
+    senderId: string;
+    text: string;
+    timestamp: Timestamp | Date;
+}
+
+export type Conversation = {
+    id: string;
+    userIds: string[];
+    users: User[];
+    lastMessage: Message | null;
+    timestamp: Timestamp | Date;
+}

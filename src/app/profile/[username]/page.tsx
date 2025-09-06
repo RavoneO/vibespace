@@ -4,7 +4,7 @@ import AppLayout from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { notFound } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
@@ -16,6 +16,7 @@ import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { findOrCreateConversation } from "@/services/messageService";
 
 
 export default function UserProfilePage({
@@ -25,6 +26,7 @@ export default function UserProfilePage({
 }) {
   const { user: authUser } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,7 @@ export default function UserProfilePage({
       following: 0,
   });
   const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [isMessageLoading, setIsMessageLoading] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -89,6 +92,22 @@ export default function UserProfilePage({
         setIsFollowLoading(false);
     }
   }
+
+  const handleMessage = async () => {
+    if (!authUser || !user) {
+      toast({ title: "Please log in to send a message.", variant: "destructive" });
+      return;
+    }
+    setIsMessageLoading(true);
+    try {
+        const conversationId = await findOrCreateConversation(authUser.uid, user.id);
+        router.push(`/messages/${conversationId}`);
+    } catch (error) {
+        console.error("Failed to start conversation", error);
+        toast({ title: "Could not start conversation.", variant: "destructive" });
+        setIsMessageLoading(false);
+    }
+  };
 
 
   if (loading) {
@@ -174,11 +193,15 @@ export default function UserProfilePage({
                 <p className="mt-3 text-sm max-w-prose">{user.bio}</p>
                 <div className="mt-4 flex justify-center sm:justify-start">
                     {!isCurrentUserProfile && (
+                       <>
                         <Button onClick={handleFollowToggle} disabled={isFollowLoading}>
                             {isFollowLoading ? <Icons.spinner className="animate-spin" /> : (isFollowing ? "Following" : "Follow")}
                         </Button>
+                        <Button variant="outline" className="ml-2" onClick={handleMessage} disabled={isMessageLoading}>
+                           {isMessageLoading ? <Icons.spinner className="animate-spin" /> : "Message"}
+                        </Button>
+                       </>
                     )}
-                  <Button variant="outline" className="ml-2">Message</Button>
                 </div>
               </div>
             </div>
