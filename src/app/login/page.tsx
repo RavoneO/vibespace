@@ -46,7 +46,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      // The AuthProvider will handle the redirect to "/feed"
+      router.replace("/feed"); // Explicitly redirect on success
     } catch (error: any) {
       let description = "An unexpected error occurred. Please try again.";
       switch (error.code) {

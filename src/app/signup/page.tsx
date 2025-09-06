@@ -59,7 +59,7 @@ export default function SignupPage() {
           email: values.email,
       });
 
-      // The AuthProvider will handle the redirect to "/feed"
+      router.replace('/feed'); // Explicitly redirect on success
     } catch (error: any) {
         let description = "An unexpected error occurred. Please try again.";
         switch (error.code) {

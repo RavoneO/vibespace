@@ -47,13 +47,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (loading) return;
 
     const pathIsProtected = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
-    const pathIsPublic = PUBLIC_ROUTES.includes(pathname);
-
-    // If user is logged in and on a public-only page (login/signup), redirect to feed
-    if (user && pathIsPublic) {
-        router.replace('/feed');
-        return;
-    }
 
     // If user is not logged in and trying to access a protected page, redirect to home
     if (!user && pathIsProtected) {
@@ -68,9 +61,5 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loading,
   };
 
-  // Render children only after initial auth check is complete, unless on a public page
-  const canRenderChildren = !loading || PUBLIC_ROUTES.includes(pathname) || PROTECTED_ROUTES.some(r => pathname.startsWith(r) && !loading);
-
-
-  return <AuthContext.Provider value={value}>{canRenderChildren ? children : null}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
