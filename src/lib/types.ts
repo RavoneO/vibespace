@@ -7,6 +7,8 @@ export type User = {
   username: string;
   avatar: string;
   bio: string;
+  followers?: string[];
+  following?: string[];
 };
 
 export type Comment = {

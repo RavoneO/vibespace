@@ -4,17 +4,18 @@ import AppLayout from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { users, posts as allPosts, currentUser } from "@/lib/data";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getUserByUsername } from "@/services/userService";
+import { getUserByUsername, toggleFollow } from "@/services/userService";
 import { getPostsByUserId } from "@/services/postService";
 import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 
 export default function UserProfilePage({
@@ -22,9 +23,17 @@ export default function UserProfilePage({
 }: {
   params: { username: string };
 }) {
+  const { user: authUser } = useAuth();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followCount, setFollowCount] = useState({
+      followers: 0,
+      following: 0,
+  });
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -35,6 +44,15 @@ export default function UserProfilePage({
           setUser(fetchedUser);
           const fetchedPosts = await getPostsByUserId(fetchedUser.id);
           setUserPosts(fetchedPosts);
+          
+          const followers = fetchedUser.followers?.length || 0;
+          const following = fetchedUser.following?.length || 0;
+          setFollowCount({ followers, following });
+
+          if (authUser) {
+            setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
+          }
+
         } else {
           notFound();
         }
@@ -47,7 +65,30 @@ export default function UserProfilePage({
     };
 
     fetchUserData();
-  }, [params.username]);
+  }, [params.username, authUser]);
+
+  const handleFollowToggle = async () => {
+    if (!authUser || !user) {
+        toast({ title: "Please log in to follow users.", variant: "destructive" });
+        return;
+    }
+    
+    setIsFollowLoading(true);
+    try {
+        const result = await toggleFollow(authUser.uid, user.id);
+        setIsFollowing(result);
+        setFollowCount(prev => ({
+            ...prev,
+            followers: result ? prev.followers + 1 : prev.followers - 1
+        }));
+
+    } catch (error) {
+        console.error("Error toggling follow:", error);
+        toast({ title: "Something went wrong.", variant: "destructive" });
+    } finally {
+        setIsFollowLoading(false);
+    }
+  }
 
 
   if (loading) {
@@ -93,10 +134,12 @@ export default function UserProfilePage({
     return notFound();
   }
 
+  const isCurrentUserProfile = authUser?.uid === user.id;
+
   const stats = [
     { label: "Posts", value: userPosts.length },
-    { label: "Followers", value: "1.2k" },
-    { label: "Following", value: "345" },
+    { label: "Followers", value: followCount.followers },
+    { label: "Following", value: followCount.following },
   ];
 
   return (
@@ -106,7 +149,7 @@ export default function UserProfilePage({
         <header className="flex items-center p-4">
             <h1 className="text-lg font-semibold flex-1">@{user.username}</h1>
             <div className="flex items-center gap-2">
-                {user.username === currentUser.username && (
+                {isCurrentUserProfile && (
                     <Button asChild variant="ghost" size="icon">
                         <Link href="/settings">
                             <Icons.settings className="h-5 w-5" />
@@ -130,7 +173,11 @@ export default function UserProfilePage({
                 <p className="text-muted-foreground">@{user.username}</p>
                 <p className="mt-3 text-sm max-w-prose">{user.bio}</p>
                 <div className="mt-4 flex justify-center sm:justify-start">
-                  <Button>Follow</Button>
+                    {!isCurrentUserProfile && (
+                        <Button onClick={handleFollowToggle} disabled={isFollowLoading}>
+                            {isFollowLoading ? <Icons.spinner className="animate-spin" /> : (isFollowing ? "Following" : "Follow")}
+                        </Button>
+                    )}
                   <Button variant="outline" className="ml-2">Message</Button>
                 </div>
               </div>
