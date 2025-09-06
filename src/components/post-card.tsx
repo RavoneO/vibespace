@@ -1,7 +1,7 @@
 "use client";
 
 import type { Post } from "@/lib/types";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -24,19 +24,24 @@ export function PostCard({ post }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
+  const likeButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleLike = () => {
     if (isLiked) {
       setLikeCount((prev) => prev - 1);
     } else {
       setLikeCount((prev) => prev + 1);
+      likeButtonRef.current?.classList.add('animate-like');
+      setTimeout(() => {
+        likeButtonRef.current?.classList.remove('animate-like');
+      }, 400);
     }
     setIsLiked(!isLiked);
   };
 
   return (
     <>
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden animate-fade-in">
         <CardHeader className="flex flex-row items-center gap-3 p-4">
           <Avatar>
             <AvatarImage src={post.user.avatar} alt={post.user.name} />
@@ -66,7 +71,7 @@ export function PostCard({ post }: PostCardProps) {
         </CardContent>
         <CardFooter className="p-4 flex flex-col items-start gap-4">
             <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={handleLike} aria-label="Like post">
+                <Button ref={likeButtonRef} variant="ghost" size="icon" onClick={handleLike} aria-label="Like post">
                     <Icons.like
                         className={cn(
                         "transition-all duration-200",
