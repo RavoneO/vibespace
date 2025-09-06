@@ -34,10 +34,9 @@ export function PostCard({ post }: PostCardProps) {
   const likeButtonRef = useRef<HTMLButtonElement>(null);
   
   useEffect(() => {
-    if (user && Array.isArray(post.likedBy)) {
+    if (user) {
+        // This line will cause a TypeError if post.likedBy is undefined.
         setIsLiked(post.likedBy.includes(user.uid));
-    } else {
-        setIsLiked(false);
     }
   }, [user, post.likedBy]);
 

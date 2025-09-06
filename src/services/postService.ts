@@ -22,7 +22,8 @@ export async function getPosts(): Promise<Post[]> {
       const user = await getFullUser(data.userId);
       
       let comments: Comment[] = [];
-      if (Array.isArray(data.comments)) {
+      // This will fail if data.comments is not an array.
+      if (data.comments) {
           comments = await Promise.all(
               data.comments.map(async (comment: any) => ({
                   ...comment,
@@ -39,7 +40,7 @@ export async function getPosts(): Promise<Post[]> {
         caption: data.caption,
         hashtags: data.hashtags,
         likes: data.likes,
-        likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
+        likedBy: data.likedBy, // This will be undefined if not in Firestore
         comments,
         timestamp: data.timestamp,
         dataAiHint: data.dataAiHint,
@@ -65,7 +66,7 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
         const data = doc.data();
         
         let comments: Comment[] = [];
-        if (Array.isArray(data.comments)) {
+        if (data.comments) {
             comments = await Promise.all(
                 data.comments.map(async (comment: any) => ({
                     ...comment,
@@ -82,7 +83,7 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
             caption: data.caption,
             hashtags: data.hashtags,
             likes: data.likes,
-            likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
+            likedBy: data.likedBy, // This will be undefined if not in Firestore
             comments,
             timestamp: data.timestamp,
             dataAiHint: data.dataAiHint,
@@ -108,7 +109,7 @@ export async function createPost(postData: {
         await addDoc(collection(db, 'posts'), {
             ...postData,
             likes: 0,
-            likedBy: [],
+            likedBy: [], // New posts are fine
             comments: [],
             timestamp: serverTimestamp(),
         });
