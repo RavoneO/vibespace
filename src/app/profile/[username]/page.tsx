@@ -9,7 +9,7 @@ import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
 import { getUserByUsername, toggleFollow } from "@/services/userService";
 import { getPostsByUserId } from "@/services/postService";
 import type { User, Post } from "@/lib/types";
@@ -22,7 +22,7 @@ import { findOrCreateConversation } from "@/services/messageService";
 export default function UserProfilePage({
   params,
 }: {
-  params: Promise<{ username: string }>;
+  params: { username: string };
 }) {
   const { user: authUser, isGuest } = useAuth();
   const { toast } = useToast();
@@ -38,8 +38,6 @@ export default function UserProfilePage({
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   const [userNotFound, setUserNotFound] = useState(false);
-  
-  const resolvedParams = use(params);
 
   const showLoginToast = () => {
     toast({
@@ -52,12 +50,12 @@ export default function UserProfilePage({
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!resolvedParams.username) return;
+      if (!params.username) return;
       setLoading(true);
       setUserNotFound(false);
 
       try {
-        const fetchedUser = await getUserByUsername(resolvedParams.username);
+        const fetchedUser = await getUserByUsername(params.username);
 
         if (fetchedUser) {
           setUser(fetchedUser);
@@ -84,7 +82,7 @@ export default function UserProfilePage({
     };
 
     fetchUserData();
-  }, [resolvedParams.username, authUser]);
+  }, [params.username, authUser]);
 
   const handleFollowToggle = async () => {
     if (!authUser || isGuest) {
@@ -287,3 +285,5 @@ export default function UserProfilePage({
     </AppLayout>
   );
 }
+
+    
