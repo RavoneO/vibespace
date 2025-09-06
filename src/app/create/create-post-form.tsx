@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -7,6 +8,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { suggestHashtags } from "@/ai/flows/ai-suggested-hashtags";
+import { createPost } from "@/services/postService";
+import { uploadFile } from "@/services/storageService";
+import { useAuth } from "@/hooks/use-auth";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,10 +34,12 @@ const formSchema = z.object({
 export function CreatePostForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [preview, setPreview] = useState<string | null>(null);
   const [mediaDataUri, setMediaDataUri] = useState<string | null>(null);
   const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -93,15 +99,46 @@ export function CreatePostForm() {
     form.setValue("caption", `${currentCaption} ${hashtag}`.trim());
   }
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: "Post Submitted!",
-      description: "Your post is being processed.",
-    });
-    // In a real app, you'd upload the file and save the post data
-    // For this demo, we'll just redirect.
-    setTimeout(() => router.push("/"), 1000);
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!user) {
+        toast({ title: "Please log in to post.", variant: "destructive" });
+        return;
+    }
+
+    setIsSubmitting(true);
+    try {
+        const file = values.file as File;
+        const fileType = file.type.startsWith('image') ? 'image' : 'video';
+        
+        const contentUrl = await uploadFile(file, `posts/${user.uid}/${Date.now()}_${file.name}`);
+        
+        const hashtags = values.caption.match(/#\w+/g) || [];
+
+        await createPost({
+            userId: user.uid,
+            type: fileType,
+            contentUrl,
+            caption: values.caption,
+            hashtags,
+        });
+
+        toast({
+            title: "Post Submitted!",
+            description: "Your post is now live.",
+        });
+
+        router.push("/");
+
+    } catch (error) {
+        console.error("Error creating post:", error);
+        toast({
+            title: "Post Creation Failed",
+            description: "Could not create your post at this time. Please try again.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
@@ -158,7 +195,7 @@ export function CreatePostForm() {
           />
 
           <div>
-             <Button type="button" variant="outline" onClick={handleSuggestHashtags} disabled={isSuggesting || !mediaDataUri}>
+             <Button type="button" variant="outline" onClick={handleSuggestHashtags} disabled={isSuggesting || !mediaDataUri || isSubmitting}>
                 {isSuggesting ? (
                     <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -180,7 +217,8 @@ export function CreatePostForm() {
             )}
           </div>
 
-          <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
+          <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isSubmitting}>
+            {isSubmitting && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
             Share Post
           </Button>
         </form>

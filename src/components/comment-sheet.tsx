@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -15,7 +16,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Post } from "@/lib/types";
 import { Icons } from "./icons";
 import { Separator } from "./ui/separator";
+import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
+import { addComment } from "@/services/postService";
+import { useToast } from "@/hooks/use-toast";
 import { currentUser } from "@/lib/data";
+
 
 interface CommentSheetProps {
   open: boolean;
@@ -24,6 +30,51 @@ interface CommentSheetProps {
 }
 
 export function CommentSheet({ open, onOpenChange, post }: CommentSheetProps) {
+  const { user: authUser } = useAuth();
+  const [commentText, setCommentText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  
+  // Use authenticated user if available, otherwise fallback to mock current user
+  const commentUser = authUser ? {
+      id: authUser.uid,
+      name: authUser.displayName || "User",
+      username: authUser.email?.split('@')[0] || "user",
+      avatar: authUser.photoURL || currentUser.avatar,
+      bio: ""
+  } : currentUser;
+
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authUser) {
+      toast({ title: "Please log in to comment.", variant: "destructive" });
+      return;
+    }
+    if (!commentText.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      await addComment(post.id, {
+        userId: authUser.uid,
+        text: commentText,
+      });
+      setCommentText("");
+      // Ideally, we would re-fetch comments here or optimistically update the UI.
+      // For now, we'll just show a success message.
+      toast({ title: "Comment posted!" });
+    } catch (error) {
+      console.error("Error posting comment:", error);
+      toast({
+        title: "Failed to post comment",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col">
@@ -45,7 +96,7 @@ export function CommentSheet({ open, onOpenChange, post }: CommentSheetProps) {
                 <div className="text-sm">
                   <p>
                     <span className="font-semibold">{comment.user.username}</span>
-                    <span className="ml-2 text-muted-foreground">{comment.timestamp}</span>
+                    <span className="ml-2 text-muted-foreground">{comment.timestamp.toString()}</span>
                   </p>
                   <p className="text-foreground/90">{comment.text}</p>
                 </div>
@@ -61,14 +112,20 @@ export function CommentSheet({ open, onOpenChange, post }: CommentSheetProps) {
           </div>
         </ScrollArea>
         <SheetFooter className="mt-auto">
-            <form className="flex w-full items-center gap-2">
+            <form className="flex w-full items-center gap-2" onSubmit={handleSubmit}>
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src={currentUser.avatar} />
-                  <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={commentUser.avatar} />
+                  <AvatarFallback>{commentUser.name.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <Input placeholder="Add a comment..." className="flex-1" />
-                <Button type="submit" size="icon">
-                    <Icons.send className="h-4 w-4" />
+                <Input 
+                  placeholder="Add a comment..." 
+                  className="flex-1"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  disabled={isSubmitting || !authUser}
+                />
+                <Button type="submit" size="icon" disabled={isSubmitting || !authUser}>
+                    {isSubmitting ? <Icons.spinner className="h-4 w-4 animate-spin" /> : <Icons.send className="h-4 w-4" />}
                     <span className="sr-only">Post comment</span>
                 </Button>
             </form>

@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Post, Comment } from '@/lib/types';
 import { getUserById } from './userService';
 import { users as mockUsers } from '@/lib/data'; // fallback
@@ -85,4 +85,42 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
     console.error("Error fetching posts by user ID:", error);
     return [];
   }
+}
+
+
+export async function createPost(postData: {
+    userId: string;
+    type: 'image' | 'video';
+    contentUrl: string;
+    caption: string;
+    hashtags: string[];
+}) {
+    try {
+        await addDoc(collection(db, 'posts'), {
+            ...postData,
+            likes: 0,
+            comments: [],
+            timestamp: serverTimestamp(),
+        });
+    } catch (error) {
+        console.error("Error creating post:", error);
+        throw new Error("Failed to create post.");
+    }
+}
+
+export async function addComment(postId: string, commentData: { userId: string, text: string }) {
+    try {
+        const postRef = doc(db, 'posts', postId);
+        const newComment = {
+            id: doc(collection(db, 'comments')).id, // Generate a unique ID for the comment
+            ...commentData,
+            timestamp: serverTimestamp()
+        };
+        await updateDoc(postRef, {
+            comments: arrayUnion(newComment)
+        });
+    } catch (error) {
+        console.error("Error adding comment:", error);
+        throw new Error("Failed to add comment.");
+    }
 }
