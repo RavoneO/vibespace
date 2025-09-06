@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 
 export async function getUserById(userId: string): Promise<User | null> {
@@ -30,6 +30,24 @@ export async function getUserByUsername(username: string): Promise<User | null> 
     } catch (error) {
       console.error("Error fetching user by username:", error);
       return null;
+    }
+}
+
+export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
+    try {
+        const userRef = doc(db, 'users', userId);
+        await setDoc(userRef, {
+            name: data.name,
+            username: data.username,
+            email: data.email,
+            avatar: `https://picsum.photos/seed/${userId}/100/100`, // Generates a consistent random avatar
+            bio: "Welcome to Vibespace!",
+            followers: [],
+            following: [],
+        });
+    } catch (error) {
+        console.error("Error creating user profile:", error);
+        throw new Error("Failed to create user profile.");
     }
 }
 

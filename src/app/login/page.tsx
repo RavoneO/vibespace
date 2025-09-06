@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -69,7 +70,7 @@ export default function LoginPage() {
                 <Icons.sparkles className="h-8 w-8 text-primary" />
             </div>
           <CardTitle className="text-2xl">Welcome Back to Vibespace</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
+          <CardDescription>Log in to continue sharing your vibes with the world.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
