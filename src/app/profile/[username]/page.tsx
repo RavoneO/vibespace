@@ -37,6 +37,7 @@ export default function UserProfilePage({
   });
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
+  const [userNotFound, setUserNotFound] = useState(false);
   
   const resolvedParams = use(params);
 
@@ -51,7 +52,9 @@ export default function UserProfilePage({
 
   useEffect(() => {
     const fetchUserData = async () => {
+      if (!resolvedParams.username) return;
       setLoading(true);
+      setUserNotFound(false);
       try {
         const fetchedUser = await getUserByUsername(resolvedParams.username);
         if (fetchedUser) {
@@ -66,13 +69,12 @@ export default function UserProfilePage({
           if (authUser) {
             setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
           }
-
         } else {
-          notFound();
+          setUserNotFound(true);
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
-        notFound();
+        setUserNotFound(true);
       } finally {
         setLoading(false);
       }
@@ -163,8 +165,14 @@ export default function UserProfilePage({
     )
   }
 
+  if (userNotFound) {
+    notFound();
+  }
+
   if (!user) {
-    return notFound();
+    // This case should ideally not be reached if loading and notFound are handled correctly,
+    // but it's a good fallback.
+    return null; 
   }
 
   const isCurrentUserProfile = authUser?.uid === user.id;
@@ -276,5 +284,3 @@ export default function UserProfilePage({
     </AppLayout>
   );
 }
-
-    
