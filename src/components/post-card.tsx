@@ -1,7 +1,8 @@
+
 "use client";
 
 import type { Post } from "@/lib/types";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -15,28 +16,70 @@ import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { CommentSheet } from "./comment-sheet";
+import { useAuth } from "@/hooks/use-auth";
+import { toggleLike } from "@/services/postService";
+import { useToast } from "@/hooks/use-toast";
 
 interface PostCardProps {
   post: Post;
 }
 
 export function PostCard({ post }: PostCardProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
   const likeButtonRef = useRef<HTMLButtonElement>(null);
-
-  const handleLike = () => {
-    if (isLiked) {
-      setLikeCount((prev) => prev - 1);
-    } else {
-      setLikeCount((prev) => prev + 1);
-      likeButtonRef.current?.classList.add('animate-like');
-      setTimeout(() => {
-        likeButtonRef.current?.classList.remove('animate-like');
-      }, 400);
+  
+  useEffect(() => {
+    if(user){
+      setIsLiked(post.likedBy.includes(user.uid));
     }
-    setIsLiked(!isLiked);
+  }, [user, post.likedBy]);
+
+
+  const handleLike = async () => {
+    if (!user) {
+      toast({
+        title: "Please log in to like posts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      if (isLiked) {
+        setLikeCount((prev) => prev - 1);
+        setIsLiked(false);
+      } else {
+        setLikeCount((prev) => prev + 1);
+        setIsLiked(true);
+        likeButtonRef.current?.classList.add('animate-like');
+        setTimeout(() => {
+          likeButtonRef.current?.classList.remove('animate-like');
+        }, 400);
+      }
+      
+      await toggleLike(post.id, user.uid);
+
+    } catch (error) {
+      console.error("Error liking post:", error);
+      toast({
+        title: "Something went wrong.",
+        description: "Could not update like status. Please try again.",
+        variant: "destructive",
+      });
+       // Revert UI on error
+      if (isLiked) {
+        setLikeCount((prev) => prev + 1);
+        setIsLiked(true);
+      } else {
+        setLikeCount((prev) => prev - 1);
+        setIsLiked(false);
+      }
+    }
   };
 
   return (

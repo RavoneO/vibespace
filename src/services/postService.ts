@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove } from 'firebase/firestore';
 import type { Post, Comment } from '@/lib/types';
 import { getUserById } from './userService';
 import { users as mockUsers } from '@/lib/data'; // fallback
@@ -36,6 +36,7 @@ export async function getPosts(): Promise<Post[]> {
         caption: data.caption,
         hashtags: data.hashtags,
         likes: data.likes,
+        likedBy: data.likedBy || [],
         comments,
         timestamp: data.timestamp,
         dataAiHint: data.dataAiHint,
@@ -74,6 +75,7 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
             caption: data.caption,
             hashtags: data.hashtags,
             likes: data.likes,
+            likedBy: data.likedBy || [],
             comments,
             timestamp: data.timestamp,
             dataAiHint: data.dataAiHint,
@@ -99,6 +101,7 @@ export async function createPost(postData: {
         await addDoc(collection(db, 'posts'), {
             ...postData,
             likes: 0,
+            likedBy: [],
             comments: [],
             timestamp: serverTimestamp(),
         });
@@ -122,5 +125,41 @@ export async function addComment(postId: string, commentData: { userId: string, 
     } catch (error) {
         console.error("Error adding comment:", error);
         throw new Error("Failed to add comment.");
+    }
+}
+
+export async function toggleLike(postId: string, userId: string) {
+    try {
+        const postRef = doc(db, 'posts', postId);
+        const postDoc = await getDoc(postRef);
+
+        if (!postDoc.exists()) {
+            throw new Error("Post not found");
+        }
+
+        const postData = postDoc.data();
+        const likedBy = postData.likedBy || [];
+        
+        let newLikes;
+        let newLikedBy;
+
+        if (likedBy.includes(userId)) {
+            // User has already liked the post, so unlike it
+            newLikes = increment(-1);
+            newLikedBy = arrayRemove(userId);
+        } else {
+            // User has not liked the post, so like it
+            newLikes = increment(1);
+            newLikedBy = arrayUnion(userId);
+        }
+
+        await updateDoc(postRef, {
+            likes: newLikes,
+            likedBy: newLikedBy
+        });
+
+    } catch (error) {
+        console.error("Error toggling like:", error);
+        throw new Error("Failed to toggle like.");
     }
 }

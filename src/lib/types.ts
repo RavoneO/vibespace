@@ -24,6 +24,7 @@ export type Post = {
   caption: string;
   hashtags: string[];
   likes: number;
+  likedBy: string[];
   comments: Comment[];
   timestamp: string | Timestamp;
   dataAiHint?: string;
