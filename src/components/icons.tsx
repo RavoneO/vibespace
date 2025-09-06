@@ -28,6 +28,7 @@ import {
   History,
   Ban,
   MessageSquare,
+  Plus,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -61,6 +62,7 @@ export const Icons = {
   yourActivity: History,
   editProfile: UserCircle,
   messagesAndStoryReplies: MessageSquare,
+  plus: Plus,
 };
 
 export type Icon = LucideIcon;

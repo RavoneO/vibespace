@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   name: string;
@@ -25,3 +26,13 @@ export type Post = {
   timestamp: string;
   dataAiHint?: string;
 };
+
+export type Story = {
+    id: string;
+    user: User;
+    type: 'image' | 'video';
+    contentUrl: string;
+    duration: number; // in seconds
+    timestamp: string;
+    dataAiHint?: string;
+}

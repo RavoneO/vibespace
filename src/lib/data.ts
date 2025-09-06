@@ -1,4 +1,5 @@
-import type { User, Post, Comment } from "@/lib/types";
+
+import type { User, Post, Comment, Story } from "@/lib/types";
 
 export const users: User[] = [
   {
@@ -90,4 +91,25 @@ export const posts: Post[] = [
     comments: [],
     timestamp: "2d ago",
   },
+];
+
+export const stories: Story[] = [
+    {
+        id: 'story-current-user',
+        user: currentUser,
+        type: 'image',
+        contentUrl: 'https://picsum.photos/id/433/450/800',
+        duration: 5,
+        timestamp: '15m ago',
+        dataAiHint: 'city skyline',
+    },
+    ...users.filter(u => u.id !== currentUser.id).map((user, index) => ({
+        id: `story${index + 1}`,
+        user,
+        type: 'image' as 'image',
+        contentUrl: `https://picsum.photos/id/${10 + index * 5}/450/800`,
+        duration: 5,
+        timestamp: `${(index + 1) * 2}h ago`,
+        dataAiHint: 'nature portrait',
+    }))
 ];
