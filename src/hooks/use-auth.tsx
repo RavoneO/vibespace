@@ -39,21 +39,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
-
-      const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
-      const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-
-      if (!user && isProtectedRoute) {
-        router.push("/");
-      }
-
-      if (user && isPublicRoute) {
-        router.push("/feed");
-      }
     });
-
     return () => unsubscribe();
-  }, [router, pathname]);
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+
+    if (!user && isProtectedRoute) {
+      router.replace("/");
+    }
+  }, [user, loading, pathname, router]);
 
   const value = {
     user,

@@ -19,7 +19,7 @@ export default function WelcomePage() {
     }
   }, [user, loading, router]);
 
-  if (loading || user) {
+  if (loading || (!loading && user)) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background">
             <div className="flex flex-col items-center space-y-6">
