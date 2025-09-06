@@ -2,11 +2,13 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { useCollection } from 'react-firebase-hooks/firestore';
+import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
 import { useAuth } from '@/hooks/use-auth';
-import { getMessagesQuery, sendMessage, findOrCreateConversation } from '@/services/messageService';
+import { getMessagesQuery, sendMessage } from '@/services/messageService';
+import { doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Message, User, Conversation } from '@/lib/types';
 import { getUserById } from '@/services/userService';
-import type { Message, User } from '@/lib/types';
 
 import AppLayout from '@/components/app-layout';
 import Link from 'next/link';
@@ -37,7 +39,12 @@ export default function ChatPage({ params }: { params: { conversationId: string 
     const [isSending, setIsSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     
-    const [messagesSnapshot, loading, error] = useCollection(
+    const [conversationDoc, conversationLoading] = useDocumentData(
+        params.conversationId ? doc(db, 'conversations', params.conversationId) : null
+    );
+    const conversation = conversationDoc as Conversation | undefined;
+
+    const [messagesSnapshot, messagesLoading, error] = useCollection(
         params.conversationId ? getMessagesQuery(params.conversationId) : null
     );
 
@@ -49,13 +56,16 @@ export default function ChatPage({ params }: { params: { conversationId: string 
 
     useEffect(() => {
         async function fetchOtherUser() {
-            // This is a simplified logic. In a real app, you'd get the conversation
-            // doc and find the other user's ID from the `userIds` array.
-            // For now, we don't have this data readily available on this page.
-            // A more robust solution would involve fetching conversation data here.
+            if (conversation && authUser) {
+                const otherUserId = conversation.userIds.find(id => id !== authUser.uid);
+                if (otherUserId) {
+                    const user = await getUserById(otherUserId);
+                    setOtherUser(user);
+                }
+            }
         }
-        // fetchOtherUser();
-    }, [params.conversationId, authUser]);
+        fetchOtherUser();
+    }, [conversation, authUser]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -72,7 +82,7 @@ export default function ChatPage({ params }: { params: { conversationId: string 
         }
     };
     
-    if (loading) {
+    if (conversationLoading || (messagesLoading && !messages.length)) {
         return (
              <AppLayout>
                 <div className="flex flex-col h-full">
@@ -99,7 +109,7 @@ export default function ChatPage({ params }: { params: { conversationId: string 
                             <Icons.back />
                         </Link>
                     </Button>
-                    {otherUser && (
+                    {otherUser ? (
                         <>
                         <Avatar>
                             <AvatarImage src={otherUser.avatar} />
@@ -107,6 +117,11 @@ export default function ChatPage({ params }: { params: { conversationId: string 
                         </Avatar>
                         <h2 className="font-semibold">{otherUser.name}</h2>
                         </>
+                    ) : (
+                        <div className="flex items-center gap-4">
+                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <Skeleton className="h-6 w-24" />
+                        </div>
                     )}
                 </header>
 

@@ -56,7 +56,7 @@ export async function sendMessage(conversationId: string, senderId: string, text
     const messagesCollection = collection(db, 'conversations', conversationId, 'messages');
     const conversationRef = doc(db, 'conversations', conversationId);
 
-    const newMessage: Omit<Message, 'id'> = {
+    const newMessage: Omit<Message, 'id' | 'sender'> = {
         senderId,
         text,
         timestamp: serverTimestamp() as any,
@@ -81,10 +81,7 @@ export async function findOrCreateConversation(currentUserId: string, targetUser
     
     // Check if a conversation between these two users already exists
     const q = query(convosCollection, 
-        or(
-            where('userIds', '==', [currentUserId, targetUserId]),
-            where('userIds', '==', [targetUserId, currentUserId])
-        )
+        where('userIds', 'in', [[currentUserId, targetUserId], [targetUserId, currentUserId]])
     );
 
     const querySnapshot = await getDocs(q);

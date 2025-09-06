@@ -105,6 +105,7 @@ export default function UserProfilePage({
     } catch (error) {
         console.error("Failed to start conversation", error);
         toast({ title: "Could not start conversation.", variant: "destructive" });
+    } finally {
         setIsMessageLoading(false);
     }
   };
@@ -192,7 +193,7 @@ export default function UserProfilePage({
                 <p className="text-muted-foreground">@{user.username}</p>
                 <p className="mt-3 text-sm max-w-prose">{user.bio}</p>
                 <div className="mt-4 flex justify-center sm:justify-start">
-                    {!isCurrentUserProfile && (
+                    {!isCurrentUserProfile && authUser && (
                        <>
                         <Button onClick={handleFollowToggle} disabled={isFollowLoading}>
                             {isFollowLoading ? <Icons.spinner className="animate-spin" /> : (isFollowing ? "Following" : "Follow")}
