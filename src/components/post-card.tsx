@@ -19,6 +19,7 @@ import { CommentSheet } from "./comment-sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { toggleLike, getPostById } from "@/services/postService";
 import { useToast } from "@/hooks/use-toast";
+import { AspectRatio } from "./ui/aspect-ratio";
 
 interface PostCardProps {
   post: PostType;
@@ -125,14 +126,30 @@ export function PostCard({ post: initialPost }: PostCardProps) {
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="relative aspect-square w-full overflow-hidden">
-            <Image
-              src={post.contentUrl}
-              alt={post.caption}
-              fill
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
-              data-ai-hint={post.dataAiHint}
-            />
+          <div className="relative w-full overflow-hidden">
+             {post.type === 'image' ? (
+                <AspectRatio ratio={1 / 1}>
+                    <Image
+                        src={post.contentUrl}
+                        alt={post.caption}
+                        fill
+                        className="object-cover"
+                        data-ai-hint={post.dataAiHint}
+                    />
+                </AspectRatio>
+              ) : (
+                 <AspectRatio ratio={9 / 16} className="bg-black">
+                     <video
+                        src={post.contentUrl}
+                        controls
+                        className="w-full h-full object-contain"
+                        playsInline
+                        autoPlay={false} // Set to true if you want autoplay
+                        loop
+                        muted
+                    />
+                 </AspectRatio>
+              )}
           </div>
         </CardContent>
         <CardFooter className="p-4 flex flex-col items-start gap-4">

@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getPosts } from "@/services/postService";
 import { getStories } from "@/services/storyService";
 import type { Post, Story } from "@/lib/types";
+import { Icons } from "@/components/icons";
 
 function FeedSkeleton() {
   return (
@@ -38,17 +39,25 @@ export default function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
-      setLoading(true);
-      const [postsData, storiesData] = await Promise.all([
-        getPosts(),
-        getStories(),
-      ]);
-      setPosts(postsData);
-      setStories(storiesData);
-      setLoading(false);
+      try {
+        setLoading(true);
+        setError(null);
+        const [postsData, storiesData] = await Promise.all([
+          getPosts(),
+          getStories(),
+        ]);
+        setPosts(postsData);
+        setStories(storiesData);
+      } catch (err) {
+        console.error("Failed to load feed data:", err);
+        setError("Could not load the feed. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
     }
     loadData();
   }, []);
@@ -61,6 +70,18 @@ export default function FeedPage() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground/90 px-4 sm:px-6 lg:px-8">Feed</h1>
            {loading ? (
              <FeedSkeleton />
+           ) : error ? (
+            <div className="text-center text-red-500 py-24 px-4">
+              <Icons.close className="mx-auto h-12 w-12" />
+              <p className="mt-4 font-semibold">Something went wrong</p>
+              <p className="text-sm">{error}</p>
+            </div>
+           ) : posts.length === 0 ? (
+            <div className="text-center text-muted-foreground py-24 px-4">
+                <Icons.home className="mx-auto h-12 w-12" />
+                <p className="mt-4 font-semibold">Welcome to your feed!</p>
+                <p className="text-sm">It's looking a little empty. Follow some friends to see their posts.</p>
+            </div>
            ) : (
              <div className="space-y-8 px-4 sm:px-6 lg:px-8 pb-8">
                 {posts.map((post) => (

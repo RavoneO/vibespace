@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function ReelsSkeleton() {
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
             {[...Array(8)].map((_, i) => (
                  <div key={i} className="relative aspect-[9/16] w-full overflow-hidden rounded-lg">
                     <Skeleton className="w-full h-full" />
@@ -21,7 +21,6 @@ function ReelsSkeleton() {
         </div>
     )
 }
-
 
 export default function ReelsPage() {
   const [reels, setReels] = useState<Post[]>([]);
@@ -52,21 +51,20 @@ export default function ReelsPage() {
           </Link>
         </Button>
       </header>
-      <main className="flex-1 overflow-y-auto p-4">
+      <main className="flex-1 overflow-y-auto">
         {loading ? (
             <ReelsSkeleton />
         ) : reels.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
             {reels.map((reel) => (
               <Link href="#" key={reel.id}>
                 <div className="relative aspect-[9/16] w-full overflow-hidden rounded-lg group cursor-pointer">
-                  {/* For video posts, you might want a video thumbnail instead of an image */}
-                  <div className="absolute inset-0 bg-black flex items-center justify-center">
-                    <Icons.reels className="h-12 w-12 text-white/50" />
-                  </div>
                   <video
                     src={reel.contentUrl}
                     className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+                    playsInline
+                    loop
+                    muted
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                   <div className="absolute bottom-0 left-0 p-2 text-white">
@@ -87,7 +85,7 @@ export default function ReelsPage() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center px-4">
             <Icons.reels className="mx-auto h-16 w-16" />
             <h2 className="mt-4 text-xl font-bold">No Reels Yet</h2>
             <p className="mt-1 text-sm">Upload your first reel to get started.</p>

@@ -67,7 +67,7 @@ export default function UserProfilePage({
           const following = fetchedUser.following?.length || 0;
           setFollowCount({ followers, following });
 
-          if (authUser) {
+          if (authUser && !isGuest) {
             setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
           }
         } else {
@@ -83,7 +83,7 @@ export default function UserProfilePage({
     };
 
     fetchUserData();
-  }, [username, authUser]);
+  }, [username, authUser, isGuest]);
 
   const handleFollowToggle = async () => {
     if (!authUser || isGuest) {
@@ -93,15 +93,24 @@ export default function UserProfilePage({
     if (!user) return;
     
     setIsFollowLoading(true);
+    // Optimistic UI update
+    const originalIsFollowing = isFollowing;
+    setIsFollowing(!originalIsFollowing);
+    setFollowCount(prev => ({
+        ...prev,
+        followers: !originalIsFollowing ? prev.followers + 1 : prev.followers - 1
+    }));
+
+
     try {
-        const result = await toggleFollow(authUser.uid, user.id);
-        setIsFollowing(result);
+        await toggleFollow(authUser.uid, user.id);
+    } catch (error) {
+        // Revert UI on error
+        setIsFollowing(originalIsFollowing);
         setFollowCount(prev => ({
             ...prev,
-            followers: result ? prev.followers + 1 : prev.followers - 1
+            followers: originalIsFollowing ? prev.followers - 1 : prev.followers + 1
         }));
-
-    } catch (error) {
         console.error("Error toggling follow:", error);
         toast({ title: "Something went wrong.", variant: "destructive" });
     } finally {
@@ -246,27 +255,34 @@ export default function UserProfilePage({
               <TabsTrigger value="tagged"><Icons.bookmark className="mr-2 h-4 w-4" /> Tagged</TabsTrigger>
             </TabsList>
             <TabsContent value="posts" className="p-2 sm:p-4">
-              <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4">
-                {userPosts.map((post) => (
-                  <div key={post.id} className="relative aspect-square w-full overflow-hidden rounded-md group">
-                    <Image
-                      src={post.contentUrl}
-                      alt={post.caption}
-                      fill
-                      className="object-cover transition-all duration-300 group-hover:opacity-80 group-hover:scale-110"
-                      data-ai-hint={post.dataAiHint}
-                    />
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white">
-                        <div className="flex items-center gap-1 font-bold">
-                            <Icons.like className="h-5 w-5 fill-white" /> {post.likes}
-                        </div>
-                        <div className="flex items-center gap-1 font-bold">
-                            <Icons.comment className="h-5 w-5 fill-white" /> {post.comments.length}
-                        </div>
+              {userPosts.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4">
+                  {userPosts.map((post) => (
+                    <div key={post.id} className="relative aspect-square w-full overflow-hidden rounded-md group">
+                      <Image
+                        src={post.contentUrl}
+                        alt={post.caption}
+                        fill
+                        className="object-cover transition-all duration-300 group-hover:opacity-80 group-hover:scale-110"
+                        data-ai-hint={post.dataAiHint}
+                      />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white">
+                          <div className="flex items-center gap-1 font-bold">
+                              <Icons.like className="h-5 w-5 fill-white" /> {post.likes}
+                          </div>
+                          <div className="flex items-center gap-1 font-bold">
+                              <Icons.comment className="h-5 w-5 fill-white" /> {post.comments.length}
+                          </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground py-24">
+                    <Icons.create className="mx-auto h-12 w-12" />
+                    <p className="mt-4 font-semibold">No posts yet</p>
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="reels">
                 <div className="text-center text-muted-foreground py-24">
