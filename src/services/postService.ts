@@ -43,26 +43,15 @@ async function processPostDoc(doc: any): Promise<Post> {
 export async function getPosts(): Promise<Post[]> {
   try {
     const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, orderBy('timestamp', 'desc'), where('status', '==', 'published'));
+    const q = query(postsCollection, orderBy('timestamp', 'desc'));
     const querySnapshot = await getDocs(q);
     
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
     
-    return posts;
+    return posts.filter(p => p.status === 'published');
   } catch (error) {
     console.error("Error fetching posts:", error);
-    // Attempt a less restrictive query as a fallback
-    try {
-        console.log("Falling back to fetching posts without status filter.");
-        const postsCollection = collection(db, 'posts');
-        const q = query(postsCollection, orderBy('timestamp', 'desc'));
-        const querySnapshot = await getDocs(q);
-        const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-        return posts.filter(p => p.status === 'published');
-    } catch (fallbackError) {
-        console.error("Fallback post fetch also failed:", fallbackError);
-        return [];
-    }
+    return [];
   }
 }
 
@@ -84,25 +73,15 @@ export async function getPostById(postId: string): Promise<Post | null> {
 export async function getPostsByUserId(userId: string): Promise<Post[]> {
   try {
     const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, where('userId', '==', userId), where('status', '==', 'published'), orderBy('timestamp', 'desc'));
+    const q = query(postsCollection, where('userId', '==', userId), orderBy('timestamp', 'desc'));
     const querySnapshot = await getDocs(q);
 
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
 
-    return posts;
+    return posts.filter(p => p.status === 'published');
   } catch (error) {
     console.error("Error fetching posts by user ID:", error);
-     try {
-        console.log("Falling back to fetching user posts without status filter.");
-        const postsCollection = collection(db, 'posts');
-        const q = query(postsCollection, where('userId', '==', userId), orderBy('timestamp', 'desc'));
-        const querySnapshot = await getDocs(q);
-        const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-        return posts.filter(p => p.status === 'published');
-    } catch (fallbackError) {
-        console.error("Fallback user post fetch also failed:", fallbackError);
-        return [];
-    }
+    return [];
   }
 }
 

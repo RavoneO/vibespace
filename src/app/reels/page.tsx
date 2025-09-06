@@ -1,14 +1,43 @@
 
+"use client";
+
+import { useEffect, useState } from "react";
 import AppLayout from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { getPosts } from "@/services/postService";
-import Image from "next/image";
+import type { Post } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function ReelsPage() {
-  const allPosts = await getPosts();
-  const reels = allPosts.filter(p => p.type === 'video');
+function ReelsSkeleton() {
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+                 <div key={i} className="relative aspect-[9/16] w-full overflow-hidden rounded-lg">
+                    <Skeleton className="w-full h-full" />
+                </div>
+            ))}
+        </div>
+    )
+}
+
+
+export default function ReelsPage() {
+  const [reels, setReels] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadReels() {
+        setLoading(true);
+        const allPosts = await getPosts();
+        const videoPosts = allPosts.filter(p => p.type === 'video');
+        setReels(videoPosts);
+        setLoading(false);
+    }
+    loadReels();
+  }, []);
+
 
   return (
     <AppLayout>
@@ -24,7 +53,9 @@ export default async function ReelsPage() {
         </Button>
       </header>
       <main className="flex-1 overflow-y-auto p-4">
-        {reels.length > 0 ? (
+        {loading ? (
+            <ReelsSkeleton />
+        ) : reels.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {reels.map((reel) => (
               <Link href="#" key={reel.id}>
