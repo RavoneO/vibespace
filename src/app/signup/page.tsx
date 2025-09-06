@@ -116,12 +116,20 @@ export default function SignupPage() {
               </Button>
             </form>
           </Form>
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/login" className="font-semibold text-primary hover:underline">
-              Log in
-            </Link>
-          </p>
+          <div className="mt-6 space-y-2 text-center text-sm text-muted-foreground">
+            <p>
+              Already have an account?{" "}
+              <Link href="/login" className="font-semibold text-primary hover:underline">
+                Log in
+              </Link>
+            </p>
+            <p>
+              Or{" "}
+              <Link href="/" className="font-semibold text-primary hover:underline">
+                continue as a guest
+              </Link>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
