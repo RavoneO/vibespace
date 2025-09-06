@@ -212,7 +212,7 @@ export default function UserProfilePage({
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 text-center sm:text-left">
-                <h1 className="text-2xl font-bold">{user.name}</h1>
+                <h2 className="text-2xl font-bold">{user.name}</h2>
                 <p className="text-muted-foreground">@{user.username}</p>
                 <p className="mt-3 text-sm max-w-prose">{user.bio}</p>
                 <div className="mt-4 flex justify-center sm:justify-start">

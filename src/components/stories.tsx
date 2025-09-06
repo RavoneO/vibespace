@@ -17,7 +17,7 @@ interface StoriesProps {
 }
 
 export function Stories({ stories }: StoriesProps) {
-    const { user: authUser } = useAuth();
+    const { user: authUser, isGuest } = useAuth();
     const { toast } = useToast();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [viewerOpen, setViewerOpen] = React.useState(false);
@@ -37,8 +37,8 @@ export function Stories({ stories }: StoriesProps) {
     }
     
     const handleAddStoryClick = () => {
-        if (!authUser) {
-            toast({ title: "Please log in to add a story.", variant: "destructive" });
+        if (!authUser || isGuest) {
+            toast({ title: "Log in or sign up to add a story.", variant: "destructive" });
             return;
         }
         fileInputRef.current?.click();
@@ -51,34 +51,38 @@ export function Stories({ stories }: StoriesProps) {
         setIsUploading(true);
         toast({ title: "Uploading your story..." });
 
-        try {
-            const fileType = file.type.startsWith('image') ? 'image' : 'video';
-            const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${Date.now()}_${file.name}`);
+        const backgroundUpload = async () => {
+            try {
+                const fileType = file.type.startsWith('image') ? 'image' : 'video';
+                const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${Date.now()}_${file.name}`);
 
-            await createStory({
-                userId: authUser.uid,
-                type: fileType,
-                contentUrl,
-                duration: 5, // default duration
-            });
-            
-            toast({ title: "Story posted successfully!" });
-            // Ideally, we'd have a real-time subscription to update stories.
-            // For now, a page refresh would show the new story.
-        } catch (error) {
-            console.error("Error creating story:", error);
-            toast({
-                title: "Failed to post story",
-                description: "Please try again later.",
-                variant: "destructive",
-            });
-        } finally {
-            setIsUploading(false);
-            // Reset file input
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
+                await createStory({
+                    userId: authUser.uid,
+                    type: fileType,
+                    contentUrl,
+                    duration: 5, // default duration
+                });
+                
+                toast({ title: "Story posted successfully!" });
+                // Ideally, we'd have a real-time subscription to update stories.
+                // For now, a page refresh would show the new story.
+            } catch (error) {
+                console.error("Error creating story:", error);
+                toast({
+                    title: "Failed to post story",
+                    description: "Please try again later.",
+                    variant: "destructive",
+                });
+            } finally {
+                setIsUploading(false);
+                 // Reset file input
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                }
             }
-        }
+        };
+
+        backgroundUpload();
     };
     
     const currentUserStory = stories.find(s => s.user.id === authUser?.uid);
@@ -105,7 +109,7 @@ export function Stories({ stories }: StoriesProps) {
                 type="file" 
                 ref={fileInputRef} 
                 className="hidden" 
-                accept="image/*"
+                accept="image/*,video/*"
                 onChange={handleFileChange}
                 disabled={isUploading}
             />

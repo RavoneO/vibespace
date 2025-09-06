@@ -14,7 +14,7 @@ async function getFullUser(userId: string) {
 export async function getPosts(): Promise<Post[]> {
   try {
     const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, orderBy('timestamp', 'desc'));
+    const q = query(postsCollection, where('status', '==', 'published'), orderBy('timestamp', 'desc'));
     const querySnapshot = await getDocs(q);
     
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
@@ -53,7 +53,7 @@ export async function getPosts(): Promise<Post[]> {
 export async function getPostsByUserId(userId: string): Promise<Post[]> {
   try {
     const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, where('userId', '==', userId), orderBy('timestamp', 'desc'));
+    const q = query(postsCollection, where('userId', '==', userId), where('status', '==', 'published'), orderBy('timestamp', 'desc'));
     const querySnapshot = await getDocs(q);
 
     const user = await getFullUser(userId);
