@@ -9,7 +9,7 @@ import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { getUserByUsername, toggleFollow } from "@/services/userService";
 import { getPostsByUserId } from "@/services/postService";
 import type { User, Post } from "@/lib/types";
@@ -22,7 +22,7 @@ import { findOrCreateConversation } from "@/services/messageService";
 export default function UserProfilePage({
   params,
 }: {
-  params: { username: string };
+  params: Promise<{ username: string }>;
 }) {
   const { user: authUser, isGuest } = useAuth();
   const { toast } = useToast();
@@ -38,6 +38,8 @@ export default function UserProfilePage({
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   
+  const resolvedParams = use(params);
+
   const showLoginToast = () => {
     toast({
         title: "Create an account to interact",
@@ -51,7 +53,7 @@ export default function UserProfilePage({
     const fetchUserData = async () => {
       setLoading(true);
       try {
-        const fetchedUser = await getUserByUsername(params.username);
+        const fetchedUser = await getUserByUsername(resolvedParams.username);
         if (fetchedUser) {
           setUser(fetchedUser);
           const fetchedPosts = await getPostsByUserId(fetchedUser.id);
@@ -77,7 +79,7 @@ export default function UserProfilePage({
     };
 
     fetchUserData();
-  }, [params.username, authUser]);
+  }, [resolvedParams.username, authUser]);
 
   const handleFollowToggle = async () => {
     if (!authUser || isGuest) {
@@ -274,3 +276,5 @@ export default function UserProfilePage({
     </AppLayout>
   );
 }
+
+    
