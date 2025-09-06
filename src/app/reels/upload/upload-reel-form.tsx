@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createPost } from "@/services/postService";
+import { createPost, updatePost } from "@/services/postService";
 import { uploadFile } from "@/services/storageService";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -71,27 +71,36 @@ export function UploadReelForm() {
     }
 
     setIsSubmitting(true);
-    try {
-        const file = values.file as File;
-        
-        const contentUrl = await uploadFile(file, `reels/${user.uid}/${Date.now()}_${file.name}`);
-        
-        const hashtags = values.caption.match(/#\w+/g) || [];
+    const file = values.file as File;
+    const hashtags = values.caption.match(/#\w+/g) || [];
 
-        await createPost({
+    try {
+        // Step 1: Create the post document immediately to get an ID
+        const postId = await createPost({
             userId: user.uid,
             type: 'video',
-            contentUrl,
             caption: values.caption,
             hashtags,
         });
 
+        // Step 2: Show immediate feedback to the user
         toast({
-            title: "Reel Uploaded!",
-            description: "Your reel is now live.",
+            title: "Reel is uploading...",
+            description: "You can navigate away, the upload will continue in the background.",
         });
-
         router.push("/reels");
+
+        // Step 3: Upload the file in the background
+        const contentUrl = await uploadFile(file, `reels/${user.uid}/${postId}_${file.name}`);
+        
+        // Step 4: Update the post with the final contentUrl
+        await updatePost(postId, {
+            contentUrl,
+            status: 'published'
+        } as any);
+
+        // Optional: show a success toast if you want to notify the user upon completion.
+        // This would require a more complex notification system.
 
     } catch (error) {
         console.error("Error creating reel:", error);

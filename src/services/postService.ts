@@ -94,23 +94,37 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
 export async function createPost(postData: {
     userId: string;
     type: 'image' | 'video';
-    contentUrl: string;
+    contentUrl?: string;
     caption: string;
     hashtags: string[];
 }) {
     try {
-        await addDoc(collection(db, 'posts'), {
+        const docRef = await addDoc(collection(db, 'posts'), {
             ...postData,
+            contentUrl: postData.contentUrl || '',
             likes: 0,
             likedBy: [],
             comments: [],
             timestamp: serverTimestamp(),
+            status: postData.contentUrl ? 'published' : 'processing',
         });
+        return docRef.id;
     } catch (error) {
         console.error("Error creating post:", error);
         throw new Error("Failed to create post.");
     }
 }
+
+export async function updatePost(postId: string, data: Partial<Post>) {
+    try {
+        const postRef = doc(db, 'posts', postId);
+        await updateDoc(postRef, data);
+    } catch (error) {
+        console.error("Error updating post:", error);
+        throw new Error("Failed to update post.");
+    }
+}
+
 
 export async function addComment(postId: string, commentData: { userId: string, text: string }) {
     try {

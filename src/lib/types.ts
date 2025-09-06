@@ -29,6 +29,7 @@ export type Post = {
   likedBy: string[];
   comments: Comment[];
   timestamp: string | Timestamp;
+  status?: 'processing' | 'published';
   dataAiHint?: string;
 };
 
