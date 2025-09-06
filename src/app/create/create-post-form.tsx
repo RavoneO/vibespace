@@ -150,6 +150,14 @@ export function CreatePostForm() {
 
     setIsSubmitting(true);
     
+    // Show immediate feedback to the user
+    toast({
+        title: "Post is uploading...",
+        description: "You can navigate away, the upload will continue in the background.",
+    });
+    
+    // We don't want to wait for the whole process, so we move the heavy lifting
+    // into a separate async function and don't `await` it.
     const backgroundUpload = async () => {
         try {
             const file = values.file as File;
@@ -184,15 +192,13 @@ export function CreatePostForm() {
         }
     };
     
-    toast({
-        title: "Post is uploading...",
-        description: "You can navigate away, the upload will continue in the background.",
-    });
-
+    // Start the background upload but don't wait for it to finish.
     backgroundUpload();
 
+    // Navigate away immediately.
     router.push("/feed");
 
+    // Set submitting to false so the UI is not blocked.
     setIsSubmitting(false);
   }
 

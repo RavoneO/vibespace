@@ -71,11 +71,17 @@ export function UploadReelForm() {
     }
 
     setIsSubmitting(true);
-    const file = values.file as File;
     
+    // Show immediate feedback to the user
+    toast({
+        title: "Reel is uploading...",
+        description: "You can navigate away, the upload will continue in the background.",
+    });
+
     // We don't want to wait for the whole process, so we move the heavy lifting
     // into a separate async function and don't `await` it.
     const backgroundUpload = async () => {
+        const file = values.file as File;
         const hashtags = values.caption.match(/#\w+/g) || [];
         try {
             // Step 1: Create the post document immediately to get an ID
@@ -101,12 +107,6 @@ export function UploadReelForm() {
             // A more robust solution might involve a global notifications system.
         }
     };
-
-    // Show immediate feedback to the user
-    toast({
-        title: "Reel is uploading...",
-        description: "You can navigate away, the upload will continue in the background.",
-    });
 
     // Start the background upload but don't wait for it to finish.
     backgroundUpload();

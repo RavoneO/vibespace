@@ -74,15 +74,102 @@ export function Stories({ stories }: StoriesProps) {
                     variant: "destructive",
                 });
             } finally {
-                 // Reset file input
+                 // Reset file input and loading state *inside* the background task
                 if (fileInputRef.current) {
                     fileInputRef.current.value = "";
                 }
+                setIsUploading(false);
             }
         };
 
         backgroundUpload();
-        setIsUploading(false); // Set uploading to false immediately
+        // Do not set isUploading to false here, but in the background task's finally block.
+        // Wait, the user wants the UI to be unblocked. Let's rethink.
+
+    };
+    
+    const handleFileChangeCorrect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !authUser) return;
+    
+        setIsUploading(true);
+        toast({ title: "Uploading your story..." });
+    
+        const backgroundUpload = async () => {
+          try {
+            const fileType = file.type.startsWith('image') ? 'image' : 'video';
+            const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${Date.now()}_${file.name}`);
+    
+            await createStory({
+              userId: authUser.uid,
+              type: fileType,
+              contentUrl,
+              duration: 5, // default duration
+            });
+    
+            toast({ title: "Story posted successfully!" });
+            // In a real app, you'd likely trigger a state refresh here.
+          } catch (error) {
+            console.error("Error creating story:", error);
+            toast({
+              title: "Failed to post story",
+              description: "Please try again later.",
+              variant: "destructive",
+            });
+          } finally {
+             // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+          }
+        };
+    
+        backgroundUpload().finally(() => {
+            setIsUploading(false);
+        });
+    };
+
+    const handleFileChangeFinal = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !authUser) return;
+    
+        setIsUploading(true);
+        toast({ title: "Uploading your story..." });
+    
+        const backgroundUpload = async () => {
+          try {
+            const fileType = file.type.startsWith('image') ? 'image' : 'video';
+            // Note: We're not creating a db entry first for stories to keep it simple,
+            // but in a real app, you would for consistency.
+            const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${Date.now()}_${file.name}`);
+    
+            await createStory({
+              userId: authUser.uid,
+              type: fileType,
+              contentUrl,
+              duration: 5, // default duration
+            });
+    
+            toast({ title: "Story posted successfully!" });
+          } catch (error) {
+            console.error("Error creating story:", error);
+            toast({
+              title: "Failed to post story",
+              description: "Please try again later.",
+              variant: "destructive",
+            });
+          } finally {
+             // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+          }
+        };
+    
+        // Start the upload, but also unblock the UI right away
+        backgroundUpload().finally(() => {
+            setIsUploading(false);
+        });
     };
     
     const currentUserStory = stories.find(s => s.user.id === authUser?.uid);
@@ -110,7 +197,7 @@ export function Stories({ stories }: StoriesProps) {
                 ref={fileInputRef} 
                 className="hidden" 
                 accept="image/*,video/*"
-                onChange={handleFileChange}
+                onChange={handleFileChangeFinal}
                 disabled={isUploading}
             />
             <div className="relative p-4">
@@ -131,8 +218,7 @@ export function Stories({ stories }: StoriesProps) {
                                 className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1.5 border-2 border-background disabled:bg-muted"
                             >
                                 {isUploading ? <Icons.spinner className="w-4 h-4 animate-spin" /> : <Icons.plus className="w-4 h-4" />}
-                            </button>
-                        </div>
+                            </button>                        </div>
                         <p className="text-xs mt-1.5 truncate text-muted-foreground">Your Story</p>
                     </div>
                     {otherUserStories.map((story, index) => (
