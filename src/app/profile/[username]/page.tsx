@@ -38,6 +38,7 @@ export default function UserProfilePage({
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   const [userNotFound, setUserNotFound] = useState(false);
+  const { username } = params;
 
   const showLoginToast = () => {
     toast({
@@ -50,12 +51,12 @@ export default function UserProfilePage({
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!params.username) return;
+      if (!username) return;
       setLoading(true);
       setUserNotFound(false);
 
       try {
-        const fetchedUser = await getUserByUsername(params.username);
+        const fetchedUser = await getUserByUsername(username);
 
         if (fetchedUser) {
           setUser(fetchedUser);
@@ -82,7 +83,7 @@ export default function UserProfilePage({
     };
 
     fetchUserData();
-  }, [params.username, authUser]);
+  }, [username, authUser]);
 
   const handleFollowToggle = async () => {
     if (!authUser || isGuest) {
@@ -285,5 +286,3 @@ export default function UserProfilePage({
     </AppLayout>
   );
 }
-
-    
