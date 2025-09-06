@@ -34,8 +34,10 @@ export function PostCard({ post }: PostCardProps) {
   const likeButtonRef = useRef<HTMLButtonElement>(null);
   
   useEffect(() => {
-    if(user && post.likedBy){
-      setIsLiked(post.likedBy.includes(user.uid));
+    if (user && Array.isArray(post.likedBy)) {
+        setIsLiked(post.likedBy.includes(user.uid));
+    } else {
+        setIsLiked(false);
     }
   }, [user, post.likedBy]);
 
