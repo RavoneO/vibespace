@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -25,6 +26,8 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const PROTECTED_ROUTES = ["/create", "/reels/upload", "/settings"];
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,15 +36,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        setUser(null);
-        if (pathname !== "/login" && pathname !== "/signup") {
-            router.push('/login');
-        }
-      }
+      setUser(user);
       setLoading(false);
+
+      const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+
+      if (!user && isProtectedRoute) {
+        router.push("/login");
+      }
     });
 
     return () => unsubscribe();
