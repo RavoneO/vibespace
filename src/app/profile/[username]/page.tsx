@@ -24,7 +24,7 @@ export default function UserProfilePage({
 }: {
   params: { username: string };
 }) {
-  const { user: authUser } = useAuth();
+  const { user: authUser, isGuest } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -37,6 +37,15 @@ export default function UserProfilePage({
   });
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
+  
+  const showLoginToast = () => {
+    toast({
+        title: "Create an account to interact",
+        description: "Sign up or log in to follow users and send messages.",
+        variant: "destructive",
+        action: <Link href="/signup"><Button>Sign Up</Button></Link>
+    });
+  }
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -71,10 +80,11 @@ export default function UserProfilePage({
   }, [params.username, authUser]);
 
   const handleFollowToggle = async () => {
-    if (!authUser || !user) {
-        toast({ title: "Please log in to follow users.", variant: "destructive" });
+    if (!authUser || isGuest) {
+        showLoginToast();
         return;
     }
+    if (!user) return;
     
     setIsFollowLoading(true);
     try {
@@ -94,10 +104,11 @@ export default function UserProfilePage({
   }
 
   const handleMessage = async () => {
-    if (!authUser || !user) {
-      toast({ title: "Please log in to send a message.", variant: "destructive" });
+    if (!authUser || isGuest) {
+      showLoginToast();
       return;
     }
+    if (!user) return;
     setIsMessageLoading(true);
     try {
         const conversationId = await findOrCreateConversation(authUser.uid, user.id);
@@ -193,7 +204,7 @@ export default function UserProfilePage({
                 <p className="text-muted-foreground">@{user.username}</p>
                 <p className="mt-3 text-sm max-w-prose">{user.bio}</p>
                 <div className="mt-4 flex justify-center sm:justify-start">
-                    {!isCurrentUserProfile && authUser && (
+                    {!isCurrentUserProfile && (
                        <>
                         <Button onClick={handleFollowToggle} disabled={isFollowLoading}>
                             {isFollowLoading ? <Icons.spinner className="animate-spin" /> : (isFollowing ? "Following" : "Follow")}

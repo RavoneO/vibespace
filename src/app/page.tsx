@@ -10,7 +10,7 @@ import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WelcomePage() {
-  const { user, loading } = useAuth();
+  const { user, loading, setAsGuest } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -18,6 +18,11 @@ export default function WelcomePage() {
       router.replace("/feed");
     }
   }, [user, loading, router]);
+
+  const handleGuestAccess = () => {
+    setAsGuest(true);
+    router.push("/feed");
+  };
 
   if (loading || (!loading && user)) {
     return (
@@ -53,6 +58,9 @@ export default function WelcomePage() {
                 </Button>
                 <Button asChild size="lg" variant="secondary" className="w-full">
                     <Link href="/login">Log In</Link>
+                </Button>
+                <Button size="lg" variant="outline" className="w-full" onClick={handleGuestAccess}>
+                    Continue as Guest
                 </Button>
             </div>
         </div>

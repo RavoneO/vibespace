@@ -25,7 +25,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const { toast } = useToast();
 
   const [isLiked, setIsLiked] = useState(false);
@@ -39,13 +39,18 @@ export function PostCard({ post }: PostCardProps) {
     }
   }, [user, post.likedBy]);
 
+  const showLoginToast = () => {
+    toast({
+        title: "Create an account to interact",
+        description: "Sign up or log in to like, comment, and more.",
+        variant: "destructive",
+        action: <Link href="/signup"><Button>Sign Up</Button></Link>
+    });
+  }
 
   const handleLike = async () => {
-    if (!user) {
-      toast({
-        title: "Please log in to like posts.",
-        variant: "destructive",
-      });
+    if (!user || isGuest) {
+      showLoginToast();
       return;
     }
 
@@ -81,6 +86,14 @@ export function PostCard({ post }: PostCardProps) {
       }
     }
   };
+  
+  const handleCommentClick = () => {
+      if (!user || isGuest) {
+          showLoginToast();
+          return;
+      }
+      setIsCommentSheetOpen(true);
+  }
 
   return (
     <>
@@ -122,7 +135,7 @@ export function PostCard({ post }: PostCardProps) {
                         )}
                     />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => setIsCommentSheetOpen(true)} aria-label="Comment on post">
+                <Button variant="ghost" size="icon" onClick={handleCommentClick} aria-label="Comment on post">
                     <Icons.comment className="text-foreground/70" />
                 </Button>
                 <Button variant="ghost" size="icon" aria-label="Share post">
@@ -149,7 +162,7 @@ export function PostCard({ post }: PostCardProps) {
                 ))}
             </div>
 
-            <Button variant="link" size="sm" className="text-muted-foreground p-0 h-auto" onClick={() => setIsCommentSheetOpen(true)}>
+            <Button variant="link" size="sm" className="text-muted-foreground p-0 h-auto" onClick={handleCommentClick}>
                 View all {post.comments.length} comments
             </Button>
         </CardFooter>
