@@ -44,8 +44,7 @@ export async function getPosts(): Promise<Post[]> {
       } as Post;
     }));
     
-    // Filter for published posts client-side. This ensures posts appear
-    // without needing a composite index on the backend.
+    // Filter for published posts client-side. This avoids complex query issues.
     return posts.filter(post => post.status === 'published');
   } catch (error) {
     console.error("Error fetching posts:", error);
@@ -87,6 +86,7 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
         } as Post;
     }));
 
+    // Filter for published posts client-side.
     return posts.filter(post => post.status === 'published');
   } catch (error) {
     console.error("Error fetching posts by user ID:", error);
@@ -98,19 +98,18 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
 export async function createPost(postData: {
     userId: string;
     type: 'image' | 'video';
-    contentUrl?: string;
     caption: string;
     hashtags: string[];
 }) {
     try {
         const docRef = await addDoc(collection(db, 'posts'), {
             ...postData,
-            contentUrl: postData.contentUrl || '',
+            contentUrl: '',
             likes: 0,
             likedBy: [],
             comments: [],
             timestamp: serverTimestamp(),
-            status: postData.contentUrl ? 'published' : 'processing',
+            status: 'processing',
         });
         return docRef.id;
     } catch (error) {

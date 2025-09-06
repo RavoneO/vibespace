@@ -11,6 +11,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { createStory } from "@/services/storyService";
 import { uploadFile } from "@/services/storageService";
+import Link from "next/link";
+import { Button } from "./ui/button";
 
 interface StoriesProps {
     stories: Story[];
@@ -38,7 +40,11 @@ export function Stories({ stories }: StoriesProps) {
     
     const handleAddStoryClick = () => {
         if (!authUser || isGuest) {
-            toast({ title: "Log in or sign up to add a story.", variant: "destructive" });
+            toast({ 
+                title: "Log in or sign up to add a story.", 
+                variant: "destructive",
+                action: <Link href="/signup"><Button>Sign Up</Button></Link> 
+            });
             return;
         }
         fileInputRef.current?.click();
@@ -76,9 +82,6 @@ export function Stories({ stories }: StoriesProps) {
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
-            // This is intentionally inside the background task's finally block
-            // to re-enable the button only after the upload completes or fails.
-            // The isUploading state for the UI is handled separately.
           }
         };
     

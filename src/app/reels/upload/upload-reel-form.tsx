@@ -72,19 +72,18 @@ export function UploadReelForm() {
 
     setIsSubmitting(true);
     
-    // Show immediate feedback to the user
     toast({
         title: "Reel is uploading...",
         description: "You can navigate away, the upload will continue in the background.",
     });
 
-    // We don't want to wait for the whole process, so we move the heavy lifting
-    // into a separate async function and don't `await` it.
+    // Navigate away immediately.
+    router.push("/reels");
+    
     const backgroundUpload = async () => {
         const file = values.file as File;
         const hashtags = values.caption.match(/#\w+/g) || [];
         try {
-            // Step 1: Create the post document immediately to get an ID
             const postId = await createPost({
                 userId: user.uid,
                 type: 'video',
@@ -92,10 +91,8 @@ export function UploadReelForm() {
                 hashtags,
             });
     
-            // Step 2: Upload the file in the background
             const contentUrl = await uploadFile(file, `reels/${user.uid}/${postId}_${file.name}`);
             
-            // Step 3: Update the post with the final contentUrl
             await updatePost(postId, {
                 contentUrl,
                 status: 'published'
@@ -104,17 +101,13 @@ export function UploadReelForm() {
         } catch (error) {
             console.error("Error creating reel in background:", error);
             // Since the user has already navigated away, a toast here might be confusing.
-            // A more robust solution might involve a global notifications system.
         }
     };
 
     // Start the background upload but don't wait for it to finish.
     backgroundUpload();
 
-    // Navigate away immediately.
-    router.push("/reels");
-    
-    // Set submitting to false so the UI is not blocked.
+    // Set submitting to false immediately so the UI is not blocked.
     setIsSubmitting(false);
   }
 

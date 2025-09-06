@@ -150,20 +150,20 @@ export function CreatePostForm() {
 
     setIsSubmitting(true);
     
-    // Show immediate feedback to the user
     toast({
         title: "Post is uploading...",
         description: "You can navigate away, the upload will continue in the background.",
     });
-    
-    // We don't want to wait for the whole process, so we move the heavy lifting
-    // into a separate async function and don't `await` it.
+
+    // Navigate away immediately so the UI is not blocked.
+    router.push("/feed");
+
+    // Don't await this, let it run in the background
     const backgroundUpload = async () => {
         try {
             const file = values.file as File;
-            const hashtags = values.caption.match(/#\\w+/g) || [];
+            const hashtags = values.caption.match(/#\w+/g) || [];
     
-            // Step 1: Create the post document immediately to get an ID
             const postId = await createPost({
                 userId: user.uid,
                 type: fileType,
@@ -171,10 +171,8 @@ export function CreatePostForm() {
                 hashtags,
             });
     
-            // Step 2: Upload the file in the background
             const contentUrl = await uploadFile(file, `posts/${user.uid}/${postId}_${file.name}`);
             
-            // Step 3: Update the post with the final contentUrl
             await updatePost(postId, {
                 contentUrl,
                 status: 'published'
@@ -182,8 +180,6 @@ export function CreatePostForm() {
 
         } catch (error) {
             console.error("Error creating post in background:", error);
-            // Since the user has already navigated away, a toast here might be confusing.
-            // A more robust solution might involve a global notifications system.
              toast({
                 title: "Upload Failed",
                 description: "There was an error uploading your post. Please try again.",
@@ -192,13 +188,10 @@ export function CreatePostForm() {
         }
     };
     
-    // Start the background upload but don't wait for it to finish.
     backgroundUpload();
 
-    // Navigate away immediately.
-    router.push("/feed");
-
-    // Set submitting to false so the UI is not blocked.
+    // Set submitting to false immediately after starting the background task.
+    // NOTE: This is intentionally outside the background task.
     setIsSubmitting(false);
   }
 
