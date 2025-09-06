@@ -26,7 +26,8 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const PROTECTED_ROUTES = ["/create", "/reels/upload", "/settings"];
+const PROTECTED_ROUTES = ["/feed", "/create", "/reels/upload", "/settings", "/messages", "/profile"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup"];
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
@@ -40,9 +41,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setLoading(false);
 
       const isProtectedRoute = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+      const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
       if (!user && isProtectedRoute) {
-        router.push("/login");
+        router.push("/");
+      }
+
+      if (user && isPublicRoute) {
+        router.push("/feed");
       }
     });
 

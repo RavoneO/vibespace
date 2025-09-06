@@ -15,7 +15,7 @@ import { Button } from "./ui/button";
 
 export function AppSidebar() {
   const menuItems = [
-    { href: "/", icon: Icons.home, label: "Home" },
+    { href: "/feed", icon: Icons.home, label: "Home" },
     { href: "/search", icon: Icons.search, label: "Search" },
     { href: "/messages", icon: Icons.messages, label: "Messages" },
     { href: "/reels", icon: Icons.reels, label: "Reels" },

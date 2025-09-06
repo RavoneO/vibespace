@@ -49,7 +49,7 @@ export default function LoginPage() {
         title: "Login Successful",
         description: "Welcome back!",
       });
-      router.push("/");
+      router.push("/feed");
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -124,9 +124,9 @@ export default function LoginPage() {
               </Link>
             </p>
             <p>
-              Or{" "}
+              Or back to{" "}
               <Link href="/" className="font-semibold text-primary hover:underline">
-                continue as a guest
+                welcome page
               </Link>
             </p>
           </div>

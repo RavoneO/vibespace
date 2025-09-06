@@ -8,7 +8,7 @@ export default function CreatePostPage() {
     <div className="flex flex-col h-screen">
       <header className="flex items-center p-4 border-b">
         <Button asChild variant="ghost" size="icon">
-          <Link href="/">
+          <Link href="/feed">
             <Icons.back />
             <span className="sr-only">Back to feed</span>
           </Link>

@@ -49,7 +49,7 @@ export default function SignupPage() {
         title: "Account Created",
         description: "Welcome to Vibespace!",
       });
-      router.push("/");
+      router.push("/feed");
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -124,9 +124,9 @@ export default function SignupPage() {
               </Link>
             </p>
             <p>
-              Or{" "}
+              Or back to{" "}
               <Link href="/" className="font-semibold text-primary hover:underline">
-                continue as a guest
+                welcome page
               </Link>
             </p>
           </div>
