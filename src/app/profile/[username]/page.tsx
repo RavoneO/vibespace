@@ -218,10 +218,10 @@ export default function UserProfilePage({
                 <div className="mt-4 flex justify-center sm:justify-start">
                     {!isCurrentUserProfile && (
                        <>
-                        <Button onClick={handleFollowToggle} disabled={isFollowLoading}>
+                        <Button onClick={handleFollowToggle} disabled={isFollowLoading || isGuest}>
                             {isFollowLoading ? <Icons.spinner className="animate-spin" /> : (isFollowing ? "Following" : "Follow")}
                         </Button>
-                        <Button variant="outline" className="ml-2" onClick={handleMessage} disabled={isMessageLoading}>
+                        <Button variant="outline" className="ml-2" onClick={handleMessage} disabled={isMessageLoading || isGuest}>
                            {isMessageLoading ? <Icons.spinner className="animate-spin" /> : "Message"}
                         </Button>
                        </>

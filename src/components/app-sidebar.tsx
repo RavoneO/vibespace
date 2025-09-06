@@ -10,13 +10,18 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { Icons } from "@/components/icons";
-import { currentUser } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { useEffect, useState } from "react";
+import type { User } from "@/lib/types";
+import { getUserById } from "@/services/userService";
+import { Skeleton } from "./ui/skeleton";
 
 export function AppSidebar() {
-  const { user, isGuest, setAsGuest } = useAuth();
+  const { user: authUser, isGuest, setAsGuest } = useAuth();
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   const menuItems = [
     { href: "/feed", icon: Icons.home, label: "Home" },
@@ -25,6 +30,20 @@ export function AppSidebar() {
     { href: "/reels", icon: Icons.reels, label: "Reels" },
     { href: "/profile", icon: Icons.profile, label: "Profile" },
   ];
+
+  useEffect(() => {
+    async function fetchUserProfile() {
+        if (authUser && !isGuest) {
+            setIsLoadingProfile(true);
+            const profile = await getUserById(authUser.uid);
+            setUserProfile(profile);
+            setIsLoadingProfile(false);
+        } else {
+            setUserProfile(null);
+        }
+    }
+    fetchUserProfile();
+  }, [authUser, isGuest]);
 
   const handleLogout = () => {
     setAsGuest(false);
@@ -74,15 +93,23 @@ export function AppSidebar() {
                     </Button>
                 </Link>
             </div>
-        ) : user ? (
+        ) : isLoadingProfile ? (
+            <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="flex-1 space-y-1">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-16" />
+                </div>
+            </div>
+        ) : userProfile ? (
             <div className="flex items-center gap-3">
                 <Avatar>
-                    <AvatarImage src={user.photoURL || currentUser.avatar} alt={user.displayName || currentUser.name} />
-                    <AvatarFallback>{(user.displayName || currentUser.name).charAt(0)}</AvatarFallback>
+                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
+                    <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col overflow-hidden">
-                    <span className="font-semibold truncate">{user.displayName || currentUser.name}</span>
-                    <span className="text-sm text-muted-foreground truncate">@{user.email?.split('@')[0] || currentUser.username}</span>
+                    <span className="font-semibold truncate">{userProfile.name}</span>
+                    <span className="text-sm text-muted-foreground truncate">@{userProfile.username}</span>
                 </div>
             </div>
         ) : (

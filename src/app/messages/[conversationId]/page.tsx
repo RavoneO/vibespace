@@ -82,19 +82,28 @@ export default function ChatPage({ params }: { params: { conversationId: string 
         }
     };
     
-    if (conversationLoading || (messagesLoading && !messages.length)) {
+    if (conversationLoading || (messagesLoading && !messages.length) || (!otherUser && !conversationLoading)) {
         return (
              <AppLayout>
                 <div className="flex flex-col h-full">
-                    <header className="flex items-center p-4 border-b gap-4">
+                    <header className="flex items-center p-2.5 border-b gap-4 sticky top-0 bg-background z-10">
+                         <Link href="/messages">
+                            <Icons.back />
+                        </Link>
                         <Skeleton className="h-10 w-10 rounded-full" />
                         <Skeleton className="h-6 w-32" />
                     </header>
-                    <div className="flex-1 p-4 space-y-4">
+                    <main className="flex-1 p-4 space-y-4">
                         <Skeleton className="h-10 w-48 rounded-lg" />
                         <Skeleton className="h-10 w-64 rounded-lg ml-auto" />
                         <Skeleton className="h-10 w-32 rounded-lg" />
-                    </div>
+                    </main>
+                    <footer className="p-4 border-t sticky bottom-0 bg-background z-10">
+                        <div className="flex items-center gap-2">
+                             <Skeleton className="h-10 w-full" />
+                             <Skeleton className="h-10 w-10 rounded-md" />
+                        </div>
+                    </footer>
                 </div>
             </AppLayout>
         )
