@@ -21,16 +21,12 @@ export async function getPosts(): Promise<Post[]> {
       const data = doc.data();
       const user = await getFullUser(data.userId);
       
-      let comments: Comment[] = [];
-      // This will fail if data.comments is not an array.
-      if (data.comments) {
-          comments = await Promise.all(
-              data.comments.map(async (comment: any) => ({
-                  ...comment,
-                  user: await getFullUser(comment.userId)
-              }))
-          );
-      }
+      const comments: Comment[] = Array.isArray(data.comments) ? await Promise.all(
+          data.comments.map(async (comment: any) => ({
+              ...comment,
+              user: await getFullUser(comment.userId)
+          }))
+      ) : [];
 
       return {
         id: doc.id,
@@ -38,9 +34,9 @@ export async function getPosts(): Promise<Post[]> {
         type: data.type,
         contentUrl: data.contentUrl,
         caption: data.caption,
-        hashtags: data.hashtags,
-        likes: data.likes,
-        likedBy: data.likedBy, // This will be undefined if not in Firestore
+        hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
+        likes: data.likes || 0,
+        likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
         comments,
         timestamp: data.timestamp,
         dataAiHint: data.dataAiHint,
@@ -65,15 +61,12 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
         const data = doc.data();
         
-        let comments: Comment[] = [];
-        if (data.comments) {
-            comments = await Promise.all(
-                data.comments.map(async (comment: any) => ({
-                    ...comment,
-                    user: await getFullUser(comment.userId)
-                }))
-            );
-        }
+        const comments: Comment[] = Array.isArray(data.comments) ? await Promise.all(
+            data.comments.map(async (comment: any) => ({
+                ...comment,
+                user: await getFullUser(comment.userId)
+            }))
+        ) : [];
 
         return {
             id: doc.id,
@@ -81,9 +74,9 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
             type: data.type,
             contentUrl: data.contentUrl,
             caption: data.caption,
-            hashtags: data.hashtags,
-            likes: data.likes,
-            likedBy: data.likedBy, // This will be undefined if not in Firestore
+            hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
+            likes: data.likes || 0,
+            likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
             comments,
             timestamp: data.timestamp,
             dataAiHint: data.dataAiHint,
@@ -109,7 +102,7 @@ export async function createPost(postData: {
         await addDoc(collection(db, 'posts'), {
             ...postData,
             likes: 0,
-            likedBy: [], // New posts are fine
+            likedBy: [],
             comments: [],
             timestamp: serverTimestamp(),
         });
