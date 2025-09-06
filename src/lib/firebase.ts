@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB7n06b7mDNbBwhMkrVLIcYRuyFgRyH5jk",
-  authDomain: "vibespace-h7vsa.firebaseapp.com",
-  projectId: "vibespace-h7vsa",
-  storageBucket: "vibespace-h7vsa.firebasestorage.app",
-  messagingSenderId: "473324197014",
-  appId: "1:473324197014:web:880dfa26795f520da15eb7",
+  apiKey: "AIzaSyC2q1r0FjV4Y0o5p1qG1m5yY3sJ9b3yK8E",
+  authDomain: "vibespace-studio-pwa.firebaseapp.com",
+  projectId: "vibespace-studio-pwa",
+  storageBucket: "vibespace-studio-pwa.appspot.com",
+  messagingSenderId: "1009893976102",
+  appId: "1:1009893976102:web:3e6e8c715c0e1e3e5f2b8a"
 };
 
 // Initialize Firebase
