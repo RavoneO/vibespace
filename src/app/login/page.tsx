@@ -53,10 +53,16 @@ export default function LoginPage() {
         case "auth/user-not-found":
         case "auth/wrong-password":
         case "auth/invalid-credential":
-            description = "Invalid email or password. Please try again.";
+            description = "Invalid email or password. Please check your credentials and try again.";
             break;
         case "auth/invalid-email":
             description = "The email address you entered is not valid.";
+            break;
+        case "auth/user-disabled":
+            description = "This user account has been disabled.";
+            break;
+        case "auth/too-many-requests":
+            description = "Too many failed login attempts. Please reset your password or try again later.";
             break;
         default:
             description = error.message;

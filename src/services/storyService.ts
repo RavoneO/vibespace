@@ -3,12 +3,13 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Story } from '@/lib/types';
 import { getUserById } from './userService';
-import { users as mockUsers } from '@/lib/data'; // fallback
 
-// Function to get a user by ID, with fallback to mock data
+// Function to get a user by ID
 async function getFullUser(userId: string) {
     const user = await getUserById(userId);
-    return user || mockUsers.find(u => u.id === userId) || mockUsers[0];
+    // If user not found, something is wrong with the data, but we shouldn't crash.
+    // Return a default object or handle appropriately.
+    return user || { id: userId, name: "Unknown User", username: "unknown", avatar: "", bio: ""};
 }
 
 export async function getStories(): Promise<Story[]> {
@@ -30,14 +31,13 @@ export async function getStories(): Promise<Story[]> {
         duration: data.duration,
         timestamp: data.timestamp,
         dataAiHint: data.dataAiHint,
-      };
+      } as Story;
     }));
     
     return stories;
   } catch (error) {
     console.error("Error fetching stories:", error);
-    // Return mock data as fallback
-    return (await import('@/lib/data')).stories;
+    return [];
   }
 }
 

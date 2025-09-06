@@ -64,13 +64,16 @@ export default function SignupPage() {
         let description = "An unexpected error occurred. Please try again.";
         switch (error.code) {
             case 'auth/email-already-in-use':
-                description = "This email is already associated with an account.";
+                description = "This email is already associated with an account. Please log in or use a different email.";
                 break;
             case 'auth/invalid-email':
                 description = "The email address you entered is not valid.";
                 break;
             case 'auth/weak-password':
-                description = "The password is too weak. Please choose a stronger password.";
+                description = "The password is too weak. Please choose a password with at least 6 characters.";
+                break;
+            case 'auth/operation-not-allowed':
+                description = "Email and password accounts are not enabled. Please contact support.";
                 break;
             default:
                 description = error.message;

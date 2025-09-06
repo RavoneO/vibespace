@@ -84,11 +84,13 @@ export function SearchUsers() {
     setResults(prevResults => prevResults.map(user => {
         if (user.id === userId) {
             const currentFollowers = user.followers || [];
+            let newFollowers;
             if (isFollowing) {
-                return { ...user, followers: [...currentFollowers, authUser!.uid] };
+                newFollowers = [...currentFollowers, authUser!.uid];
             } else {
-                return { ...user, followers: currentFollowers.filter(id => id !== authUser!.uid) };
+                newFollowers = currentFollowers.filter(id => id !== authUser!.uid);
             }
+            return { ...user, followers: newFollowers };
         }
         return user;
     }));
