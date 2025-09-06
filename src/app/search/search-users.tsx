@@ -1,24 +1,98 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useDebounce } from "use-debounce";
 import { Input } from "@/components/ui/input";
-import { users } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { searchUsers, toggleFollow } from "@/services/userService";
+import type { User } from "@/lib/types";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function UserSearchResult({ user, currentUserId, onFollowToggle }: { user: User, currentUserId: string | null, onFollowToggle: (userId: string, isFollowing: boolean) => void }) {
+    const { toast } = useToast();
+    const [isFollowing, setIsFollowing] = useState(user.followers?.includes(currentUserId || '') || false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleFollow = async () => {
+        if (!currentUserId) {
+            toast({ title: "Please log in to follow users.", variant: "destructive" });
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const result = await toggleFollow(currentUserId, user.id);
+            setIsFollowing(result);
+            onFollowToggle(user.id, result);
+        } catch (error) {
+            toast({ title: "Something went wrong.", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    const isCurrentUser = user.id === currentUserId;
+
+    return (
+        <div className="flex items-center justify-between p-3 bg-secondary rounded-lg">
+            <Link href={`/profile/${user.username}`} className="flex items-center gap-4 cursor-pointer">
+                <Avatar>
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="font-semibold">{user.name}</p>
+                    <p className="text-sm text-muted-foreground">@{user.username}</p>
+                </div>
+            </Link>
+            {!isCurrentUser && (
+                 <Button size="sm" onClick={handleFollow} disabled={isLoading}>
+                    {isLoading ? <Icons.spinner className="animate-spin" /> : (isFollowing ? "Following" : "Follow")}
+                </Button>
+            )}
+        </div>
+    );
+}
 
 export function SearchUsers() {
+  const { user: authUser } = useAuth();
   const [query, setQuery] = useState("");
+  const [debouncedQuery] = useDebounce(query, 300);
+  const [results, setResults] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const filteredUsers =
-    query === ""
-      ? []
-      : users.filter(
-          (user) =>
-            user.name.toLowerCase().includes(query.toLowerCase()) ||
-            user.username.toLowerCase().includes(query.toLowerCase())
-        );
+  useEffect(() => {
+    const performSearch = async () => {
+      if (debouncedQuery) {
+        setIsLoading(true);
+        const users = await searchUsers(debouncedQuery);
+        setResults(users);
+        setIsLoading(false);
+      } else {
+        setResults([]);
+      }
+    };
+    performSearch();
+  }, [debouncedQuery]);
+  
+  const handleFollowToggle = (userId: string, isFollowing: boolean) => {
+    setResults(prevResults => prevResults.map(user => {
+        if (user.id === userId) {
+            const currentFollowers = user.followers || [];
+            if (isFollowing) {
+                return { ...user, followers: [...currentFollowers, authUser!.uid] };
+            } else {
+                return { ...user, followers: currentFollowers.filter(id => id !== authUser!.uid) };
+            }
+        }
+        return user;
+    }));
+  };
 
   return (
     <div>
@@ -34,48 +108,40 @@ export function SearchUsers() {
       </div>
 
       <div className="mt-6 space-y-4">
-        {query && filteredUsers.length > 0 && (
+        {isLoading ? (
           <div className="flex flex-col gap-4">
-            {filteredUsers.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center justify-between p-3 bg-secondary rounded-lg"
-              >
-                <Link href={`/profile/${user.username}`}>
-                  <div className="flex items-center gap-4 cursor-pointer">
-                    <Avatar>
-                      <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback>
-                        {user.name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        @{user.username}
-                      </p>
+            {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-3">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-[150px]" />
+                        <Skeleton className="h-4 w-[100px]" />
                     </div>
-                  </div>
-                </Link>
-                <Button size="sm">Follow</Button>
-              </div>
+                </div>
             ))}
           </div>
-        )}
-
-        {query && filteredUsers.length === 0 && (
-          <div className="text-center text-muted-foreground py-10">
-            <p>No users found for "{query}"</p>
+        ) : debouncedQuery && results.length > 0 ? (
+          <div className="flex flex-col gap-4">
+            {results.map((user) => (
+              <UserSearchResult 
+                key={user.id} 
+                user={user} 
+                currentUserId={authUser?.uid || null}
+                onFollowToggle={handleFollowToggle} 
+              />
+            ))}
           </div>
-        )}
-
-        {!query && (
-            <div className="text-center text-muted-foreground py-10">
-                <Icons.search className="mx-auto h-12 w-12" />
-                <p className="mt-4 font-semibold">Find new people</p>
-                <p className="text-sm">Search by name or username.</p>
-            </div>
-        )}
+        ) : debouncedQuery && results.length === 0 ? (
+          <div className="text-center text-muted-foreground py-10">
+            <p>No users found for "{debouncedQuery}"</p>
+          </div>
+        ) : !debouncedQuery ? (
+          <div className="text-center text-muted-foreground py-10">
+            <Icons.search className="mx-auto h-12 w-12" />
+            <p className="mt-4 font-semibold">Find new people</p>
+            <p className="text-sm">Search by name or username.</p>
+          </div>
+        ) : null}
       </div>
     </div>
   );

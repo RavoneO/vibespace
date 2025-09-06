@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 
 export async function getUserById(userId: string): Promise<User | null> {
@@ -32,6 +32,27 @@ export async function getUserByUsername(username: string): Promise<User | null> 
       return null;
     }
 }
+
+export async function searchUsers(searchText: string): Promise<User[]> {
+    if (!searchText.trim()) {
+        return [];
+    }
+    try {
+        const usersCollection = collection(db, 'users');
+        const q = query(
+            usersCollection, 
+            orderBy('username'),
+            startAt(searchText.toLowerCase()),
+            endAt(searchText.toLowerCase() + '\uf8ff')
+        );
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    } catch (error) {
+        console.error("Error searching users:", error);
+        return [];
+    }
+}
+
 
 export async function toggleFollow(currentUserId: string, targetUserId: string): Promise<boolean> {
     if (currentUserId === targetUserId) {
