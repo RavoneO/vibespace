@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Post } from "@/lib/types";
+import type { Post as PostType } from "@/lib/types";
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,17 +17,18 @@ import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { CommentSheet } from "./comment-sheet";
 import { useAuth } from "@/hooks/use-auth";
-import { toggleLike } from "@/services/postService";
+import { toggleLike, getPostById } from "@/services/postService";
 import { useToast } from "@/hooks/use-toast";
 
 interface PostCardProps {
-  post: Post;
+  post: PostType;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post: initialPost }: PostCardProps) {
   const { user, isGuest } = useAuth();
   const { toast } = useToast();
 
+  const [post, setPost] = useState(initialPost);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
@@ -39,7 +40,15 @@ export function PostCard({ post }: PostCardProps) {
     } else {
       setIsLiked(false);
     }
-  }, [user, post.likedBy]);
+    setLikeCount(post.likes);
+  }, [user, post]);
+
+  const refreshPost = async () => {
+    const updatedPost = await getPostById(post.id);
+    if (updatedPost) {
+      setPost(updatedPost);
+    }
+  };
 
   const showLoginToast = () => {
     toast({
@@ -57,12 +66,16 @@ export function PostCard({ post }: PostCardProps) {
     }
 
     try {
-      if (isLiked) {
-        setLikeCount((prev) => prev - 1);
-        setIsLiked(false);
-      } else {
-        setLikeCount((prev) => prev + 1);
-        setIsLiked(true);
+      const originalIsLiked = isLiked;
+      const originalLikeCount = likeCount;
+
+      const newIsLiked = !isLiked;
+      const newLikeCount = newIsLiked ? likeCount + 1 : likeCount - 1;
+
+      setIsLiked(newIsLiked);
+      setLikeCount(newLikeCount);
+      
+      if (newIsLiked) {
         likeButtonRef.current?.classList.add('animate-like');
         setTimeout(() => {
           likeButtonRef.current?.classList.remove('animate-like');
@@ -70,6 +83,7 @@ export function PostCard({ post }: PostCardProps) {
       }
       
       await toggleLike(post.id, user.uid);
+      // No need to refresh post here as we are optimistically updating
 
     } catch (error) {
       console.error("Error liking post:", error);
@@ -79,13 +93,7 @@ export function PostCard({ post }: PostCardProps) {
         variant: "destructive",
       });
        // Revert UI on error
-      if (isLiked) {
-        setLikeCount((prev) => prev + 1);
-        setIsLiked(true);
-      } else {
-        setLikeCount((prev) => prev - 1);
-        setIsLiked(false);
-      }
+      await refreshPost();
     }
   };
   
@@ -169,7 +177,12 @@ export function PostCard({ post }: PostCardProps) {
             </Button>
         </CardFooter>
       </Card>
-      <CommentSheet open={isCommentSheetOpen} onOpenChange={setIsCommentSheetOpen} post={post} />
+      <CommentSheet 
+        open={isCommentSheetOpen} 
+        onOpenChange={setIsCommentSheetOpen} 
+        post={post}
+        onCommentPosted={refreshPost}
+      />
     </>
   );
 }

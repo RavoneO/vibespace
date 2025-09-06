@@ -13,37 +13,40 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Post } from "@/lib/types";
+import type { Post, User } from "@/lib/types";
 import { Icons } from "./icons";
 import { Separator } from "./ui/separator";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { addComment } from "@/services/postService";
 import { useToast } from "@/hooks/use-toast";
-import { currentUser } from "@/lib/data";
 import Link from "next/link";
+import { getUserById } from "@/services/userService";
 
 
 interface CommentSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   post: Post;
+  onCommentPosted: () => void;
 }
 
-export function CommentSheet({ open, onOpenChange, post }: CommentSheetProps) {
+export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: CommentSheetProps) {
   const { user: authUser, isGuest } = useAuth();
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [commenterProfile, setCommenterProfile] = useState<User | null>(null);
   const { toast } = useToast();
-  
-  // Use authenticated user if available, otherwise fallback to mock current user
-  const commentUser = authUser ? {
-      id: authUser.uid,
-      name: authUser.displayName || "User",
-      username: authUser.email?.split('@')[0] || "user",
-      avatar: authUser.photoURL || currentUser.avatar,
-      bio: ""
-  } : currentUser;
+
+  useEffect(() => {
+    const fetchCommenterProfile = async () => {
+        if (authUser && !isGuest) {
+            const profile = await getUserById(authUser.uid);
+            setCommenterProfile(profile);
+        }
+    }
+    fetchCommenterProfile();
+  }, [authUser, isGuest])
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,8 +68,7 @@ export function CommentSheet({ open, onOpenChange, post }: CommentSheetProps) {
         text: commentText,
       });
       setCommentText("");
-      // Ideally, we would re-fetch comments here or optimistically update the UI.
-      // For now, we'll just show a success message.
+      onCommentPosted(); // This triggers the refresh in PostCard
       toast({ title: "Comment posted!" });
     } catch (error) {
       console.error("Error posting comment:", error);
@@ -79,6 +81,13 @@ export function CommentSheet({ open, onOpenChange, post }: CommentSheetProps) {
       setIsSubmitting(false);
     }
   };
+  
+  const getCommentTimestamp = (timestamp: any) => {
+    if (!timestamp) return "";
+    if (typeof timestamp === 'string') return timestamp;
+    if (timestamp.toDate) return timestamp.toDate().toLocaleTimeString();
+    return new Date(timestamp.seconds * 1000).toLocaleTimeString();
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -100,8 +109,8 @@ export function CommentSheet({ open, onOpenChange, post }: CommentSheetProps) {
                 </Avatar>
                 <div className="text-sm">
                   <p>
-                    <span className="font-semibold">{comment.user.username}</span>
-                    <span className="ml-2 text-muted-foreground">{comment.timestamp.toString()}</span>
+                    <Link href={`/profile/${comment.user.username}`} className="font-semibold hover:underline">{comment.user.username}</Link>
+                    <span className="ml-2 text-muted-foreground">{getCommentTimestamp(comment.timestamp)}</span>
                   </p>
                   <p className="text-foreground/90">{comment.text}</p>
                 </div>
@@ -119,8 +128,8 @@ export function CommentSheet({ open, onOpenChange, post }: CommentSheetProps) {
         <SheetFooter className="mt-auto">
             <form className="flex w-full items-center gap-2" onSubmit={handleSubmit}>
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src={isGuest ? '' : commentUser.avatar} />
-                  <AvatarFallback>{isGuest ? 'G' : commentUser.name.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={commenterProfile?.avatar} />
+                  <AvatarFallback>{isGuest ? 'G' : commenterProfile?.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <Input 
                   placeholder="Add a comment..." 
@@ -129,7 +138,7 @@ export function CommentSheet({ open, onOpenChange, post }: CommentSheetProps) {
                   onChange={(e) => setCommentText(e.target.value)}
                   disabled={isSubmitting || !authUser || isGuest}
                 />
-                <Button type="submit" size="icon" disabled={isSubmitting || !authUser || isGuest}>
+                <Button type="submit" size="icon" disabled={isSubmitting || !authUser || isGuest || !commentText.trim()}>
                     {isSubmitting ? <Icons.spinner className="h-4 w-4 animate-spin" /> : <Icons.send className="h-4 w-4" />}
                     <span className="sr-only">Post comment</span>
                 </Button>

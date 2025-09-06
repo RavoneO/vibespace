@@ -3,94 +3,106 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove } from 'firebase/firestore';
 import type { Post, Comment } from '@/lib/types';
 import { getUserById } from './userService';
-import { users as mockUsers } from '@/lib/data'; // fallback
 
 // Function to get a user by ID, with fallback to mock data
 async function getFullUser(userId: string) {
     const user = await getUserById(userId);
-    return user || mockUsers.find(u => u.id === userId) || mockUsers[0];
+    if (user) return user;
+    // Fallback for cases where a user might be deleted but their content remains.
+    return { id: userId, name: "Unknown User", username: "unknown", avatar: "", bio: ""};
 }
+
+async function processPostDoc(doc: any): Promise<Post> {
+    const data = doc.data();
+    const user = await getFullUser(data.userId);
+    
+    const comments: Comment[] = Array.isArray(data.comments) ? await Promise.all(
+        data.comments.slice(-5).map(async (comment: any) => ({ // Get last 5 comments only for feed
+            ...comment,
+            user: await getFullUser(comment.userId)
+        }))
+    ) : [];
+
+    return {
+      id: doc.id,
+      user,
+      type: data.type,
+      contentUrl: data.contentUrl,
+      caption: data.caption,
+      hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
+      likes: data.likes || 0,
+      likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
+      comments,
+      timestamp: data.timestamp,
+      status: data.status,
+      dataAiHint: data.dataAiHint,
+    } as Post;
+}
+
 
 export async function getPosts(): Promise<Post[]> {
   try {
     const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, orderBy('timestamp', 'desc'));
+    const q = query(postsCollection, orderBy('timestamp', 'desc'), where('status', '==', 'published'));
     const querySnapshot = await getDocs(q);
     
-    const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
-      const data = doc.data();
-      const user = await getFullUser(data.userId);
-      
-      const comments: Comment[] = Array.isArray(data.comments) ? await Promise.all(
-          data.comments.map(async (comment: any) => ({
-              ...comment,
-              user: await getFullUser(comment.userId)
-          }))
-      ) : [];
-
-      return {
-        id: doc.id,
-        user,
-        type: data.type,
-        contentUrl: data.contentUrl,
-        caption: data.caption,
-        hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
-        likes: data.likes || 0,
-        likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
-        comments,
-        timestamp: data.timestamp,
-        status: data.status,
-        dataAiHint: data.dataAiHint,
-      } as Post;
-    }));
+    const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
     
-    // Filter for published posts client-side. This avoids complex query issues.
-    return posts.filter(post => post.status === 'published');
+    return posts;
   } catch (error) {
     console.error("Error fetching posts:", error);
-    return [];
+    // Attempt a less restrictive query as a fallback
+    try {
+        console.log("Falling back to fetching posts without status filter.");
+        const postsCollection = collection(db, 'posts');
+        const q = query(postsCollection, orderBy('timestamp', 'desc'));
+        const querySnapshot = await getDocs(q);
+        const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
+        return posts.filter(p => p.status === 'published');
+    } catch (fallbackError) {
+        console.error("Fallback post fetch also failed:", fallbackError);
+        return [];
+    }
   }
 }
+
+export async function getPostById(postId: string): Promise<Post | null> {
+    try {
+        const postRef = doc(db, 'posts', postId);
+        const postDoc = await getDoc(postRef);
+        if (!postDoc.exists()) {
+            return null;
+        }
+        return await processPostDoc(postDoc);
+    } catch (error) {
+        console.error("Error fetching post by ID:", error);
+        return null;
+    }
+}
+
 
 export async function getPostsByUserId(userId: string): Promise<Post[]> {
   try {
     const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, where('userId', '==', userId), orderBy('timestamp', 'desc'));
+    const q = query(postsCollection, where('userId', '==', userId), where('status', '==', 'published'), orderBy('timestamp', 'desc'));
     const querySnapshot = await getDocs(q);
 
-    const user = await getFullUser(userId);
+    const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
 
-    const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        
-        const comments: Comment[] = Array.isArray(data.comments) ? await Promise.all(
-            data.comments.map(async (comment: any) => ({
-                ...comment,
-                user: await getFullUser(comment.userId)
-            }))
-        ) : [];
-
-        return {
-            id: doc.id,
-            user,
-            type: data.type,
-            contentUrl: data.contentUrl,
-            caption: data.caption,
-            hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
-            likes: data.likes || 0,
-            likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
-            comments,
-            timestamp: data.timestamp,
-            status: data.status,
-            dataAiHint: data.dataAiHint,
-        } as Post;
-    }));
-
-    // Filter for published posts client-side.
-    return posts.filter(post => post.status === 'published');
+    return posts;
   } catch (error) {
     console.error("Error fetching posts by user ID:", error);
-    return [];
+     try {
+        console.log("Falling back to fetching user posts without status filter.");
+        const postsCollection = collection(db, 'posts');
+        const q = query(postsCollection, where('userId', '==', userId), orderBy('timestamp', 'desc'));
+        const querySnapshot = await getDocs(q);
+        const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
+        return posts.filter(p => p.status === 'published');
+    } catch (fallbackError) {
+        console.error("Fallback user post fetch also failed:", fallbackError);
+        return [];
+    }
   }
 }
 
@@ -133,7 +145,7 @@ export async function addComment(postId: string, commentData: { userId: string, 
     try {
         const postRef = doc(db, 'posts', postId);
         const newComment = {
-            id: doc(collection(db, 'comments')).id, // Generate a unique ID for the comment
+            id: doc(collection(db, 'random_ids')).id, // Generate a unique ID for the comment
             ...commentData,
             timestamp: serverTimestamp()
         };
@@ -158,23 +170,19 @@ export async function toggleLike(postId: string, userId: string) {
         const postData = postDoc.data();
         const likedBy = postData.likedBy || [];
         
-        let newLikes;
-        let newLikedBy;
-
         if (likedBy.includes(userId)) {
             // User has already liked the post, so unlike it
-            newLikes = increment(-1);
-            newLikedBy = arrayRemove(userId);
+            await updateDoc(postRef, {
+                likes: increment(-1),
+                likedBy: arrayRemove(userId)
+            });
         } else {
             // User has not liked the post, so like it
-            newLikes = increment(1);
-            newLikedBy = arrayUnion(userId);
+            await updateDoc(postRef, {
+                likes: increment(1),
+                likedBy: arrayUnion(userId)
+            });
         }
-
-        await updateDoc(postRef, {
-            likes: newLikes,
-            likedBy: newLikedBy
-        });
 
     } catch (error) {
         console.error("Error toggling like:", error);
