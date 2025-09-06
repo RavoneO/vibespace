@@ -118,7 +118,7 @@ export async function createPost(postData: {
 export async function updatePost(postId: string, data: Partial<Post>) {
     try {
         const postRef = doc(db, 'posts', postId);
-        await updateDoc(postRef, data);
+        await updateDoc(postRef, data as any);
     } catch (error) {
         console.error("Error updating post:", error);
         throw new Error("Failed to update post.");

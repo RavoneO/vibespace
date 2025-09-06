@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { suggestHashtags } from "@/ai/flows/ai-suggested-hashtags";
 import { generateCaption } from "@/ai/flows/ai-generated-caption";
-import { createPost } from "@/services/postService";
+import { createPost, updatePost } from "@/services/postService";
 import { uploadFile } from "@/services/storageService";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 const formSchema = z.object({
   caption: z.string().max(2200, "Caption is too long."),
@@ -40,6 +41,7 @@ export function CreatePostForm() {
   const { user } = useAuth();
   const [preview, setPreview] = useState<string | null>(null);
   const [mediaDataUri, setMediaDataUri] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<'image' | 'video' | null>(null);
   const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>([]);
   const [suggestedCaptions, setSuggestedCaptions] = useState<string[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
@@ -58,6 +60,7 @@ export function CreatePostForm() {
     const file = event.target.files?.[0];
     if (file) {
       form.setValue("file", file);
+      setFileType(file.type.startsWith('image') ? 'image' : 'video');
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
@@ -143,54 +146,77 @@ export function CreatePostForm() {
         toast({ title: "Please log in to post.", variant: "destructive" });
         return;
     }
+    if (!fileType) return;
 
     setIsSubmitting(true);
-    try {
-        const file = values.file as File;
-        const fileType = file.type.startsWith('image') ? 'image' : 'video';
-        
-        const contentUrl = await uploadFile(file, `posts/${user.uid}/${Date.now()}_${file.name}`);
-        
-        const hashtags = values.caption.match(/#\\w+/g) || [];
+    
+    const backgroundUpload = async () => {
+        try {
+            const file = values.file as File;
+            const hashtags = values.caption.match(/#\\w+/g) || [];
+    
+            // Step 1: Create the post document immediately to get an ID
+            const postId = await createPost({
+                userId: user.uid,
+                type: fileType,
+                caption: values.caption,
+                hashtags,
+            });
+    
+            // Step 2: Upload the file in the background
+            const contentUrl = await uploadFile(file, `posts/${user.uid}/${postId}_${file.name}`);
+            
+            // Step 3: Update the post with the final contentUrl
+            await updatePost(postId, {
+                contentUrl,
+                status: 'published'
+            });
 
-        await createPost({
-            userId: user.uid,
-            type: fileType,
-            contentUrl,
-            caption: values.caption,
-            hashtags,
-        });
+        } catch (error) {
+            console.error("Error creating post in background:", error);
+            // Since the user has already navigated away, a toast here might be confusing.
+            // A more robust solution might involve a global notifications system.
+             toast({
+                title: "Upload Failed",
+                description: "There was an error uploading your post. Please try again.",
+                variant: "destructive",
+            });
+        }
+    };
+    
+    toast({
+        title: "Post is uploading...",
+        description: "You can navigate away, the upload will continue in the background.",
+    });
 
-        toast({
-            title: "Post Submitted!",
-            description: "Your post is now live.",
-        });
+    backgroundUpload();
 
-        router.push("/");
+    router.push("/feed");
 
-    } catch (error) {
-        console.error("Error creating post:", error);
-        toast({
-            title: "Post Creation Failed",
-            description: "Could not create your post at this time. Please try again.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsSubmitting(false);
-    }
+    setIsSubmitting(false);
   }
 
   return (
     <div className="grid md:grid-cols-2 gap-8">
       <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg h-96 md:h-full">
         {preview ? (
-          <Image
-            src={preview}
-            alt="Post preview"
-            width={400}
-            height={400}
-            className="max-h-full w-auto object-contain rounded-md"
-          />
+            fileType === 'image' ? (
+                <Image
+                    src={preview}
+                    alt="Post preview"
+                    width={400}
+                    height={400}
+                    className="max-h-full w-auto object-contain rounded-md"
+                />
+            ) : (
+                <AspectRatio ratio={9 / 16} className="bg-muted rounded-md overflow-hidden w-full max-w-sm">
+                    <video
+                        src={preview}
+                        controls
+                        className="w-full h-full object-contain"
+                    />
+                </AspectRatio>
+            )
         ) : (
           <div className="text-center text-muted-foreground">
             <Icons.image className="mx-auto h-12 w-12" />
