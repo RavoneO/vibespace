@@ -15,6 +15,7 @@ import {
   LoaderCircle,
   X,
   Sparkles,
+  DollarSign,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -35,6 +36,7 @@ export const Icons = {
   spinner: LoaderCircle,
   close: X,
   sparkles: Sparkles,
+  ad: DollarSign,
 };
 
 export type Icon = LucideIcon;
