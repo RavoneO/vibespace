@@ -1,14 +1,14 @@
+
 import AppLayout from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
-import { posts } from "@/lib/data";
+import { getPosts } from "@/services/postService";
 import Image from "next/image";
 
-export default function ReelsPage() {
-  // For now, we'll just show some video-like posts.
-  // In a real app, you'd fetch actual reels.
-  const reels = posts.filter((p, i) => i % 2 !== 0);
+export default async function ReelsPage() {
+  const allPosts = await getPosts();
+  const reels = allPosts.filter(p => p.type === 'video');
 
   return (
     <AppLayout>
@@ -29,12 +29,13 @@ export default function ReelsPage() {
             {reels.map((reel) => (
               <Link href="#" key={reel.id}>
                 <div className="relative aspect-[9/16] w-full overflow-hidden rounded-lg group cursor-pointer">
-                  <Image
+                  {/* For video posts, you might want a video thumbnail instead of an image */}
+                  <div className="absolute inset-0 bg-black flex items-center justify-center">
+                    <Icons.reels className="h-12 w-12 text-white/50" />
+                  </div>
+                  <video
                     src={reel.contentUrl}
-                    alt={reel.caption}
-                    fill
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    data-ai-hint={reel.dataAiHint}
+                    className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                   <div className="absolute bottom-0 left-0 p-2 text-white">

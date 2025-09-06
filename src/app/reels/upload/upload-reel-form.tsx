@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -5,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { createPost } from "@/services/postService";
+import { uploadFile } from "@/services/storageService";
+import { useAuth } from "@/hooks/use-auth";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +32,9 @@ const formSchema = z.object({
 export function UploadReelForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [preview, setPreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -58,14 +64,45 @@ export function UploadReelForm() {
     }
   };
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: "Reel Uploaded!",
-      description: "Your reel is being processed.",
-    });
-    // In a real app, you'd upload the video
-    setTimeout(() => router.push("/reels"), 1000);
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!user) {
+        toast({ title: "Please log in to upload a reel.", variant: "destructive" });
+        return;
+    }
+
+    setIsSubmitting(true);
+    try {
+        const file = values.file as File;
+        
+        const contentUrl = await uploadFile(file, `reels/${user.uid}/${Date.now()}_${file.name}`);
+        
+        const hashtags = values.caption.match(/#\w+/g) || [];
+
+        await createPost({
+            userId: user.uid,
+            type: 'video',
+            contentUrl,
+            caption: values.caption,
+            hashtags,
+        });
+
+        toast({
+            title: "Reel Uploaded!",
+            description: "Your reel is now live.",
+        });
+
+        router.push("/reels");
+
+    } catch (error) {
+        console.error("Error creating reel:", error);
+        toast({
+            title: "Upload Failed",
+            description: "Could not upload your reel at this time. Please try again.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
@@ -121,7 +158,8 @@ export function UploadReelForm() {
             )}
           />
 
-          <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
+          <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isSubmitting}>
+             {isSubmitting && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
             Share Reel
           </Button>
         </form>
