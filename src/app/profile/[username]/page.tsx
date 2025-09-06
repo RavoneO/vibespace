@@ -1,3 +1,4 @@
+"use client"
 import AppLayout from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,9 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
+import Link from "next/link";
+import { currentUser } from "@/lib/data";
+
 
 export default function UserProfilePage({
   params,
@@ -30,6 +34,20 @@ export default function UserProfilePage({
     <AppLayout>
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
+        <header className="flex items-center p-4">
+            <h1 className="text-lg font-semibold flex-1">@{user.username}</h1>
+            <div className="flex items-center gap-2">
+                {user.username === currentUser.username && (
+                    <Button asChild variant="ghost" size="icon">
+                        <Link href="/settings">
+                            <Icons.settings className="h-5 w-5" />
+                            <span className="sr-only">Settings</span>
+                        </Link>
+                    </Button>
+                )}
+            </div>
+        </header>
+
           <div className="p-4 sm:p-6 lg:p-8">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
               <Avatar className="w-24 h-24 sm:w-36 sm:h-36 border-4 border-background ring-2 ring-primary">

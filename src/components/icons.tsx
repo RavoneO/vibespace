@@ -15,6 +15,18 @@ import {
   LoaderCircle,
   X,
   Sparkles,
+  ChevronRight,
+  Bell,
+  Lock,
+  Star,
+  EyeOff,
+  UserX,
+  FileText,
+  AtSign,
+  Repeat,
+  History,
+  Ban,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -35,6 +47,19 @@ export const Icons = {
   spinner: LoaderCircle,
   close: X,
   sparkles: Sparkles,
+  chevronRight: ChevronRight,
+  notifications: Bell,
+  accountPrivacy: Lock,
+  closeFriends: Star,
+  blocked: Ban,
+  hideStory: EyeOff,
+  restrictedAccounts: UserX,
+  hiddenWords: FileText,
+  tagsAndMentions: AtSign,
+  sharingAndReuse: Repeat,
+  yourActivity: History,
+  editProfile: UserCircle,
+  messagesAndStoryReplies: MessageSquare,
 };
 
 export type Icon = LucideIcon;
