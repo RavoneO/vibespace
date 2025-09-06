@@ -44,132 +44,48 @@ export function Stories({ stories }: StoriesProps) {
         fileInputRef.current?.click();
     };
 
-    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file || !authUser) return;
-
+    
         setIsUploading(true);
         toast({ title: "Uploading your story..." });
-
+    
         const backgroundUpload = async () => {
-            try {
-                const fileType = file.type.startsWith('image') ? 'image' : 'video';
-                const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${Date.now()}_${file.name}`);
-
-                await createStory({
-                    userId: authUser.uid,
-                    type: fileType,
-                    contentUrl,
-                    duration: 5, // default duration
-                });
-                
-                toast({ title: "Story posted successfully!" });
-                // Ideally, we'd have a real-time subscription to update stories.
-                // For now, a page refresh would show the new story.
-            } catch (error) {
-                console.error("Error creating story:", error);
-                toast({
-                    title: "Failed to post story",
-                    description: "Please try again later.",
-                    variant: "destructive",
-                });
-            } finally {
-                 // Reset file input and loading state *inside* the background task
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                }
-                setIsUploading(false);
+          try {
+            const fileType = file.type.startsWith('image') ? 'image' : 'video';
+            const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${Date.now()}_${file.name}`);
+    
+            await createStory({
+              userId: authUser.uid,
+              type: fileType,
+              contentUrl,
+              duration: 5, // default duration
+            });
+    
+            toast({ title: "Story posted successfully!" });
+          } catch (error) {
+            console.error("Error creating story:", error);
+            toast({
+              title: "Failed to post story",
+              description: "Please try again later.",
+              variant: "destructive",
+            });
+          } finally {
+             // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
             }
+            // This is intentionally inside the background task's finally block
+            // to re-enable the button only after the upload completes or fails.
+            // The isUploading state for the UI is handled separately.
+          }
         };
-
+    
+        // Start the upload, but don't wait for it to finish for the UI.
         backgroundUpload();
-        // Do not set isUploading to false here, but in the background task's finally block.
-        // Wait, the user wants the UI to be unblocked. Let's rethink.
-
-    };
-    
-    const handleFileChangeCorrect = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !authUser) return;
-    
-        setIsUploading(true);
-        toast({ title: "Uploading your story..." });
-    
-        const backgroundUpload = async () => {
-          try {
-            const fileType = file.type.startsWith('image') ? 'image' : 'video';
-            const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${Date.now()}_${file.name}`);
-    
-            await createStory({
-              userId: authUser.uid,
-              type: fileType,
-              contentUrl,
-              duration: 5, // default duration
-            });
-    
-            toast({ title: "Story posted successfully!" });
-            // In a real app, you'd likely trigger a state refresh here.
-          } catch (error) {
-            console.error("Error creating story:", error);
-            toast({
-              title: "Failed to post story",
-              description: "Please try again later.",
-              variant: "destructive",
-            });
-          } finally {
-             // Reset file input
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
-          }
-        };
-    
-        backgroundUpload().finally(() => {
-            setIsUploading(false);
-        });
-    };
-
-    const handleFileChangeFinal = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !authUser) return;
-    
-        setIsUploading(true);
-        toast({ title: "Uploading your story..." });
-    
-        const backgroundUpload = async () => {
-          try {
-            const fileType = file.type.startsWith('image') ? 'image' : 'video';
-            // Note: We're not creating a db entry first for stories to keep it simple,
-            // but in a real app, you would for consistency.
-            const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${Date.now()}_${file.name}`);
-    
-            await createStory({
-              userId: authUser.uid,
-              type: fileType,
-              contentUrl,
-              duration: 5, // default duration
-            });
-    
-            toast({ title: "Story posted successfully!" });
-          } catch (error) {
-            console.error("Error creating story:", error);
-            toast({
-              title: "Failed to post story",
-              description: "Please try again later.",
-              variant: "destructive",
-            });
-          } finally {
-             // Reset file input
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
-          }
-        };
-    
-        // Start the upload, but also unblock the UI right away
-        backgroundUpload().finally(() => {
-            setIsUploading(false);
-        });
+        // Unblock the UI immediately.
+        setIsUploading(false);
     };
     
     const currentUserStory = stories.find(s => s.user.id === authUser?.uid);
@@ -197,7 +113,7 @@ export function Stories({ stories }: StoriesProps) {
                 ref={fileInputRef} 
                 className="hidden" 
                 accept="image/*,video/*"
-                onChange={handleFileChangeFinal}
+                onChange={handleFileChange}
                 disabled={isUploading}
             />
             <div className="relative p-4">
