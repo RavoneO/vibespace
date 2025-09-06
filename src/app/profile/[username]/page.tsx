@@ -4,13 +4,17 @@ import AppLayout from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { users, posts as allPosts } from "@/lib/data";
+import { users, posts as allPosts, currentUser } from "@/lib/data";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
-import { currentUser } from "@/lib/data";
+import { useEffect, useState } from "react";
+import { getUserByUsername } from "@/services/userService";
+import { getPostsByUserId } from "@/services/postService";
+import type { User, Post } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 export default function UserProfilePage({
@@ -18,11 +22,75 @@ export default function UserProfilePage({
 }: {
   params: { username: string };
 }) {
-  const user = users.find((u) => u.username === params.username);
-  const userPosts = allPosts.filter((p) => p.user.username === params.username);
+  const [user, setUser] = useState<User | null>(null);
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        const fetchedUser = await getUserByUsername(params.username);
+        if (fetchedUser) {
+          setUser(fetchedUser);
+          const fetchedPosts = await getPostsByUserId(fetchedUser.id);
+          setUserPosts(fetchedPosts);
+        } else {
+          notFound();
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        notFound();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [params.username]);
+
+
+  if (loading) {
+    return (
+        <AppLayout>
+            <main className="flex-1 overflow-y-auto">
+                <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
+                        <Skeleton className="w-24 h-24 sm:w-36 sm:h-36 rounded-full" />
+                        <div className="flex-1 space-y-3 text-center sm:text-left">
+                            <Skeleton className="h-8 w-48 mx-auto sm:mx-0" />
+                            <Skeleton className="h-4 w-32 mx-auto sm:mx-0" />
+                            <Skeleton className="h-12 w-full max-w-prose" />
+                            <div className="flex justify-center sm:justify-start gap-2">
+                                <Skeleton className="h-10 w-24" />
+                                <Skeleton className="h-10 w-24" />
+                            </div>
+                        </div>
+                    </div>
+                    <Separator className="my-6" />
+                    <div className="flex justify-around text-center">
+                        {[...Array(3)].map((_, i) => (
+                            <div key={i} className="space-y-1">
+                                <Skeleton className="h-6 w-12 mx-auto" />
+                                <Skeleton className="h-4 w-16 mx-auto" />
+                            </div>
+                        ))}
+                    </div>
+                     <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4 mt-8">
+                        {[...Array(6)].map((_, i) => (
+                            <div key={i} className="relative aspect-square w-full overflow-hidden rounded-md">
+                                <Skeleton className="w-full h-full" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </main>
+        </AppLayout>
+    )
+  }
 
   if (!user) {
-    notFound();
+    return notFound();
   }
 
   const stats = [

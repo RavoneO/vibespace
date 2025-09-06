@@ -1,4 +1,6 @@
 
+import { Timestamp } from "firebase/firestore";
+
 export type User = {
   id: string;
   name: string;
@@ -11,7 +13,7 @@ export type Comment = {
   id: string;
   text: string;
   user: User;
-  timestamp: string;
+  timestamp: string | Timestamp;
 };
 
 export type Post = {
@@ -23,7 +25,7 @@ export type Post = {
   hashtags: string[];
   likes: number;
   comments: Comment[];
-  timestamp: string;
+  timestamp: string | Timestamp;
   dataAiHint?: string;
 };
 
@@ -33,6 +35,6 @@ export type Story = {
     type: 'image' | 'video';
     contentUrl: string;
     duration: number; // in seconds
-    timestamp: string;
+    timestamp: string | Timestamp;
     dataAiHint?: string;
 }

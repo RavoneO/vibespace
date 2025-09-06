@@ -7,6 +7,7 @@ import { currentUser } from "@/lib/data";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Icons } from "./icons";
 import { StoryViewer } from "./story-viewer";
+import { Skeleton } from "./ui/skeleton";
 
 interface StoriesProps {
     stories: Story[];
@@ -15,6 +16,13 @@ interface StoriesProps {
 export function Stories({ stories }: StoriesProps) {
     const [viewerOpen, setViewerOpen] = React.useState(false);
     const [selectedStoryIndex, setSelectedStoryIndex] = React.useState(0);
+    const [loading, setLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        if (stories.length > 0) {
+            setLoading(false);
+        }
+    }, [stories]);
 
     const openStory = (index: number) => {
         setSelectedStoryIndex(index);
@@ -23,6 +31,21 @@ export function Stories({ stories }: StoriesProps) {
     
     const currentUserStory = stories.find(s => s.user.id === currentUser.id);
     const otherUserStories = stories.filter(s => s.user.id !== currentUser.id);
+
+    if (loading) {
+        return (
+            <div className="relative p-4">
+                <div className="flex space-x-4">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex-shrink-0 w-20 text-center space-y-1.5">
+                            <Skeleton className="w-16 h-16 mx-auto rounded-full" />
+                            <Skeleton className="h-3 w-16 mx-auto" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
 
     return (
         <>
