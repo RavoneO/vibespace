@@ -1,0 +1,40 @@
+import {
+  Home,
+  Video,
+  UserCircle,
+  PlusSquare,
+  Search,
+  Heart,
+  MessageCircle,
+  MoreHorizontal,
+  Send,
+  Bookmark,
+  ChevronLeft,
+  Settings,
+  Image as ImageIcon,
+  LoaderCircle,
+  X,
+  Sparkles,
+  type LucideIcon,
+} from 'lucide-react';
+
+export const Icons = {
+  home: Home,
+  reels: Video,
+  profile: UserCircle,
+  create: PlusSquare,
+  search: Search,
+  like: Heart,
+  comment: MessageCircle,
+  more: MoreHorizontal,
+  send: Send,
+  bookmark: Bookmark,
+  back: ChevronLeft,
+  settings: Settings,
+  image: ImageIcon,
+  spinner: LoaderCircle,
+  close: X,
+  sparkles: Sparkles,
+};
+
+export type Icon = LucideIcon;
