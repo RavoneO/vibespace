@@ -46,16 +46,26 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-      router.push("/feed");
+      // The AuthProvider will handle the redirect to "/feed"
     } catch (error: any) {
+      let description = "An unexpected error occurred. Please try again.";
+      switch (error.code) {
+        case "auth/user-not-found":
+        case "auth/wrong-password":
+        case "auth/invalid-credential":
+            description = "Invalid email or password. Please try again.";
+            break;
+        case "auth/invalid-email":
+            description = "The email address you entered is not valid.";
+            break;
+        default:
+            description = error.message;
+            break;
+      }
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: error.message,
+        description,
       });
     } finally {
       setIsLoading(false);

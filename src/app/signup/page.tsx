@@ -59,18 +59,27 @@ export default function SignupPage() {
           email: values.email,
       });
 
-      toast({
-        title: "Account Created",
-        description: "Welcome to Vibespace!",
-      });
-      router.push("/feed");
+      // The AuthProvider will handle the redirect to "/feed"
     } catch (error: any) {
+        let description = "An unexpected error occurred. Please try again.";
+        switch (error.code) {
+            case 'auth/email-already-in-use':
+                description = "This email is already associated with an account.";
+                break;
+            case 'auth/invalid-email':
+                description = "The email address you entered is not valid.";
+                break;
+            case 'auth/weak-password':
+                description = "The password is too weak. Please choose a stronger password.";
+                break;
+            default:
+                description = error.message;
+                break;
+        }
        toast({
         variant: "destructive",
         title: "Sign Up Failed",
-        description: error.code === 'auth/email-already-in-use' 
-            ? "This email is already associated with an account."
-            : error.message,
+        description,
       });
     } finally {
       setIsLoading(false);
