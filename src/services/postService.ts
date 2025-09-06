@@ -40,7 +40,7 @@ export async function getPosts(): Promise<Post[]> {
         comments,
         timestamp: data.timestamp,
         dataAiHint: data.dataAiHint,
-      };
+      } as Post;
     }));
     
     return posts;
@@ -79,7 +79,7 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
             comments,
             timestamp: data.timestamp,
             dataAiHint: data.dataAiHint,
-        };
+        } as Post;
     }));
 
     return posts;
