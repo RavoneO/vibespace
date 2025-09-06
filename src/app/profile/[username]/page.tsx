@@ -56,41 +56,31 @@ export default function UserProfilePage({
       setLoading(true);
       setUserNotFound(false);
 
-      let fetchedUser = null;
-      let attempts = 0;
-      const maxAttempts = 3;
-      const delay = 1000; // 1 second delay between retries
+      try {
+        const fetchedUser = await getUserByUsername(resolvedParams.username);
 
-      while (!fetchedUser && attempts < maxAttempts) {
-        try {
-            fetchedUser = await getUserByUsername(resolvedParams.username);
-            if (fetchedUser) break;
-        } catch (error) {
-            console.error(`Attempt ${attempts + 1} failed:`, error);
+        if (fetchedUser) {
+          setUser(fetchedUser);
+          const fetchedPosts = await getPostsByUserId(fetchedUser.id);
+          setUserPosts(fetchedPosts);
+          
+          const followers = fetchedUser.followers?.length || 0;
+          const following = fetchedUser.following?.length || 0;
+          setFollowCount({ followers, following });
+
+          if (authUser) {
+            setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
+          }
+        } else {
+          console.error("User not found.");
+          setUserNotFound(true);
         }
-        attempts++;
-        if (!fetchedUser && attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
+      } catch (error) {
+          console.error("Failed to fetch user data:", error);
+          setUserNotFound(true);
+      } finally {
+        setLoading(false);
       }
-
-      if (fetchedUser) {
-        setUser(fetchedUser);
-        const fetchedPosts = await getPostsByUserId(fetchedUser.id);
-        setUserPosts(fetchedPosts);
-        
-        const followers = fetchedUser.followers?.length || 0;
-        const following = fetchedUser.following?.length || 0;
-        setFollowCount({ followers, following });
-
-        if (authUser) {
-          setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
-        }
-      } else {
-        console.error("User not found after multiple attempts.");
-        setUserNotFound(true);
-      }
-      setLoading(false);
     };
 
     fetchUserData();
