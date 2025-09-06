@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { suggestHashtags } from "@/ai/flows/ai-suggested-hashtags";
+import { generateCaption } from "@/ai/flows/ai-generated-caption";
 import { createPost } from "@/services/postService";
 import { uploadFile } from "@/services/storageService";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,6 +26,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Icons } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
   caption: z.string().max(2200, "Caption is too long."),
@@ -38,7 +41,9 @@ export function CreatePostForm() {
   const [preview, setPreview] = useState<string | null>(null);
   const [mediaDataUri, setMediaDataUri] = useState<string | null>(null);
   const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>([]);
+  const [suggestedCaptions, setSuggestedCaptions] = useState<string[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -60,6 +65,7 @@ export function CreatePostForm() {
       };
       reader.readAsDataURL(file);
       setSuggestedHashtags([]);
+      setSuggestedCaptions([]);
     }
   };
 
@@ -94,9 +100,42 @@ export function CreatePostForm() {
     }
   };
 
+  const handleGenerateCaptions = async () => {
+    if (!mediaDataUri) {
+      toast({
+        title: 'No media selected',
+        description: 'Please upload an image to get caption suggestions.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    setSuggestedCaptions([]);
+    try {
+      const result = await generateCaption({
+        mediaDataUri: mediaDataUri,
+      });
+      setSuggestedCaptions(result.captions);
+    } catch (error) {
+      console.error('Error generating captions:', error);
+      toast({
+        title: 'AI Generation Failed',
+        description: 'Could not get caption suggestions at this time. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const addHashtagToCaption = (hashtag: string) => {
     const currentCaption = form.getValues("caption");
     form.setValue("caption", `${currentCaption} ${hashtag}`.trim());
+  }
+
+  const useSuggestedCaption = (caption: string) => {
+    form.setValue("caption", caption);
   }
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -112,7 +151,7 @@ export function CreatePostForm() {
         
         const contentUrl = await uploadFile(file, `posts/${user.uid}/${Date.now()}_${file.name}`);
         
-        const hashtags = values.caption.match(/#\w+/g) || [];
+        const hashtags = values.caption.match(/#\\w+/g) || [];
 
         await createPost({
             userId: user.uid,
@@ -181,7 +220,39 @@ export function CreatePostForm() {
             name="caption"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Caption</FormLabel>
+                <div className="flex justify-between items-center">
+                  <FormLabel>Caption</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                       <Button type="button" size="sm" variant="ghost" disabled={isGenerating || !mediaDataUri || isSubmitting}>
+                         {isGenerating ? <Icons.spinner className="animate-spin" /> : <Icons.sparkles className="text-accent" />}
+                          Generate with AI
+                       </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                      {suggestedCaptions.length > 0 ? (
+                        <div className="space-y-2">
+                           <p className="font-medium text-sm">AI Suggestions</p>
+                           {suggestedCaptions.map((caption, i) => (
+                               <div key={i}>
+                                   <button type="button" onClick={() => useSuggestedCaption(caption)} className="text-left text-sm p-2 rounded-md hover:bg-muted w-full">
+                                       {caption}
+                                   </button>
+                                   {i < suggestedCaptions.length -1 && <Separator />}
+                               </div>
+                           ))}
+                        </div>
+                      ) : (
+                         <div className="text-center p-4">
+                            <p className="text-sm mb-4">Click below to generate caption ideas for your image.</p>
+                            <Button type="button" onClick={handleGenerateCaptions} disabled={isGenerating}>
+                                {isGenerating ? <Icons.spinner className="animate-spin" /> : "Generate"}
+                            </Button>
+                         </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <FormControl>
                   <Textarea
                     placeholder="Write a caption..."
@@ -205,7 +276,7 @@ export function CreatePostForm() {
             </Button>
             {suggestedHashtags.length > 0 && (
                 <div className="mt-4">
-                    <p className="text-sm font-medium mb-2">AI Suggestions:</p>
+                    <p className="text-sm font-medium mb-2">AI Hashtag Suggestions:</p>
                     <div className="flex flex-wrap gap-2">
                         {suggestedHashtags.map((tag) => (
                             <Badge key={tag} variant="secondary" className="cursor-pointer hover:bg-accent/20" onClick={() => addHashtagToCaption(tag)}>
