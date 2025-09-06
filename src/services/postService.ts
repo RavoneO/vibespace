@@ -21,12 +21,15 @@ export async function getPosts(): Promise<Post[]> {
       const data = doc.data();
       const user = await getFullUser(data.userId);
       
-      const comments: Comment[] = await Promise.all(
-          (data.comments || []).map(async (comment: any) => ({
-              ...comment,
-              user: await getFullUser(comment.userId)
-          }))
-      );
+      let comments: Comment[] = [];
+      if (Array.isArray(data.comments)) {
+          comments = await Promise.all(
+              data.comments.map(async (comment: any) => ({
+                  ...comment,
+                  user: await getFullUser(comment.userId)
+              }))
+          );
+      }
 
       return {
         id: doc.id,
@@ -60,12 +63,16 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
 
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
         const data = doc.data();
-        const comments: Comment[] = await Promise.all(
-            (data.comments || []).map(async (comment: any) => ({
-                ...comment,
-                user: await getFullUser(comment.userId)
-            }))
-        );
+        
+        let comments: Comment[] = [];
+        if (Array.isArray(data.comments)) {
+            comments = await Promise.all(
+                data.comments.map(async (comment: any) => ({
+                    ...comment,
+                    user: await getFullUser(comment.userId)
+                }))
+            );
+        }
 
         return {
             id: doc.id,
