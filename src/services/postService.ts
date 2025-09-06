@@ -14,7 +14,9 @@ async function getFullUser(userId: string) {
 export async function getPosts(): Promise<Post[]> {
   try {
     const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, where('status', '==', 'published'), orderBy('timestamp', 'desc'));
+    // Note: Removed where('status', '==', 'published') because it requires a composite index.
+    // Filtering will be done client-side for now to ensure functionality.
+    const q = query(postsCollection, orderBy('timestamp', 'desc'));
     const querySnapshot = await getDocs(q);
     
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
@@ -39,11 +41,13 @@ export async function getPosts(): Promise<Post[]> {
         likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
         comments,
         timestamp: data.timestamp,
+        status: data.status,
         dataAiHint: data.dataAiHint,
       } as Post;
     }));
     
-    return posts;
+    // Filter for published posts client-side
+    return posts.filter(post => post.status === 'published');
   } catch (error) {
     console.error("Error fetching posts:", error);
     return [];

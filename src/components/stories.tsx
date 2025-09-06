@@ -74,7 +74,6 @@ export function Stories({ stories }: StoriesProps) {
                     variant: "destructive",
                 });
             } finally {
-                setIsUploading(false);
                  // Reset file input
                 if (fileInputRef.current) {
                     fileInputRef.current.value = "";
@@ -83,6 +82,7 @@ export function Stories({ stories }: StoriesProps) {
         };
 
         backgroundUpload();
+        setIsUploading(false); // Set uploading to false immediately
     };
     
     const currentUserStory = stories.find(s => s.user.id === authUser?.uid);
