@@ -1,0 +1,54 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if a user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is the owner of a document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Users can read anyone's profile, but only write to their own.
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isOwner(userId);
+    }
+
+    // Posts can be read by anyone.
+    // Only signed-in users can create posts.
+    // Only the post owner can delete a post.
+    // Anyone signed in can update (e.g., like, comment).
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+    
+    // Stories can be read by anyone.
+    // Only signed-in users can create stories.
+    // Story deletion rule (optional, can be stricter)
+    match /stories/{storyId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      // Allow delete only by owner
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+
+    // Conversations can only be read or written to by participants.
+    match /conversations/{conversationId} {
+      allow read, write: if isSignedIn() && request.auth.uid in resource.data.userIds;
+
+      // Messages inside a conversation follow the same rule.
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds;
+      }
+    }
+  }
+}
