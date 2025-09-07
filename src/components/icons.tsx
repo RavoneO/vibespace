@@ -29,6 +29,7 @@ import {
   Ban,
   MessageSquare,
   Plus,
+  LogOut,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -64,6 +65,7 @@ export const Icons = {
   messages: MessageSquare,
   messagesAndStoryReplies: MessageSquare,
   plus: Plus,
+  logout: LogOut,
 };
 
 export type Icon = LucideIcon;

@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Post, User } from "@/lib/types";
+import type { Post, User, Comment } from "@/lib/types";
 import { Icons } from "./icons";
 import { Separator } from "./ui/separator";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,6 +22,7 @@ import { addComment } from "@/services/postService";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { getUserById } from "@/services/userService";
+import { formatDistanceToNowStrict } from "date-fns";
 
 
 interface CommentSheetProps {
@@ -82,11 +83,14 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
     }
   };
   
-  const getCommentTimestamp = (timestamp: any) => {
-    if (!timestamp) return "";
-    if (typeof timestamp === 'string') return timestamp;
-    if (timestamp.toDate) return timestamp.toDate().toLocaleTimeString();
-    return new Date(timestamp.seconds * 1000).toLocaleTimeString();
+  const getCommentTimestamp = (comment: Comment) => {
+    if (!comment.timestamp) return "";
+    try {
+        const date = (comment.timestamp as any).toDate ? (comment.timestamp as any).toDate() : new Date(comment.timestamp as string);
+        return formatDistanceToNowStrict(date, { addSuffix: true });
+    } catch (e) {
+        return "just now";
+    }
   }
 
   return (
@@ -101,7 +105,7 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
         <Separator />
         <ScrollArea className="flex-1 -mx-6">
           <div className="px-6 space-y-6 py-4">
-            {post.comments.map((comment) => (
+            {post.comments.sort((a,b) => (b.timestamp as any)?.seconds - (a.timestamp as any)?.seconds).map((comment) => (
               <div key={comment.id} className="flex items-start gap-3">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={comment.user.avatar} />
@@ -110,7 +114,7 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
                 <div className="text-sm">
                   <p>
                     <Link href={`/profile/${comment.user.username}`} className="font-semibold hover:underline">{comment.user.username}</Link>
-                    <span className="ml-2 text-muted-foreground">{getCommentTimestamp(comment.timestamp)}</span>
+                    <span className="ml-2 text-muted-foreground">{getCommentTimestamp(comment)}</span>
                   </p>
                   <p className="text-foreground/90">{comment.text}</p>
                 </div>
@@ -129,16 +133,16 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
             <form className="flex w-full items-center gap-2" onSubmit={handleSubmit}>
                 <Avatar className="h-9 w-9">
                   <AvatarImage src={commenterProfile?.avatar} />
-                  <AvatarFallback>{isGuest ? 'G' : commenterProfile?.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{isGuest ? 'G' : commenterProfile?.name?.charAt(0) || '?'}</AvatarFallback>
                 </Avatar>
                 <Input 
                   placeholder="Add a comment..." 
                   className="flex-1"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  disabled={isSubmitting || !authUser || isGuest}
+                  disabled={isSubmitting || isGuest}
                 />
-                <Button type="submit" size="icon" disabled={isSubmitting || !authUser || isGuest || !commentText.trim()}>
+                <Button type="submit" size="icon" disabled={isSubmitting || isGuest || !commentText.trim()}>
                     {isSubmitting ? <Icons.spinner className="h-4 w-4 animate-spin" /> : <Icons.send className="h-4 w-4" />}
                     <span className="sr-only">Post comment</span>
                 </Button>

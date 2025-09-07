@@ -1,4 +1,6 @@
 
+"use client";
+
 import Link from "next/link";
 import {
   Sidebar,
@@ -17,11 +19,16 @@ import { useEffect, useState } from "react";
 import type { User } from "@/lib/types";
 import { getUserById } from "@/services/userService";
 import { Skeleton } from "./ui/skeleton";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 
 export function AppSidebar() {
   const { user: authUser, isGuest, setAsGuest } = useAuth();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const router = useRouter();
 
   const menuItems = [
     { href: "/feed", icon: Icons.home, label: "Home" },
@@ -35,19 +42,39 @@ export function AppSidebar() {
     async function fetchUserProfile() {
         if (authUser && !isGuest) {
             setIsLoadingProfile(true);
-            const profile = await getUserById(authUser.uid);
-            setUserProfile(profile);
-            setIsLoadingProfile(false);
+            try {
+              const profile = await getUserById(authUser.uid);
+              setUserProfile(profile);
+            } catch (error) {
+              console.error("Error fetching user profile", error);
+              setUserProfile(null);
+            } finally {
+              setIsLoadingProfile(false);
+            }
         } else {
             setUserProfile(null);
+            setIsLoadingProfile(false);
         }
     }
     fetchUserProfile();
   }, [authUser, isGuest]);
 
-  const handleLogout = () => {
-    setAsGuest(false);
+  const handleLogout = async () => {
+    await signOut(auth);
+    setAsGuest(false); // Ensure guest status is cleared
+    router.push("/"); // Redirect to welcome page after logout
   }
+
+  const handleGuestLogin = () => {
+    setAsGuest(false); // Clear guest status
+    router.push("/login");
+  }
+
+  const handleGuestSignup = () => {
+    setAsGuest(false); // Clear guest status
+    router.push("/signup");
+  }
+
 
   return (
     <Sidebar>
@@ -85,13 +112,14 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="p-4 border-t">
         { isGuest ? (
-            <div className="text-center">
-                <p className="text-sm mb-2">Sign up to get the full experience.</p>
-                 <Link href="/signup" onClick={handleLogout}>
-                    <Button size="sm" className="w-full">
-                        Sign Up
-                    </Button>
-                </Link>
+            <div className="text-center space-y-2">
+                <p className="text-sm">Sign up to get the full experience.</p>
+                <Button size="sm" className="w-full" onClick={handleGuestSignup}>
+                    Sign Up
+                </Button>
+                 <Button size="sm" variant="outline" className="w-full" onClick={handleGuestLogin}>
+                    Log In
+                </Button>
             </div>
         ) : isLoadingProfile ? (
             <div className="flex items-center gap-3">
@@ -102,19 +130,30 @@ export function AppSidebar() {
                 </div>
             </div>
         ) : userProfile ? (
-            <div className="flex items-center gap-3">
-                <Avatar>
-                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
-                    <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col overflow-hidden">
-                    <span className="font-semibold truncate">{userProfile.name}</span>
-                    <span className="text-sm text-muted-foreground truncate">@{userProfile.username}</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center gap-3 cursor-pointer w-full">
+                    <Avatar>
+                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
+                        <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col overflow-hidden flex-1">
+                        <span className="font-semibold truncate">{userProfile.name}</span>
+                        <span className="text-sm text-muted-foreground truncate">@{userProfile.username}</span>
+                    </div>
+                    <Icons.more className="text-muted-foreground" />
                 </div>
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 mb-2">
+                 <DropdownMenuItem onClick={handleLogout}>
+                   <Icons.logout className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                 </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         ) : (
              <div className="text-center">
-                <p className="text-sm mb-2">Log in to continue.</p>
+                <p className="text-sm mb-2">Please log in to continue.</p>
                  <Link href="/login">
                     <Button size="sm" variant="outline" className="w-full">
                         Log In

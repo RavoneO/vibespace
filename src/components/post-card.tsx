@@ -2,7 +2,7 @@
 "use client";
 
 import type { Post as PostType } from "@/lib/types";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -44,12 +44,12 @@ export function PostCard({ post: initialPost }: PostCardProps) {
     setLikeCount(post.likes);
   }, [user, post]);
 
-  const refreshPost = async () => {
+  const refreshPost = useCallback(async () => {
     const updatedPost = await getPostById(post.id);
     if (updatedPost) {
       setPost(updatedPost);
     }
-  };
+  }, [post.id]);
 
   const showLoginToast = () => {
     toast({
@@ -67,12 +67,10 @@ export function PostCard({ post: initialPost }: PostCardProps) {
     }
 
     try {
-      const originalIsLiked = isLiked;
-      const originalLikeCount = likeCount;
-
       const newIsLiked = !isLiked;
       const newLikeCount = newIsLiked ? likeCount + 1 : likeCount - 1;
-
+      
+      // Optimistic UI update
       setIsLiked(newIsLiked);
       setLikeCount(newLikeCount);
       
@@ -84,25 +82,24 @@ export function PostCard({ post: initialPost }: PostCardProps) {
       }
       
       await toggleLike(post.id, user.uid);
-      // No need to refresh post here as we are optimistically updating
+      // Optional: refresh post from server to ensure data consistency,
+      // but optimistic update is usually enough for likes.
+      // await refreshPost();
 
     } catch (error) {
       console.error("Error liking post:", error);
-      toast({
+       // Revert UI on error and show toast
+       setIsLiked(!isLiked);
+       setLikeCount(likeCount);
+       toast({
         title: "Something went wrong.",
         description: "Could not update like status. Please try again.",
         variant: "destructive",
       });
-       // Revert UI on error
-      await refreshPost();
     }
   };
   
   const handleCommentClick = () => {
-      if (!user || isGuest) {
-          showLoginToast();
-          return;
-      }
       setIsCommentSheetOpen(true);
   }
 
@@ -135,6 +132,7 @@ export function PostCard({ post: initialPost }: PostCardProps) {
                         fill
                         className="object-cover"
                         data-ai-hint={post.dataAiHint}
+                        priority // Prioritize loading for posts visible in viewport
                     />
                 </AspectRatio>
               ) : (
@@ -144,7 +142,6 @@ export function PostCard({ post: initialPost }: PostCardProps) {
                         controls
                         className="w-full h-full object-contain"
                         playsInline
-                        autoPlay={false} // Set to true if you want autoplay
                         loop
                         muted
                     />

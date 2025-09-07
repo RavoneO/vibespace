@@ -9,7 +9,7 @@ import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getUserByUsername, toggleFollow } from "@/services/userService";
 import { getPostsByUserId } from "@/services/postService";
 import type { User, Post } from "@/lib/types";
@@ -40,14 +40,14 @@ export default function UserProfilePage({
   const [userNotFound, setUserNotFound] = useState(false);
   const { username } = params;
 
-  const showLoginToast = () => {
+  const showLoginToast = useCallback(() => {
     toast({
         title: "Create an account to interact",
         description: "Sign up or log in to follow users and send messages.",
         variant: "destructive",
         action: <Link href="/signup"><Button>Sign Up</Button></Link>
     });
-  }
+  }, [toast]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -93,14 +93,14 @@ export default function UserProfilePage({
     if (!user) return;
     
     setIsFollowLoading(true);
-    // Optimistic UI update
     const originalIsFollowing = isFollowing;
+    
+    // Optimistic UI update
     setIsFollowing(!originalIsFollowing);
     setFollowCount(prev => ({
         ...prev,
         followers: !originalIsFollowing ? prev.followers + 1 : prev.followers - 1
     }));
-
 
     try {
         await toggleFollow(authUser.uid, user.id);
@@ -181,8 +181,6 @@ export default function UserProfilePage({
   }
 
   if (!user) {
-    // This case should ideally not be reached if loading and notFound are handled correctly,
-    // but it's a good fallback.
     return null; 
   }
 
@@ -257,7 +255,7 @@ export default function UserProfilePage({
             <TabsContent value="posts" className="p-2 sm:p-4">
               {userPosts.length > 0 ? (
                 <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4">
-                  {userPosts.map((post) => (
+                  {userPosts.filter(p => p.type === 'image').map((post) => (
                     <div key={post.id} className="relative aspect-square w-full overflow-hidden rounded-md group">
                       <Image
                         src={post.contentUrl}
@@ -285,10 +283,31 @@ export default function UserProfilePage({
               )}
             </TabsContent>
             <TabsContent value="reels">
-                <div className="text-center text-muted-foreground py-24">
-                    <Icons.reels className="mx-auto h-12 w-12" />
-                    <p className="mt-4 font-semibold">No reels yet</p>
-                </div>
+                 {userPosts.filter(p => p.type === 'video').length > 0 ? (
+                    <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4">
+                      {userPosts.filter(p => p.type === 'video').map((post) => (
+                        <div key={post.id} className="relative aspect-square w-full overflow-hidden rounded-md group">
+                          <video
+                            src={post.contentUrl}
+                            className="object-cover w-full h-full transition-all duration-300 group-hover:opacity-80 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white">
+                              <div className="flex items-center gap-1 font-bold">
+                                  <Icons.like className="h-5 w-5 fill-white" /> {post.likes}
+                              </div>
+                              <div className="flex items-center gap-1 font-bold">
+                                  <Icons.comment className="h-5 w-5 fill-white" /> {post.comments.length}
+                              </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-24">
+                        <Icons.reels className="mx-auto h-12 w-12" />
+                        <p className="mt-4 font-semibold">No reels yet</p>
+                    </div>
+                 )}
             </TabsContent>
             <TabsContent value="tagged">
                 <div className="text-center text-muted-foreground py-24">
