@@ -23,7 +23,7 @@ const storage = getStorage(app);
 // Connect to emulators unconditionally for the dev environment
 // This needs to run on both server and client.
 try {
-  connectAuthEmulator(auth, "127.0.0.1", 9099, { disableWarnings: true });
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
   connectStorageEmulator(storage, "127.0.0.1", 9199);
 } catch (e) {
