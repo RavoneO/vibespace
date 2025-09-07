@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, limit } from 'firebase/firestore';
 import type { Post, Comment } from '@/lib/types';
 import { getUserById } from './userService';
 
@@ -16,12 +16,14 @@ async function processPostDoc(doc: any): Promise<Post> {
     const data = doc.data();
     const user = await getFullUser(data.userId);
     
-    const comments: Comment[] = Array.isArray(data.comments) ? await Promise.all(
-        data.comments.slice(-5).map(async (comment: any) => ({ // Get last 5 comments only for feed
+    // Fetch all comments and then get user details.
+    const commentsData = Array.isArray(data.comments) ? data.comments : [];
+    const comments: Comment[] = await Promise.all(
+        commentsData.map(async (comment: any) => ({
             ...comment,
             user: await getFullUser(comment.userId)
         }))
-    ) : [];
+    );
 
     return {
       id: doc.id,
@@ -43,14 +45,22 @@ async function processPostDoc(doc: any): Promise<Post> {
 export async function getPosts(): Promise<Post[]> {
   try {
     const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, orderBy('timestamp', 'desc'));
+    // Query for published posts and order by timestamp.
+    // Firestore requires an index for this query. If it fails, the index needs to be created in the Firebase console.
+    const q = query(
+        postsCollection, 
+        where('status', '==', 'published'), 
+        orderBy('timestamp', 'desc'), 
+        limit(50) // Limit to the latest 50 posts for performance
+    );
     const querySnapshot = await getDocs(q);
     
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
     
-    return posts.filter(p => p.status === 'published');
+    return posts;
   } catch (error) {
     console.error("Error fetching posts:", error);
+    // If you see an error here about a missing index, you need to create it in your Firebase project's Firestore settings.
     return [];
   }
 }
@@ -62,7 +72,32 @@ export async function getPostById(postId: string): Promise<Post | null> {
         if (!postDoc.exists()) {
             return null;
         }
-        return await processPostDoc(postDoc);
+        // Use the full processing logic including all comments
+        const data = postDoc.data();
+        const user = await getFullUser(data.userId);
+        
+        const commentsData = Array.isArray(data.comments) ? data.comments : [];
+        const comments: Comment[] = await Promise.all(
+            commentsData.map(async (comment: any) => ({
+                ...comment,
+                user: await getFullUser(comment.userId)
+            }))
+        );
+
+        return {
+          id: postDoc.id,
+          user,
+          type: data.type,
+          contentUrl: data.contentUrl,
+          caption: data.caption,
+          hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
+          likes: data.likes || 0,
+          likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
+          comments, // Return all comments for the single post view
+          timestamp: data.timestamp,
+          status: data.status,
+          dataAiHint: data.dataAiHint,
+        } as Post;
     } catch (error) {
         console.error("Error fetching post by ID:", error);
         return null;
@@ -73,12 +108,17 @@ export async function getPostById(postId: string): Promise<Post | null> {
 export async function getPostsByUserId(userId: string): Promise<Post[]> {
   try {
     const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection, where('userId', '==', userId), orderBy('timestamp', 'desc'));
+    const q = query(
+        postsCollection, 
+        where('userId', '==', userId), 
+        where('status', '==', 'published'),
+        orderBy('timestamp', 'desc')
+    );
     const querySnapshot = await getDocs(q);
 
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
 
-    return posts.filter(p => p.status === 'published');
+    return posts;
   } catch (error) {
     console.error("Error fetching posts by user ID:", error);
     return [];
