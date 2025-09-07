@@ -4,7 +4,7 @@ import AppLayout from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { notFound, useRouter } from "next/navigation";
+import { notFound, useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
@@ -19,14 +19,13 @@ import { useToast } from "@/hooks/use-toast";
 import { findOrCreateConversation } from "@/services/messageService";
 
 
-export default function UserProfilePage({
-  params: { username },
-}: {
-  params: { username: string };
-}) {
+export default function UserProfilePage() {
   const { user: authUser, isGuest } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const params = useParams();
+  const username = params.username as string;
+
   const [user, setUser] = useState<User | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
