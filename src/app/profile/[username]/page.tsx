@@ -20,7 +20,7 @@ import { findOrCreateConversation } from "@/services/messageService";
 
 
 export default function UserProfilePage({
-  params,
+  params: { username },
 }: {
   params: { username: string };
 }) {
@@ -38,7 +38,6 @@ export default function UserProfilePage({
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   const [userNotFound, setUserNotFound] = useState(false);
-  const { username } = params;
 
   const showLoginToast = useCallback(() => {
     toast({
@@ -252,7 +251,7 @@ export default function UserProfilePage({
               <TabsTrigger value="tagged"><Icons.bookmark className="mr-2 h-4 w-4" /> Tagged</TabsTrigger>
             </TabsList>
             <TabsContent value="posts" className="p-2 sm:p-4">
-              {userPosts.length > 0 ? (
+              {userPosts.filter(p => p.type === 'image').length > 0 ? (
                 <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4">
                   {userPosts.filter(p => p.type === 'image').map((post) => (
                     <div key={post.id} className="relative aspect-square w-full overflow-hidden rounded-md group">
