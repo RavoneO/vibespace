@@ -44,6 +44,7 @@ export async function createUserProfile(userId: string, data: { name: string; us
             bio: "Welcome to Vibespace!",
             followers: [],
             following: [],
+            savedPosts: [],
             isPrivate: false,
             showActivityStatus: true,
         });
@@ -110,6 +111,33 @@ export async function toggleFollow(currentUserId: string, targetUserId: string):
     } catch (error) {
         console.error("Error toggling follow:", error);
         throw new Error("Failed to toggle follow status.");
+    }
+}
+
+export async function toggleBookmark(userId: string, postId: string): Promise<boolean> {
+    const userRef = doc(db, 'users', userId);
+    try {
+        let isBookmarked = false;
+        await runTransaction(db, async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists()) {
+                throw new Error("User not found");
+            }
+            const savedPosts = userDoc.data().savedPosts || [];
+            if (savedPosts.includes(postId)) {
+                // Un-bookmark
+                transaction.update(userRef, { savedPosts: arrayRemove(postId) });
+                isBookmarked = false;
+            } else {
+                // Bookmark
+                transaction.update(userRef, { savedPosts: arrayUnion(postId) });
+                isBookmarked = true;
+            }
+        });
+        return isBookmarked;
+    } catch (error) {
+        console.error("Error toggling bookmark:", error);
+        throw new Error("Failed to toggle bookmark status.");
     }
 }
 

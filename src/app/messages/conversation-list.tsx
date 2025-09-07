@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { getConversations } from "@/services/messageService";
 import type { Conversation } from "@/lib/types";
@@ -45,7 +46,6 @@ function ConversationItem({ convo, authUserId }: { convo: Conversation, authUser
                         <p className="text-sm text-muted-foreground truncate">
                             {convo.lastMessage?.text || "No messages yet."}
                         </p>
-                        <Icons.camera className="h-5 w-5 text-muted-foreground" />
                     </div>
                 </div>
             </div>
@@ -55,8 +55,11 @@ function ConversationItem({ convo, authUserId }: { convo: Conversation, authUser
 
 export function ConversationList() {
   const { user: authUser } = useAuth();
+  const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function fetchConversations() {
@@ -65,6 +68,7 @@ export function ConversationList() {
         setLoading(true);
         const convos = await getConversations(authUser.uid);
         setConversations(convos);
+        setFilteredConversations(convos);
       } catch (error) {
         console.error("Failed to fetch conversations", error);
       } finally {
@@ -73,6 +77,18 @@ export function ConversationList() {
     }
     fetchConversations();
   }, [authUser]);
+
+  useEffect(() => {
+    const results = conversations.filter(convo => {
+        const otherUser = convo.users.find(u => u.id !== authUser?.uid);
+        return otherUser?.name.toLowerCase().includes(searchQuery.toLowerCase()) || otherUser?.username.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+    setFilteredConversations(results);
+  }, [searchQuery, conversations, authUser]);
+
+  const handleNewMessageClick = () => {
+      router.push('/search');
+  }
 
   if (loading) {
     return (
@@ -99,7 +115,7 @@ export function ConversationList() {
     <div className="flex flex-col h-full bg-card text-card-foreground">
       <header className="p-4 border-b flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" onClick={handleNewMessageClick}>
             <Icons.pencil className="h-5 w-5" />
             <span className="sr-only">New Message</span>
         </Button>
@@ -107,12 +123,17 @@ export function ConversationList() {
       <div className="p-4">
         <div className="relative">
             <Icons.search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input placeholder="Search" className="pl-10 bg-muted border-none" />
+            <Input 
+              placeholder="Search" 
+              className="pl-10 bg-muted border-none" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
-        {conversations.length > 0 ? (
-            conversations.map((convo) => <ConversationItem key={convo.id} convo={convo} authUserId={authUser?.uid} />)
+        {filteredConversations.length > 0 ? (
+            filteredConversations.map((convo) => <ConversationItem key={convo.id} convo={convo} authUserId={authUser?.uid} />)
         ) : (
           <div className="text-center text-muted-foreground py-24 px-4">
             <Icons.messages className="mx-auto h-12 w-12" />
@@ -122,7 +143,7 @@ export function ConversationList() {
         )}
       </div>
       <div className="absolute bottom-6 right-6">
-          <Button size="lg" className="rounded-full h-16 w-16 bg-primary hover:bg-primary/90 shadow-lg">
+          <Button size="lg" className="rounded-full h-16 w-16 bg-primary hover:bg-primary/90 shadow-lg" onClick={handleNewMessageClick}>
                 <Icons.plus className="h-8 w-8" />
                 <span className="sr-only">New Message</span>
           </Button>

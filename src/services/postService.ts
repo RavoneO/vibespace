@@ -1,7 +1,7 @@
 
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, limit } from 'firebase/firestore';
-import type { Post, Comment } from '@/lib/types';
+import type { Post, Comment, User } from '@/lib/types';
 import { getUserById } from './userService';
 
 // Function to get a user by ID, with fallback to mock data
@@ -125,6 +125,20 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
     console.error("Error fetching posts by user ID:", error);
     return [];
   }
+}
+
+export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
+    if (!postIds || postIds.length === 0) {
+        return [];
+    }
+    try {
+        const postPromises = postIds.map(id => getPostById(id));
+        const posts = await Promise.all(postPromises);
+        return posts.filter((p): p is Post => p !== null && p.status === 'published');
+    } catch (error) {
+        console.error("Error fetching saved posts:", error);
+        return [];
+    }
 }
 
 

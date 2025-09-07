@@ -10,12 +10,13 @@ import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { getUserByUsername, toggleFollow } from "@/services/userService";
-import { getPostsByUserId } from "@/services/postService";
+import { getPostsByUserId, getSavedPosts } from "@/services/postService";
 import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { findOrCreateConversation } from "@/services/messageService";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 function ProfilePageSkeleton() {
   return (
@@ -67,6 +68,7 @@ export function ProfileClientPage({ username }: { username: string }) {
 
   const [user, setUser] = useState<User | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followCount, setFollowCount] = useState({
@@ -95,6 +97,11 @@ export function ProfileClientPage({ username }: { username: string }) {
         const fetchedPosts = await getPostsByUserId(fetchedUser.id);
         setUserPosts(fetchedPosts);
         
+        if (fetchedUser.savedPosts && fetchedUser.savedPosts.length > 0) {
+            const fetchedSavedPosts = await getSavedPosts(fetchedUser.savedPosts);
+            setSavedPosts(fetchedSavedPosts);
+        }
+
         const followers = fetchedUser.followers?.length || 0;
         const following = fetchedUser.following?.length || 0;
         setFollowCount({ followers, following });
@@ -181,6 +188,13 @@ export function ProfileClientPage({ username }: { username: string }) {
     }
   };
 
+  const handleProfileAction = (action: "Block" | "Restrict" | "Report") => {
+      toast({
+          title: `${action} User`,
+          description: `You have successfully simulated ${action.toLowerCase()}ing @${user?.username}. In a real app, this would trigger a backend process.`
+      })
+  }
+
 
   if (loading) {
     return <ProfilePageSkeleton />;
@@ -207,9 +221,18 @@ export function ProfileClientPage({ username }: { username: string }) {
       <main className="flex-1 overflow-y-auto">
         <header className="flex items-center justify-between p-4">
             <h1 className="text-xl font-bold">@{user.username}</h1>
-            <Button variant="ghost" size="icon">
-              <Icons.menu />
-            </Button>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Icons.more />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuItem onSelect={() => handleProfileAction("Block")} className="text-destructive">Block</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleProfileAction("Restrict")} className="text-destructive">Restrict</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleProfileAction("Report")} className="text-destructive">Report</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </header>
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center gap-6 sm:gap-10">
@@ -235,7 +258,7 @@ export function ProfileClientPage({ username }: { username: string }) {
           <div className="mt-4 flex gap-2">
             {isCurrentUserProfile ? (
               <Button asChild variant="secondary" className="flex-1">
-                <Link href="/settings/profile/edit">Edit Profile</Link>
+                <Link href="/settings">Edit Profile</Link>
               </Button>
             ) : (
               <>
@@ -253,7 +276,7 @@ export function ProfileClientPage({ username }: { username: string }) {
             <TabsList className="grid w-full grid-cols-3 bg-transparent">
               <TabsTrigger value="posts" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.grid className="h-5 w-5" /></TabsTrigger>
               <TabsTrigger value="reels" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.reels className="h-5 w-5" /></TabsTrigger>
-              <TabsTrigger value="tagged" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.bookmark className="h-5 w-5" /></TabsTrigger>
+              <TabsTrigger value="saved" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.bookmark className="h-5 w-5" /></TabsTrigger>
             </TabsList>
             <TabsContent value="posts" className="mt-0">
               {userPosts.filter(p => p.type === 'image').length > 0 ? (
@@ -315,11 +338,35 @@ export function ProfileClientPage({ username }: { username: string }) {
                     </div>
                  )}
             </TabsContent>
-            <TabsContent value="tagged" className="mt-0">
+            <TabsContent value="saved" className="mt-0">
+               {isCurrentUserProfile ? (
+                 savedPosts.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-0.5">
+                      {savedPosts.map((post) => (
+                        <div key={post.id} className="relative aspect-square w-full overflow-hidden group">
+                           <Image
+                                src={post.contentUrl}
+                                alt={post.caption}
+                                fill
+                                className="object-cover transition-all duration-300 group-hover:opacity-80"
+                                data-ai-hint={post.dataAiHint}
+                            />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-24">
+                        <Icons.bookmark className="mx-auto h-12 w-12" />
+                        <p className="mt-4 font-semibold">No saved posts</p>
+                        <p className="text-sm">Save posts to see them here.</p>
+                    </div>
+                  )
+               ) : (
                 <div className="text-center text-muted-foreground py-24">
-                    <Icons.bookmark className="mx-auto h-12 w-12" />
-                    <p className="mt-4 font-semibold">No tagged posts</p>
+                    <Icons.lock className="mx-auto h-12 w-12" />
+                    <p className="mt-4 font-semibold">Saved Posts are Private</p>
                 </div>
+               )}
             </TabsContent>
           </Tabs>
         </div>

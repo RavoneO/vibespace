@@ -15,6 +15,7 @@ import { User } from "@/lib/types";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SettingsItemProps {
   label: string;
@@ -25,9 +26,10 @@ interface SettingsItemProps {
   href?: string;
   onClick?: () => void;
   disabled?: boolean;
+  tooltip?: string;
 }
 
-function SettingsItem({ label, value, isToggle, onToggle, checked, href, onClick, disabled }: SettingsItemProps) {
+function SettingsItem({ label, value, isToggle, onToggle, checked, href, onClick, disabled, tooltip }: SettingsItemProps) {
   const content = (
     <div
       onClick={!disabled && onClick ? onClick : undefined}
@@ -46,11 +48,23 @@ function SettingsItem({ label, value, isToggle, onToggle, checked, href, onClick
       </div>
     </div>
   );
+  
+  const maybeTooltip = (
+    <TooltipProvider>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                {content}
+            </TooltipTrigger>
+            {tooltip && <TooltipContent><p>{tooltip}</p></TooltipContent>}
+        </Tooltip>
+    </TooltipProvider>
+  )
+
 
   if (href && !disabled) {
-    return <Link href={href}>{content}</Link>;
+    return <Link href={href}>{tooltip ? maybeTooltip : content}</Link>;
   }
-  return content;
+  return tooltip ? maybeTooltip : content;
 }
 
 interface SettingsGroupProps {
@@ -77,7 +91,7 @@ function SettingsGroup({ title, children }: SettingsGroupProps) {
 function SettingsSkeleton() {
     return (
         <div className="p-4 space-y-6">
-            {[...Array(4)].map((_, i) => (
+            {[...Array(2)].map((_, i) => (
                  <div key={i}>
                     <Skeleton className="h-6 w-32 mb-2" />
                     <div className="bg-secondary rounded-lg p-4 space-y-4">
@@ -174,8 +188,8 @@ export default function SettingsPage() {
           {loading ? <SettingsSkeleton /> : (
             <div className="p-4 space-y-6">
                 <SettingsGroup title="Account">
-                    <SettingsItem label="Username" value={`@${userProfile?.username || 'guest'}`} href="#" disabled={isDisabled} />
-                    <SettingsItem label="Email" value={userProfile?.email || 'guest@example.com'} href="#" disabled={isDisabled} />
+                    <SettingsItem label="Username" value={`@${userProfile?.username || 'guest'}`} disabled={true} tooltip="Username cannot be changed." />
+                    <SettingsItem label="Email" value={userProfile?.email || 'guest@example.com'} disabled={true} tooltip="Email cannot be changed." />
                     <SettingsItem label="Password" value="Change" onClick={handlePasswordChange} disabled={isDisabled} />
                 </SettingsGroup>
 
@@ -194,16 +208,6 @@ export default function SettingsPage() {
                         onToggle={(checked) => handleSettingChange('showActivityStatus', checked)}
                         disabled={isDisabled}
                     />
-                </SettingsGroup>
-
-                <SettingsGroup title="Notifications">
-                    <SettingsItem label="Push Notifications" isToggle checked={true} disabled={isDisabled} />
-                    <SettingsItem label="Email Notifications" isToggle checked={false} disabled={isDisabled} />
-                </SettingsGroup>
-
-                <SettingsGroup title="App Preferences">
-                    <SettingsItem label="Language" value="English" href="#" disabled={isDisabled} />
-                    <SettingsItem label="Theme" value="Dark" href="#" disabled={isDisabled} />
                 </SettingsGroup>
                 
                 {isGuest && (

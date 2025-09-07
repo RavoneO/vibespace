@@ -9,6 +9,7 @@ export type User = {
   bio: string;
   followers?: string[];
   following?: string[];
+  savedPosts?: string[];
   isPrivate?: boolean;
   showActivityStatus?: boolean;
 };

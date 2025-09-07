@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Post as PostType } from "@/lib/types";
+import type { Post as PostType, User } from "@/lib/types";
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,7 +17,9 @@ import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { CommentSheet } from "./comment-sheet";
 import { useAuth } from "@/hooks/use-auth";
-import { toggleLike, getPostById } from "@/services/postService";
+import { getPostById } from "@/services/postService";
+import { toggleLike } from "@/services/postService";
+import { toggleBookmark, getUserById } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "./ui/aspect-ratio";
 import { formatDistanceToNow } from "date-fns";
@@ -32,18 +34,29 @@ export function PostCard({ post: initialPost }: PostCardProps) {
 
   const [post, setPost] = useState(initialPost);
   const [isLiked, setIsLiked] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
   const likeButtonRef = useRef<HTMLButtonElement>(null);
   
   useEffect(() => {
+    async function checkBookmarkStatus() {
+        if(user && !isGuest) {
+            const userProfile = await getUserById(user.uid);
+            setIsBookmarked(userProfile?.savedPosts?.includes(post.id) || false);
+        } else {
+            setIsBookmarked(false);
+        }
+    }
+    checkBookmarkStatus();
+
     if (user && Array.isArray(post.likedBy)) {
       setIsLiked(post.likedBy.includes(user.uid));
     } else {
       setIsLiked(false);
     }
     setLikeCount(post.likes);
-  }, [user, post]);
+  }, [user, post, isGuest]);
 
   const refreshPost = useCallback(async () => {
     const updatedPost = await getPostById(post.id);
@@ -93,6 +106,45 @@ export function PostCard({ post: initialPost }: PostCardProps) {
         description: "Could not update like status. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleBookmark = async () => {
+      if (!user || isGuest) {
+          showLoginToast();
+          return;
+      }
+      const newIsBookmarked = !isBookmarked;
+      setIsBookmarked(newIsBookmarked);
+
+      try {
+          await toggleBookmark(user.uid, post.id);
+          toast({
+              title: newIsBookmarked ? "Post saved!" : "Post unsaved",
+          });
+      } catch (error) {
+          setIsBookmarked(!newIsBookmarked); // Revert on error
+          console.error("Error bookmarking post:", error);
+          toast({ title: "Something went wrong.", variant: "destructive" });
+      }
+  };
+
+  const handleShare = async () => {
+    if(navigator.share) {
+        try {
+            await navigator.share({
+                title: `Check out this post by @${post.user.username}`,
+                text: post.caption,
+                url: window.location.href, // Or a direct link to the post
+            });
+        } catch (error) {
+            console.error("Error sharing post", error);
+        }
+    } else {
+        toast({
+            title: "Share Not Available",
+            description: "Your browser does not support the Web Share API."
+        })
     }
   };
   
@@ -183,13 +235,12 @@ export function PostCard({ post: initialPost }: PostCardProps) {
                     <Icons.comment className="text-foreground/70 h-5 w-5" />
                     <span className="font-medium">{post.comments.length}</span>
                 </Button>
-                <Button variant="ghost" size="sm" aria-label="Share post" className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={handleShare} aria-label="Share post" className="flex items-center gap-2">
                     <Icons.send className="text-foreground/70 h-5 w-5" />
-                     <span className="font-medium">12</span>
                 </Button>
             </div>
-            <Button variant="ghost" size="icon" className="ml-auto" aria-label="Bookmark post">
-                <Icons.bookmark className="text-foreground/70 h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={handleBookmark} className="ml-auto" aria-label="Bookmark post">
+                <Icons.bookmark className={cn("text-foreground/70 h-5 w-5", isBookmarked && "fill-current text-foreground")} />
             </Button>
         </CardFooter>
       </Card>
