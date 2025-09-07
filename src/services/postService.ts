@@ -74,6 +74,8 @@ export async function getPostById(postId: string): Promise<Post | null> {
         }
         // Use the full processing logic including all comments
         const data = postDoc.data();
+        if (!data) return null;
+
         const user = await getFullUser(data.userId);
         
         const commentsData = Array.isArray(data.comments) ? data.comments : [];
