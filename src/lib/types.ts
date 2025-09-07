@@ -9,6 +9,8 @@ export type User = {
   bio: string;
   followers?: string[];
   following?: string[];
+  isPrivate?: boolean;
+  showActivityStatus?: boolean;
 };
 
 export type Comment = {
@@ -42,6 +44,7 @@ export type Story = {
     timestamp: string | Timestamp;
     status?: 'processing' | 'published';
     dataAiHint?: string;
+    viewed?: boolean;
 }
 
 export type Message = {

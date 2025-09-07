@@ -44,6 +44,8 @@ export async function createUserProfile(userId: string, data: { name: string; us
             bio: "Welcome to Vibespace!",
             followers: [],
             following: [],
+            isPrivate: false,
+            showActivityStatus: true,
         });
     } catch (error) {
         console.error("Error creating user profile:", error);
@@ -108,5 +110,15 @@ export async function toggleFollow(currentUserId: string, targetUserId: string):
     } catch (error) {
         console.error("Error toggling follow:", error);
         throw new Error("Failed to toggle follow status.");
+    }
+}
+
+export async function updateUserSettings(userId: string, settings: Partial<Pick<User, 'isPrivate' | 'showActivityStatus'>>) {
+    try {
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, settings);
+    } catch (error) {
+        console.error("Error updating user settings:", error);
+        throw new Error("Failed to update user settings.");
     }
 }
