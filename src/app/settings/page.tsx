@@ -3,6 +3,7 @@ import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
+import React from "react";
 
 const sections = [
     {
@@ -76,6 +77,4 @@ const sections = [
       </div>
     );
   }
-  
-  import * as React from "react";
   
