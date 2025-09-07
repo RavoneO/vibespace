@@ -120,7 +120,7 @@ export function UploadReelForm() {
             await updatePost(postId, {
                 contentUrl,
                 status: 'published'
-            } as any);
+            });
 
         } catch (error) {
             console.error("Error creating reel in background:", error);
