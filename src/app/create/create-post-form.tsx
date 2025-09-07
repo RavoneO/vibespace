@@ -79,15 +79,6 @@ export function CreatePostForm() {
     },
   });
 
-  const showLoginToast = () => {
-    toast({
-        title: "Create an account to post",
-        description: "Sign up or log in to share content with the community.",
-        variant: "destructive",
-        action: <Link href="/signup"><Button>Sign Up</Button></Link>
-    });
-  }
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -175,8 +166,8 @@ export function CreatePostForm() {
   }
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!user) { // Should not happen if guest UI is shown, but as a safeguard.
-        showLoginToast();
+    if (!user) {
+        toast({ title: "Please log in to create a post.", variant: "destructive" });
         return;
     }
     if (!fileType) return;

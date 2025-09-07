@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import type { Story } from '@/lib/types';
 import { getUserById } from './userService';
 
@@ -15,8 +15,14 @@ async function getFullUser(userId: string) {
 export async function getStories(): Promise<Story[]> {
   try {
     const storiesCollection = collection(db, 'stories');
-    // To-do: Add a where clause to only fetch stories from the last 24 hours
-    const q = query(storiesCollection, orderBy('timestamp', 'desc'));
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    const q = query(
+        storiesCollection, 
+        where('status', '==', 'published'),
+        where('timestamp', '>', twentyFourHoursAgo),
+        orderBy('timestamp', 'desc')
+    );
     const querySnapshot = await getDocs(q);
     
     const stories: Story[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
@@ -34,7 +40,15 @@ export async function getStories(): Promise<Story[]> {
       } as Story;
     }));
     
-    return stories;
+    // De-duplicate stories by user, keeping only the latest one
+    const latestStories: { [userId: string]: Story } = {};
+    stories.forEach(story => {
+        if (!latestStories[story.user.id]) {
+            latestStories[story.user.id] = story;
+        }
+    });
+    
+    return Object.values(latestStories);
   } catch (error) {
     console.error("Error fetching stories:", error);
     return [];
@@ -46,6 +60,7 @@ export async function createStory(storyData: {
     type: 'image' | 'video';
     contentUrl: string;
     duration: number;
+    status: 'published' | 'processing';
 }) {
     try {
         await addDoc(collection(db, 'stories'), {

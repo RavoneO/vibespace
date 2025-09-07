@@ -45,10 +45,8 @@ export function ProfileClientPage({ username }: { username: string }) {
   }, [toast]);
 
   const fetchUserData = useCallback(async () => {
-    if (!username || authLoading) return;
     setLoading(true);
     setUserNotFound(false);
-
     try {
       const fetchedUser = await getUserByUsername(username);
 
@@ -73,12 +71,14 @@ export function ProfileClientPage({ username }: { username: string }) {
     } finally {
       setLoading(false);
     }
-  }, [username, authUser, authLoading, isGuest]);
+  }, [username, authUser, isGuest]);
 
 
   useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
+    if (username) {
+        fetchUserData();
+    }
+  }, [username, fetchUserData]);
 
   const handleFollowToggle = async () => {
     if (!authUser || isGuest) {
@@ -220,10 +220,10 @@ export function ProfileClientPage({ username }: { username: string }) {
                 <div className="mt-4 flex justify-center sm:justify-start">
                     {!isCurrentUserProfile && (
                        <>
-                        <Button onClick={handleFollowToggle} disabled={isFollowLoading || isGuest}>
+                        <Button onClick={handleFollowToggle} disabled={isFollowLoading || isGuest || authLoading}>
                             {isFollowLoading ? <Icons.spinner className="animate-spin" /> : (isFollowing ? "Following" : "Follow")}
                         </Button>
-                        <Button variant="outline" className="ml-2" onClick={handleMessage} disabled={isMessageLoading || isGuest}>
+                        <Button variant="outline" className="ml-2" onClick={handleMessage} disabled={isMessageLoading || isGuest || authLoading}>
                            {isMessageLoading ? <Icons.spinner className="animate-spin" /> : "Message"}
                         </Button>
                        </>

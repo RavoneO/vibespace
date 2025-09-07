@@ -40,6 +40,7 @@ export type Story = {
     contentUrl: string;
     duration: number; // in seconds
     timestamp: string | Timestamp;
+    status?: 'processing' | 'published';
     dataAiHint?: string;
 }
 

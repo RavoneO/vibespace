@@ -67,9 +67,11 @@ export function Stories({ stories }: StoriesProps) {
               type: fileType,
               contentUrl,
               duration: 5, // default duration
+              status: 'published'
             });
     
             toast({ title: "Story posted successfully!" });
+            // You might want to trigger a refresh of the stories here
           } catch (error) {
             console.error("Error creating story:", error);
             toast({
@@ -82,13 +84,11 @@ export function Stories({ stories }: StoriesProps) {
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
+             setIsUploading(false);
           }
         };
     
-        // Start the upload, but don't wait for it to finish for the UI.
         backgroundUpload();
-        // Unblock the UI immediately.
-        setIsUploading(false);
     };
     
     const currentUserStory = stories.find(s => s.user.id === authUser?.uid);
