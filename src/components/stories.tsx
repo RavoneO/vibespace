@@ -9,11 +9,12 @@ import { StoryViewer } from "./story-viewer";
 import { Skeleton } from "./ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { createStory, updateStory } from "@/services/storyService";
+import { createStory, getStories, updateStory } from "@/services/storyService";
 import { uploadFile } from "@/services/storageService";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { getUserById } from "@/services/userService";
+import { cn } from "@/lib/utils";
 
 interface StoriesProps {
     stories: Story[];
@@ -77,7 +78,7 @@ export function Stories({ stories: initialStories }: StoriesProps) {
             storyId = await createStory({
               userId: authUser.uid,
               type: fileType,
-              duration: 5, // default duration
+              duration: 5,
             });
 
             const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${storyId}_${file.name}`);
@@ -88,8 +89,6 @@ export function Stories({ stories: initialStories }: StoriesProps) {
             });
     
             toast({ title: "Story posted successfully!" });
-            // Refresh stories after upload
-            // This is a simple refresh, a more optimized approach would be to just add the new story to the local state
             const updatedStories = await getStories();
             setStories(updatedStories);
           } catch (error) {
@@ -103,7 +102,6 @@ export function Stories({ stories: initialStories }: StoriesProps) {
               variant: "destructive",
             });
           } finally {
-             // Reset file input
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
@@ -142,30 +140,23 @@ export function Stories({ stories: initialStories }: StoriesProps) {
                 onChange={handleFileChange}
                 disabled={isUploading}
             />
-            <div className="relative p-4">
+            <div className="relative p-4 border-b">
                 <div className="flex space-x-4 overflow-x-auto pb-2 -mb-2">
-                     <div className="flex-shrink-0 w-20 text-center">
+                     <button onClick={handleAddStoryClick} disabled={isUploading} className="flex-shrink-0 w-20 text-center group">
                         <div className="relative">
-                            <Avatar className="w-16 h-16 mx-auto border-2 border-dashed border-muted-foreground">
-                                {currentUserStory ? (
-                                     <AvatarImage src={currentUserStory.user.avatar} />
-                                ) : currentUserProfile ? (
-                                    <AvatarImage src={currentUserProfile.avatar} />
-                                ) : null}
-                                <AvatarFallback>{currentUserProfile?.name?.charAt(0) || 'G'}</AvatarFallback>
-                            </Avatar>
-                            <button 
-                                onClick={handleAddStoryClick} 
-                                disabled={isUploading}
-                                className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1.5 border-2 border-background disabled:bg-muted"
-                            >
-                                {isUploading ? <Icons.spinner className="w-4 h-4 animate-spin" /> : <Icons.plus className="w-4 h-4" />}
-                            </button>                        </div>
+                            <div className="w-16 h-16 mx-auto rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center group-hover:border-primary transition-colors">
+                                {isUploading ? <Icons.spinner className="w-6 h-6 animate-spin" /> : <Icons.plus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />}
+                            </div>
+                        </div>
                         <p className="text-xs mt-1.5 truncate text-muted-foreground">Your Story</p>
-                    </div>
-                    {otherUserStories.map((story, index) => (
-                        <button key={story.id} onClick={() => openStory(index + 1)} className="flex-shrink-0 w-20 text-center focus:outline-none">
-                             <div className="w-18 h-18 p-1 rounded-full bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500">
+                    </button>
+                    
+                    {stories.map((story, index) => (
+                        <button key={story.id} onClick={() => openStory(index)} className="flex-shrink-0 w-20 text-center focus:outline-none">
+                             <div className={cn(
+                                "w-18 h-18 p-0.5 rounded-full",
+                                story.viewed ? "bg-muted-foreground" : "bg-gradient-to-r from-green-400 to-emerald-600"
+                             )}>
                                 <Avatar className="w-16 h-16 mx-auto border-2 border-background">
                                     <AvatarImage src={story.user.avatar} />
                                     <AvatarFallback>{story.user.name.charAt(0)}</AvatarFallback>

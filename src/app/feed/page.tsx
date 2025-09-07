@@ -10,10 +10,12 @@ import { getPosts } from "@/services/postService";
 import { getStories } from "@/services/storyService";
 import type { Post, Story } from "@/lib/types";
 import { Icons } from "@/components/icons";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 function FeedSkeleton() {
   return (
-      <div className="max-w-2xl mx-auto space-y-8 px-4 sm:px-6 lg:px-8 pb-8">
+      <div className="space-y-8 px-4 py-8">
           <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
                   <div key={i} className="space-y-4">
@@ -25,8 +27,6 @@ function FeedSkeleton() {
                           </div>
                       </div>
                       <Skeleton className="w-full aspect-square rounded-lg" />
-                      <Skeleton className="h-4 w-16" />
-                      <Skeleton className="h-4 w-full" />
                   </div>
               ))}
           </div>
@@ -64,10 +64,19 @@ export default function FeedPage() {
 
   return (
     <AppLayout>
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto space-y-4">
+      <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+          <header className="flex items-center justify-between p-4 border-b">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground/90">
+                Vibespace
+              </h1>
+              <Button asChild variant="ghost" size="icon">
+                <Link href="/messages">
+                    <Icons.send />
+                    <span className="sr-only">Messages</span>
+                </Link>
+              </Button>
+          </header>
           <Stories stories={stories} />
-          <h1 className="text-2xl font-bold tracking-tight text-foreground/90 px-4 sm:px-6 lg:px-8">Feed</h1>
            {loading ? (
              <FeedSkeleton />
            ) : error ? (
@@ -80,16 +89,15 @@ export default function FeedPage() {
             <div className="text-center text-muted-foreground py-24 px-4">
                 <Icons.home className="mx-auto h-12 w-12" />
                 <p className="mt-4 font-semibold">Welcome to your feed!</p>
-                <p className="text-sm">It's looking a little empty. Follow some friends to see their posts.</p>
+                <p className="text-sm">It's looking a little empty. Create your first post or follow some friends.</p>
             </div>
            ) : (
-             <div className="space-y-8 px-4 sm:px-6 lg:px-8 pb-8">
+             <div className="space-y-1">
                 {posts.map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}
               </div>
            )}
-        </div>
       </main>
     </AppLayout>
   );

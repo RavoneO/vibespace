@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toggleLike, getPostById } from "@/services/postService";
 import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "./ui/aspect-ratio";
+import { formatDistanceToNow } from "date-fns";
 
 interface PostCardProps {
   post: PostType;
@@ -82,13 +83,9 @@ export function PostCard({ post: initialPost }: PostCardProps) {
       }
       
       await toggleLike(post.id, user.uid);
-      // Optional: refresh post from server to ensure data consistency,
-      // but optimistic update is usually enough for likes.
-      // await refreshPost();
 
     } catch (error) {
       console.error("Error liking post:", error);
-       // Revert UI on error and show toast
        setIsLiked(!isLiked);
        setLikeCount(likeCount);
        toast({
@@ -103,9 +100,19 @@ export function PostCard({ post: initialPost }: PostCardProps) {
       setIsCommentSheetOpen(true);
   }
 
+  const getTimestamp = (timestamp: any) => {
+      if (!timestamp) return "";
+      try {
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return formatDistanceToNow(date, { addSuffix: true });
+      } catch (e) {
+          return "just now";
+      }
+  }
+
   return (
     <>
-      <Card className="overflow-hidden animate-fade-in">
+      <Card className="overflow-hidden animate-fade-in bg-transparent border-0 border-b rounded-none shadow-none">
         <CardHeader className="flex flex-row items-center gap-3 p-4">
           <Avatar>
             <AvatarImage src={post.user.avatar} alt={post.user.name} />
@@ -115,15 +122,27 @@ export function PostCard({ post: initialPost }: PostCardProps) {
             <Link href={`/profile/${post.user.username}`} className="font-semibold hover:underline">
               {post.user.name}
             </Link>
-            <div className="text-muted-foreground">@{post.user.username}</div>
+            <div className="text-muted-foreground">{getTimestamp(post.timestamp)}</div>
           </div>
           <Button variant="ghost" size="icon" className="ml-auto">
             <Icons.more />
             <span className="sr-only">More options</span>
           </Button>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="relative w-full overflow-hidden">
+        <CardContent className="px-4 py-0">
+          <div className="text-sm text-foreground/90 mb-4">
+            <span>{post.caption}</span>
+            <div className="flex flex-wrap gap-x-2">
+                {post.hashtags.map((tag) => (
+                    <Link href={`/tags/${tag.slice(1)}`} key={tag}>
+                        <span className="font-medium text-primary hover:underline">
+                            {tag}
+                        </span>
+                    </Link>
+                ))}
+            </div>
+          </div>
+          <div className="relative w-full overflow-hidden rounded-lg">
              {post.type === 'image' ? (
                 <AspectRatio ratio={1 / 1}>
                     <Image
@@ -132,7 +151,7 @@ export function PostCard({ post: initialPost }: PostCardProps) {
                         fill
                         className="object-cover"
                         data-ai-hint={post.dataAiHint}
-                        priority // Prioritize loading for posts visible in viewport
+                        priority
                     />
                 </AspectRatio>
               ) : (
@@ -149,45 +168,28 @@ export function PostCard({ post: initialPost }: PostCardProps) {
               )}
           </div>
         </CardContent>
-        <CardFooter className="p-4 flex flex-col items-start gap-4">
-            <div className="flex items-center gap-2">
-                <Button ref={likeButtonRef} variant="ghost" size="icon" onClick={handleLike} aria-label="Like post">
+        <CardFooter className="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-1">
+                <Button ref={likeButtonRef} variant="ghost" size="sm" onClick={handleLike} aria-label="Like post" className="flex items-center gap-2">
                     <Icons.like
                         className={cn(
-                        "transition-all duration-200",
+                        "transition-all duration-200 h-5 w-5",
                         isLiked ? "text-red-500 fill-current" : "text-foreground/70"
                         )}
                     />
+                    <span className="font-medium">{likeCount.toLocaleString()}</span>
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handleCommentClick} aria-label="Comment on post">
-                    <Icons.comment className="text-foreground/70" />
+                <Button variant="ghost" size="sm" onClick={handleCommentClick} aria-label="Comment on post" className="flex items-center gap-2">
+                    <Icons.comment className="text-foreground/70 h-5 w-5" />
+                    <span className="font-medium">{post.comments.length}</span>
                 </Button>
-                <Button variant="ghost" size="icon" aria-label="Share post">
-                    <Icons.send className="text-foreground/70" />
-                </Button>
-                <Button variant="ghost" size="icon" className="ml-auto" aria-label="Bookmark post">
-                    <Icons.bookmark className="text-foreground/70" />
+                <Button variant="ghost" size="sm" aria-label="Share post" className="flex items-center gap-2">
+                    <Icons.send className="text-foreground/70 h-5 w-5" />
+                     <span className="font-medium">12</span>
                 </Button>
             </div>
-            <div className="text-sm font-medium">{likeCount.toLocaleString()} likes</div>
-            <div className="text-sm text-foreground/90">
-                <Link href={`/profile/${post.user.username}`} className="font-semibold hover:underline">
-                    {post.user.username}
-                </Link>
-                <span className="ml-2">{post.caption}</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-                {post.hashtags.map((tag) => (
-                    <Link href={`/tags/${tag.slice(1)}`} key={tag}>
-                        <span className="text-sm font-medium text-accent hover:underline">
-                            {tag}
-                        </span>
-                    </Link>
-                ))}
-            </div>
-
-            <Button variant="link" size="sm" className="text-muted-foreground p-0 h-auto" onClick={handleCommentClick}>
-                View all {post.comments.length} comments
+            <Button variant="ghost" size="icon" className="ml-auto" aria-label="Bookmark post">
+                <Icons.bookmark className="text-foreground/70 h-5 w-5" />
             </Button>
         </CardFooter>
       </Card>

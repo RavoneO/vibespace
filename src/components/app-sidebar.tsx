@@ -10,6 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Icons } from "@/components/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,20 +22,23 @@ import { getUserById } from "@/services/userService";
 import { Skeleton } from "./ui/skeleton";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
   const { user: authUser, isGuest, setAsGuest } = useAuth();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const { state: sidebarState, toggleSidebar } = useSidebar();
 
   const menuItems = [
     { href: "/feed", icon: Icons.home, label: "Home" },
     { href: "/search", icon: Icons.search, label: "Search" },
-    { href: "/messages", icon: Icons.messages, label: "Messages" },
     { href: "/reels", icon: Icons.reels, label: "Reels" },
+    { href: "/messages", icon: Icons.messages, label: "Messages" },
     { href: "/profile", icon: Icons.profile, label: "Profile" },
   ];
 
@@ -61,60 +65,59 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     await signOut(auth);
-    setAsGuest(false); // Ensure guest status is cleared
-    router.push("/"); // Redirect to welcome page after logout
+    setAsGuest(false);
+    router.push("/");
   }
 
   const handleGuestLogin = () => {
-    setAsGuest(false); // Clear guest status
+    setAsGuest(false);
     router.push("/login");
   }
 
-  const handleGuestSignup = () => {
-    setAsGuest(false); // Clear guest status
-    router.push("/signup");
-  }
-
-
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-full bg-primary">
+      <SidebarHeader>
+        <div className={cn("flex items-center gap-2", sidebarState === 'expanded' ? "p-4" : "p-4 justify-center")}>
+          <div className="p-2 rounded-lg bg-primary">
             <Icons.sparkles className="w-6 h-6 text-primary-foreground" />
           </div>
-          <h1 className="text-xl font-semibold">Vibespace</h1>
+           {sidebarState === 'expanded' && <h1 className="text-xl font-semibold">Vibespace</h1>}
         </div>
       </SidebarHeader>
       <SidebarContent className="p-4">
         <SidebarMenu>
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.label}>
-              <Link href={item.href} className="w-full">
-                <SidebarMenuButton
-                  className="w-full justify-start"
-                  variant="ghost"
-                  size="lg"
-                >
-                  <item.icon className="size-5 mr-2 text-accent" />
-                  <span>{item.label}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          ))}
+          {menuItems.map((item) => {
+             const isActive = (item.href === "/feed" && pathname === item.href) || (item.href !== "/feed" && pathname.startsWith(item.href) && item.href !== "/profile") || (item.href === "/profile" && userProfile && pathname.startsWith(`/profile/${userProfile.username}`));
+             return (
+                 <SidebarMenuItem key={item.label}>
+                    <Link href={item.href === '/profile' && userProfile ? `/profile/${userProfile.username}`: item.href} className="w-full">
+                        <SidebarMenuButton
+                        className="w-full justify-start"
+                        variant="ghost"
+                        size="lg"
+                        isActive={isActive}
+                        tooltip={item.label}
+                        >
+                        <item.icon className="size-5 mr-3" />
+                        <span>{item.label}</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+             )
+          })}
         </SidebarMenu>
-        <Link href="/create" className="mt-8">
-            <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isGuest}>
-                <Icons.create className="mr-2" />
-                Create Post
+        <Link href="/create" className="mt-8 px-2">
+            <Button size="lg" className={cn("w-full text-lg", sidebarState === 'collapsed' && 'h-12 w-12 p-0')}>
+                <Icons.create className={cn("mr-2", sidebarState === 'collapsed' && 'mr-0')} />
+                {sidebarState === 'expanded' && 'Create'}
             </Button>
         </Link>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t">
+      <SidebarFooter className="p-2 border-t mt-auto">
         { isGuest ? (
-            <div className="text-center space-y-2">
+            <div className={cn("text-center space-y-2", sidebarState === 'collapsed' && "hidden")}>
                 <p className="text-sm">Sign up to get the full experience.</p>
-                <Button size="sm" className="w-full" onClick={handleGuestSignup}>
+                <Button size="sm" className="w-full" onClick={() => router.push("/signup")}>
                     Sign Up
                 </Button>
                  <Button size="sm" variant="outline" className="w-full" onClick={handleGuestLogin}>
@@ -122,9 +125,9 @@ export function AppSidebar() {
                 </Button>
             </div>
         ) : isLoadingProfile ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 p-2">
                 <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="flex-1 space-y-1">
+                <div className={cn("flex-1 space-y-1", sidebarState === 'collapsed' && 'hidden')}>
                     <Skeleton className="h-4 w-24" />
                     <Skeleton className="h-3 w-16" />
                 </div>
@@ -132,16 +135,16 @@ export function AppSidebar() {
         ) : userProfile ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-3 cursor-pointer w-full">
+                <div className="flex items-center gap-3 cursor-pointer w-full p-2 hover:bg-secondary rounded-md">
                     <Avatar>
                         <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
                         <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col overflow-hidden flex-1">
+                    <div className={cn("flex flex-col overflow-hidden flex-1", sidebarState === 'collapsed' && 'hidden')}>
                         <span className="font-semibold truncate">{userProfile.name}</span>
                         <span className="text-sm text-muted-foreground truncate">@{userProfile.username}</span>
                     </div>
-                    <Icons.more className="text-muted-foreground" />
+                    <Icons.more className={cn("text-muted-foreground", sidebarState === 'collapsed' && 'hidden')} />
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 mb-2">
@@ -151,16 +154,7 @@ export function AppSidebar() {
                  </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-        ) : (
-             <div className="text-center">
-                <p className="text-sm mb-2">Please log in to continue.</p>
-                 <Link href="/login">
-                    <Button size="sm" variant="outline" className="w-full">
-                        Log In
-                    </Button>
-                </Link>
-            </div>
-        )}
+        ) : null }
       </SidebarFooter>
     </Sidebar>
   );
