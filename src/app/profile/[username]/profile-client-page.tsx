@@ -18,6 +18,46 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { findOrCreateConversation } from "@/services/messageService";
 
+function ProfilePageSkeleton() {
+  return (
+      <AppLayout>
+          <main className="flex-1 overflow-y-auto">
+              <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
+                      <Skeleton className="w-24 h-24 sm:w-36 sm:h-36 rounded-full" />
+                      <div className="flex-1 space-y-3 text-center sm:text-left">
+                          <Skeleton className="h-8 w-48 mx-auto sm:mx-0" />
+                          <Skeleton className="h-4 w-32 mx-auto sm:mx-0" />
+                          <Skeleton className="h-12 w-full max-w-prose" />
+                          <div className="flex justify-center sm:justify-start gap-2">
+                              <Skeleton className="h-10 w-24" />
+                              <Skeleton className="h-10 w-24" />
+                          </div>
+                      </div>
+                  </div>
+                  <Separator className="my-6" />
+                  <div className="flex justify-around text-center">
+                      {[...Array(3)].map((_, i) => (
+                          <div key={i} className="space-y-1">
+                              <Skeleton className="h-6 w-12 mx-auto" />
+                              <Skeleton className="h-4 w-16 mx-auto" />
+                          </div>
+                      ))}
+                  </div>
+                   <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4 mt-8">
+                      {[...Array(6)].map((_, i) => (
+                          <div key={i} className="relative aspect-square w-full overflow-hidden rounded-md">
+                              <Skeleton className="w-full h-full" />
+                          </div>
+                      ))}
+                  </div>
+              </div>
+          </main>
+      </AppLayout>
+  )
+}
+
+
 export function ProfileClientPage({ username }: { username: string }) {
   const { user: authUser, loading: authLoading, isGuest } = useAuth();
   const { toast } = useToast();
@@ -45,9 +85,8 @@ export function ProfileClientPage({ username }: { username: string }) {
   }, [toast]);
 
   const fetchUserData = useCallback(async () => {
-    setLoading(true);
-    setUserNotFound(false);
     try {
+      // Don't set loading to true here to prevent skeleton flash on auth change
       const fetchedUser = await getUserByUsername(username);
 
       if (fetchedUser) {
@@ -59,11 +98,10 @@ export function ProfileClientPage({ username }: { username: string }) {
         const following = fetchedUser.following?.length || 0;
         setFollowCount({ followers, following });
         
-        // This can now safely run after fetchedUser is confirmed.
         if (authUser && !isGuest) {
           setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
         }
-
+        setUserNotFound(false);
       } else {
         setUserNotFound(true);
       }
@@ -78,6 +116,7 @@ export function ProfileClientPage({ username }: { username: string }) {
 
   useEffect(() => {
     if (username) {
+        setLoading(true);
         fetchUserData();
     }
   }, [username, fetchUserData]);
@@ -87,6 +126,10 @@ export function ProfileClientPage({ username }: { username: string }) {
   useEffect(() => {
       if(user && authUser && !isGuest) {
           setIsFollowing(user.followers?.includes(authUser.uid) || false);
+      }
+      // If user is guest, always set following to false
+      if(isGuest) {
+          setIsFollowing(false);
       }
   }, [user, authUser, isGuest]);
 
@@ -144,42 +187,7 @@ export function ProfileClientPage({ username }: { username: string }) {
 
 
   if (loading) {
-    return (
-        <AppLayout>
-            <main className="flex-1 overflow-y-auto">
-                <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
-                        <Skeleton className="w-24 h-24 sm:w-36 sm:h-36 rounded-full" />
-                        <div className="flex-1 space-y-3 text-center sm:text-left">
-                            <Skeleton className="h-8 w-48 mx-auto sm:mx-0" />
-                            <Skeleton className="h-4 w-32 mx-auto sm:mx-0" />
-                            <Skeleton className="h-12 w-full max-w-prose" />
-                            <div className="flex justify-center sm:justify-start gap-2">
-                                <Skeleton className="h-10 w-24" />
-                                <Skeleton className="h-10 w-24" />
-                            </div>
-                        </div>
-                    </div>
-                    <Separator className="my-6" />
-                    <div className="flex justify-around text-center">
-                        {[...Array(3)].map((_, i) => (
-                            <div key={i} className="space-y-1">
-                                <Skeleton className="h-6 w-12 mx-auto" />
-                                <Skeleton className="h-4 w-16 mx-auto" />
-                            </div>
-                        ))}
-                    </div>
-                     <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4 mt-8">
-                        {[...Array(6)].map((_, i) => (
-                            <div key={i} className="relative aspect-square w-full overflow-hidden rounded-md">
-                                <Skeleton className="w-full h-full" />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </main>
-        </AppLayout>
-    )
+    return <ProfilePageSkeleton />;
   }
 
   if (userNotFound) {
@@ -187,7 +195,9 @@ export function ProfileClientPage({ username }: { username: string }) {
   }
 
   if (!user) {
-    return null; 
+    // This case should ideally not be reached if loading and notFound are handled,
+    // but it's a good fallback.
+    return <ProfilePageSkeleton />;
   }
 
   const isCurrentUserProfile = authUser?.uid === user.id;
@@ -330,3 +340,5 @@ export function ProfileClientPage({ username }: { username: string }) {
     </AppLayout>
   );
 }
+
+    
