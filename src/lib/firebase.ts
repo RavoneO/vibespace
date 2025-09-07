@@ -9,7 +9,7 @@ const firebaseConfig = {
   "appId": "1:473324197014:web:880dfa2_Super_Secret_AppId",
   "storageBucket": "vibespace-h7vsa.firebasestorage.app",
   "apiKey": "AIzaSyB7n06b7mDNbBwhMkrVLIcYRuyFgRyH5jk",
-  "authDomain": "vibespace-h7vsa.firebaseapp.com",
+"authDomain": "vibespace-h7vsa.firebaseapp.com",
   "measurementId": "",
   "messagingSenderId": "473324197014"
 };
@@ -21,11 +21,13 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 // Connect to emulators unconditionally for the dev environment
-if (typeof window !== 'undefined') {
-    console.log("Connecting to Firebase Emulators");
-    connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
-    connectFirestoreEmulator(db, "127.0.0.1", 8080);
-    connectStorageEmulator(storage, "127.0.0.1", 9199);
+// This needs to run on both server and client.
+try {
+  connectAuthEmulator(auth, "127.0.0.1", 9099, { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  connectStorageEmulator(storage, "127.0.0.1", 9199);
+} catch (e) {
+    console.error('Error connecting to emulators. This is expected in production.', e);
 }
 
 
