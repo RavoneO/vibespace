@@ -1,0 +1,6 @@
+{
+  "name": "Vibespace",
+  "short_name": "Vibespace",
+  "start_url": "/",
+  "display": "standalone"
+}
