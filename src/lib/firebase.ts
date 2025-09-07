@@ -21,10 +21,12 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 // Connect to emulators unconditionally for the dev environment
-console.log("Connecting to Firebase Emulators");
-connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
-connectFirestoreEmulator(db, "127.0.0.1", 8080);
-connectStorageEmulator(storage, "127.0.0.1", 9199);
+if (typeof window !== 'undefined') {
+    console.log("Connecting to Firebase Emulators");
+    connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+    connectFirestoreEmulator(db, "127.0.0.1", 8080);
+    connectStorageEmulator(storage, "127.0.0.1", 9199);
+}
 
 
 export { app, auth, db, storage };
