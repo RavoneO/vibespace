@@ -129,6 +129,24 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
   }
 }
 
+export async function getPostsByHashtag(hashtag: string): Promise<Post[]> {
+    try {
+        const postsCollection = collection(db, 'posts');
+        const q = query(
+            postsCollection,
+            where('hashtags', 'array-contains', `#${hashtag}`),
+            where('status', '==', 'published'),
+            orderBy('timestamp', 'desc')
+        );
+        const querySnapshot = await getDocs(q);
+        const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
+        return posts;
+    } catch (error) {
+        console.error("Error fetching posts by hashtag:", error);
+        return [];
+    }
+}
+
 export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
     if (!postIds || postIds.length === 0) {
         return [];
