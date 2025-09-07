@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { findOrCreateConversation } from "@/services/messageService";
 
 export function ProfileClientPage({ username }: { username: string }) {
-  const { user: authUser, isGuest } = useAuth();
+  const { user: authUser, loading: authLoading, isGuest } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -44,40 +44,41 @@ export function ProfileClientPage({ username }: { username: string }) {
     });
   }, [toast]);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!username) return;
-      setLoading(true);
-      setUserNotFound(false);
+  const fetchUserData = useCallback(async () => {
+    if (!username || authLoading) return;
+    setLoading(true);
+    setUserNotFound(false);
 
-      try {
-        const fetchedUser = await getUserByUsername(username);
+    try {
+      const fetchedUser = await getUserByUsername(username);
 
-        if (fetchedUser) {
-          setUser(fetchedUser);
-          const fetchedPosts = await getPostsByUserId(fetchedUser.id);
-          setUserPosts(fetchedPosts);
-          
-          const followers = fetchedUser.followers?.length || 0;
-          const following = fetchedUser.following?.length || 0;
-          setFollowCount({ followers, following });
+      if (fetchedUser) {
+        setUser(fetchedUser);
+        const fetchedPosts = await getPostsByUserId(fetchedUser.id);
+        setUserPosts(fetchedPosts);
+        
+        const followers = fetchedUser.followers?.length || 0;
+        const following = fetchedUser.following?.length || 0;
+        setFollowCount({ followers, following });
 
-          if (authUser && !isGuest) {
-            setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
-          }
-        } else {
-          setUserNotFound(true);
+        if (authUser && !isGuest) {
+          setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
         }
-      } catch (error) {
-          console.error("Failed to fetch user data:", error);
-          setUserNotFound(true);
-      } finally {
-        setLoading(false);
+      } else {
+        setUserNotFound(true);
       }
-    };
+    } catch (error) {
+        console.error("Failed to fetch user data:", error);
+        setUserNotFound(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [username, authUser, authLoading, isGuest]);
 
+
+  useEffect(() => {
     fetchUserData();
-  }, [username, authUser, isGuest]);
+  }, [fetchUserData]);
 
   const handleFollowToggle = async () => {
     if (!authUser || isGuest) {
@@ -285,12 +286,15 @@ export function ProfileClientPage({ username }: { username: string }) {
                             src={post.contentUrl}
                             className="object-cover w-full h-full transition-all duration-300 group-hover:opacity-80 group-hover:scale-110"
                           />
-                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white">
-                              <div className="flex items-center gap-1 font-bold">
-                                  <Icons.like className="h-5 w-5 fill-white" /> {post.likes}
+                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Icons.reels className="h-10 w-10 text-white" />
+                           </div>
+                          <div className="absolute bottom-2 left-2 text-white flex items-center gap-2 text-xs font-bold">
+                              <div className="flex items-center gap-1">
+                                  <Icons.like className="h-4 w-4 fill-white" /> {post.likes}
                               </div>
-                              <div className="flex items-center gap-1 font-bold">
-                                  <Icons.comment className="h-5 w-5 fill-white" /> {post.comments.length}
+                              <div className="flex items-center gap-1">
+                                  <Icons.comment className="h-4 w-4 fill-white" /> {post.comments.length}
                               </div>
                           </div>
                         </div>

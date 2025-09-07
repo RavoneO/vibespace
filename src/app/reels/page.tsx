@@ -45,7 +45,7 @@ export default function ReelsPage() {
           Reels
         </h1>
         <Button asChild>
-          <Link href="/reels/upload">
+          <Link href="/create">
             <Icons.create className="mr-2" />
             Upload Reel
           </Link>
@@ -69,7 +69,7 @@ export default function ReelsPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                   <div className="absolute bottom-0 left-0 p-2 text-white">
                     <p className="text-sm font-semibold truncate">
-                      {reel.caption}
+                      {reel.user.username}
                     </p>
                     <div className="flex items-center gap-2 text-xs">
                         <div className="flex items-center gap-1">
