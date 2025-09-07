@@ -1,4 +1,6 @@
 
+"use client";
+
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 

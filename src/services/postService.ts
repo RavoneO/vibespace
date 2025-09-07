@@ -1,4 +1,6 @@
 
+"use client";
+
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, limit } from 'firebase/firestore';
 import type { Post, Comment, User } from '@/lib/types';
