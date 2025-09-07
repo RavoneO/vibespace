@@ -23,6 +23,9 @@ const storage = getStorage(app);
 
 // Initialize App Check
 if (typeof window !== 'undefined') {
+  // Pass `true` to `isTokenAutoRefreshEnabled` to enable automatic token
+  // refreshment.
+  (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
   initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider('6Ld-pIQpAAAAA...'), // Replace with your reCAPTCHA site key
     isTokenAutoRefreshEnabled: true
