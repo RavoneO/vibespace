@@ -14,6 +14,7 @@ export default function WelcomePage() {
   const router = useRouter();
 
   useEffect(() => {
+    // If the auth state is resolved and a user exists, redirect them to the feed.
     if (!loading && user) {
       router.replace("/feed");
     }
@@ -24,6 +25,7 @@ export default function WelcomePage() {
     router.push("/feed");
   };
 
+  // While loading, or if the user is logged in (and about to be redirected), show a loading skeleton.
   if (loading || (!loading && user)) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background">
@@ -31,9 +33,9 @@ export default function WelcomePage() {
                 <div className="p-4 rounded-full bg-primary/10">
                    <Icons.sparkles className="h-12 w-12 text-primary animate-pulse" />
                 </div>
-                <Skeleton className="h-8 w-64" />
-                <Skeleton className="h-10 w-48" />
-                <Skeleton className="h-10 w-48" />
+                <h1 className="text-2xl font-bold">Vibespace</h1>
+                <p className="text-muted-foreground">Loading your experience...</p>
+                <Icons.spinner className="h-6 w-6 animate-spin text-primary" />
             </div>
         </div>
     );
