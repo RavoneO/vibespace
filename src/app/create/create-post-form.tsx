@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import Link from "next/link";
 
 const formSchema = z.object({
   caption: z.string().max(2200, "Caption is too long."),
@@ -38,7 +39,7 @@ const formSchema = z.object({
 export function CreatePostForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const [preview, setPreview] = useState<string | null>(null);
   const [mediaDataUri, setMediaDataUri] = useState<string | null>(null);
   const [fileType, setFileType] = useState<'image' | 'video' | null>(null);
@@ -56,6 +57,15 @@ export function CreatePostForm() {
     },
   });
 
+  const showLoginToast = () => {
+    toast({
+        title: "Create an account to post",
+        description: "Sign up or log in to share content with the community.",
+        variant: "destructive",
+        action: <Link href="/signup"><Button>Sign Up</Button></Link>
+    });
+  }
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -67,12 +77,17 @@ export function CreatePostForm() {
         setMediaDataUri(reader.result as string);
       };
       reader.readAsDataURL(file);
+      // Clear previous suggestions when a new file is selected
       setSuggestedHashtags([]);
       setSuggestedCaptions([]);
     }
   };
 
   const handleSuggestHashtags = async () => {
+    if (isGuest) {
+      showLoginToast();
+      return;
+    }
     if (!mediaDataUri) {
         toast({
             title: "No media selected",
@@ -104,6 +119,10 @@ export function CreatePostForm() {
   };
 
   const handleGenerateCaptions = async () => {
+    if (isGuest) {
+      showLoginToast();
+      return;
+    }
     if (!mediaDataUri) {
       toast({
         title: 'No media selected',
@@ -142,8 +161,8 @@ export function CreatePostForm() {
   }
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!user) {
-        toast({ title: "Please log in to post.", variant: "destructive" });
+    if (!user || isGuest) {
+        showLoginToast();
         return;
     }
     if (!fileType) return;
@@ -155,10 +174,8 @@ export function CreatePostForm() {
         description: "You can navigate away, the upload will continue in the background.",
     });
 
-    // Navigate away immediately so the UI is not blocked.
     router.push("/feed");
 
-    // Don't await this, let it run in the background
     const backgroundUpload = async () => {
         try {
             const file = values.file as File;
@@ -189,10 +206,6 @@ export function CreatePostForm() {
     };
     
     backgroundUpload();
-
-    // Set submitting to false immediately after starting the background task.
-    // NOTE: This is intentionally outside the background task.
-    setIsSubmitting(false);
   }
 
   return (
