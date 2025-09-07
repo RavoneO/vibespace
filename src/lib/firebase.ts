@@ -9,7 +9,7 @@ const firebaseConfig = {
   "appId": "1:473324197014:web:880dfa2_Super_Secret_AppId",
   "storageBucket": "vibespace-h7vsa.firebasestorage.app",
   "apiKey": "AIzaSyB7n06b7mDNbBwhMkrVLIcYRuyFgRyH5jk",
-"authDomain": "vibespace-h7vsa.firebaseapp.com",
+  "authDomain": "vibespace-h7vsa.firebaseapp.com",
   "measurementId": "",
   "messagingSenderId": "473324197014"
 };
@@ -23,7 +23,8 @@ const storage = getStorage(app);
 // Connect to emulators unconditionally for the dev environment
 // This needs to run on both server and client.
 try {
-  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  // Note: Auth emulator needs to connect to localhost, others to 127.0.0.1
+  connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
   connectStorageEmulator(storage, "127.0.0.1", 9199);
 } catch (e) {
