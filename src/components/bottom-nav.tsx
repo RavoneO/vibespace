@@ -18,14 +18,17 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { userProfile, isGuest } = useAuth();
   
   // Adjust profile link to point to the current user's profile
   const finalNavItems = navItems.map(item => {
-    if (item.href === "/profile" && user) {
-        // We'd ideally get the username from the user object here.
-        // For now, we rely on the profile page redirecting if not a specific user.
-      return { ...item, href: `/profile/${user.displayName || 'me'}` };
+    if (item.href === "/profile") {
+      if (isGuest) return { ...item, href: "/login" };
+      if (userProfile) {
+        return { ...item, href: `/profile/${userProfile.username}` };
+      }
+      // Fallback if profile is somehow not loaded, though it should be.
+      return { ...item, href: "/feed" };
     }
     return item;
   });

@@ -9,9 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
-import { getUserById, updateUserSettings } from "@/services/userService";
+import { updateUserSettings } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "@/lib/types";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,7 +52,7 @@ function SettingsItem({ label, value, isToggle, onToggle, checked, href, onClick
     <TooltipProvider>
         <Tooltip>
             <TooltipTrigger asChild>
-                {content}
+                <div className="w-full">{content}</div>
             </TooltipTrigger>
             {tooltip && <TooltipContent><p>{tooltip}</p></TooltipContent>}
         </Tooltip>
@@ -109,43 +108,34 @@ function SettingsSkeleton() {
 }
 
 export default function SettingsPage() {
-    const { user: authUser, isGuest } = useAuth();
+    const { user: authUser, userProfile, isGuest, loading } = useAuth();
     const { toast } = useToast();
-    const [userProfile, setUserProfile] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [settings, setSettings] = useState({
+        isPrivate: userProfile?.isPrivate || false,
+        showActivityStatus: userProfile?.showActivityStatus || false,
+    });
 
     useEffect(() => {
-        const fetchUserProfile = async () => {
-            if (authUser && !isGuest) {
-                try {
-                    setLoading(true);
-                    const profile = await getUserById(authUser.uid);
-                    setUserProfile(profile);
-                } catch (error) {
-                    console.error("Failed to fetch user profile", error);
-                    toast({ title: "Error", description: "Could not load your profile.", variant: "destructive" });
-                } finally {
-                    setLoading(false);
-                }
-            } else {
-                setLoading(false);
-            }
-        };
-        fetchUserProfile();
-    }, [authUser, isGuest, toast]);
+        if (userProfile) {
+            setSettings({
+                isPrivate: userProfile.isPrivate || false,
+                showActivityStatus: userProfile.showActivityStatus || false,
+            });
+        }
+    }, [userProfile]);
+
 
     const handleSettingChange = async (key: 'isPrivate' | 'showActivityStatus', value: boolean) => {
         if (!authUser || !userProfile) return;
         
-        // Optimistic update
-        setUserProfile(prev => prev ? { ...prev, [key]: value } : null);
+        const originalSettings = { ...settings };
+        setSettings(prev => ({ ...prev, [key]: value }));
 
         try {
             await updateUserSettings(authUser.uid, { [key]: value });
             toast({ title: "Settings updated!" });
         } catch (error) {
-            // Revert on error
-            setUserProfile(prev => prev ? { ...prev, [key]: !value } : null);
+            setSettings(originalSettings);
             console.error("Failed to update setting", error);
             toast({ title: "Update failed", description: "Your setting could not be saved.", variant: "destructive" });
         }
@@ -169,13 +159,14 @@ export default function SettingsPage() {
     };
 
     const isDisabled = isGuest || loading;
+    const profileLink = !isGuest && userProfile?.username ? `/profile/${userProfile.username}` : '/feed';
 
   return (
     <AppLayout>
       <div className="flex flex-col h-full">
         <header className="flex items-center p-4 border-b bg-background sticky top-0 z-10">
           <Button asChild variant="ghost" size="icon">
-            <Link href={!isGuest && authUser?.displayName ? `/profile/${authUser.displayName}` : '/feed'}>
+            <Link href={profileLink}>
               <Icons.back />
               <span className="sr-only">Back</span>
             </Link>
@@ -197,14 +188,14 @@ export default function SettingsPage() {
                     <SettingsItem 
                         label="Private Account" 
                         isToggle 
-                        checked={userProfile?.isPrivate || false} 
+                        checked={settings.isPrivate} 
                         onToggle={(checked) => handleSettingChange('isPrivate', checked)}
                         disabled={isDisabled}
                     />
                     <SettingsItem 
                         label="Show Activity Status" 
                         isToggle 
-                        checked={userProfile?.showActivityStatus || false} 
+                        checked={settings.showActivityStatus} 
                         onToggle={(checked) => handleSettingChange('showActivityStatus', checked)}
                         disabled={isDisabled}
                     />

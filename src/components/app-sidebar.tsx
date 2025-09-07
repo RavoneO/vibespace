@@ -16,9 +16,6 @@ import { Icons } from "@/components/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
-import type { User } from "@/lib/types";
-import { getUserById } from "@/services/userService";
 import { Skeleton } from "./ui/skeleton";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -27,9 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
-  const { user: authUser, isGuest, setAsGuest } = useAuth();
-  const [userProfile, setUserProfile] = useState<User | null>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const { userProfile, isGuest, setAsGuest, loading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { state: sidebarState, toggleSidebar } = useSidebar();
@@ -41,27 +36,6 @@ export function AppSidebar() {
     { href: "/messages", icon: Icons.messages, label: "Messages" },
     { href: "/profile", icon: Icons.profile, label: "Profile" },
   ];
-
-  useEffect(() => {
-    async function fetchUserProfile() {
-        if (authUser && !isGuest) {
-            setIsLoadingProfile(true);
-            try {
-              const profile = await getUserById(authUser.uid);
-              setUserProfile(profile);
-            } catch (error) {
-              console.error("Error fetching user profile", error);
-              setUserProfile(null);
-            } finally {
-              setIsLoadingProfile(false);
-            }
-        } else {
-            setUserProfile(null);
-            setIsLoadingProfile(false);
-        }
-    }
-    fetchUserProfile();
-  }, [authUser, isGuest]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -88,9 +62,10 @@ export function AppSidebar() {
         <SidebarMenu>
           {menuItems.map((item) => {
              const isActive = (item.href === "/feed" && pathname === item.href) || (item.href !== "/feed" && pathname.startsWith(item.href) && item.href !== "/profile") || (item.href === "/profile" && userProfile && pathname.startsWith(`/profile/${userProfile.username}`));
+             const finalHref = item.href === '/profile' ? (userProfile ? `/profile/${userProfile.username}` : (isGuest ? '/login' : '/feed')) : item.href;
              return (
                  <SidebarMenuItem key={item.label}>
-                    <Link href={item.href === '/profile' && userProfile ? `/profile/${userProfile.username}`: item.href} className="w-full">
+                    <Link href={finalHref} className="w-full">
                         <SidebarMenuButton
                         className="w-full justify-start"
                         variant="ghost"
@@ -124,7 +99,7 @@ export function AppSidebar() {
                     Log In
                 </Button>
             </div>
-        ) : isLoadingProfile ? (
+        ) : authLoading ? (
             <div className="flex items-center gap-3 p-2">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className={cn("flex-1 space-y-1", sidebarState === 'collapsed' && 'hidden')}>

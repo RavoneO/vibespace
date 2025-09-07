@@ -8,17 +8,21 @@ import {
   useEffect,
   useState,
 } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, User as FirebaseAuthUser } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { usePathname, useRouter } from "next/navigation";
+import { User } from "@/lib/types";
+import { getUserById } from "@/services/userService";
 
 export const AuthContext = createContext<{
-  user: User | null;
+  user: FirebaseAuthUser | null;
+  userProfile: User | null;
   loading: boolean;
   isGuest: boolean;
   setAsGuest: (isGuest: boolean) => void;
 }>({
   user: null,
+  userProfile: null,
   loading: true,
   isGuest: false,
   setAsGuest: () => {},
@@ -34,7 +38,8 @@ const PROTECTED_ROUTES = ["/feed", "/create", "/reels", "/settings", "/messages"
 const PUBLIC_ROUTES = ["/", "/login", "/signup"];
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirebaseAuthUser | null>(null);
+  const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const router = useRouter();
@@ -44,10 +49,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const guestStatus = sessionStorage.getItem("isGuest") === "true";
     setIsGuest(guestStatus);
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         sessionStorage.removeItem("isGuest");
         setIsGuest(false);
+        const profile = await getUserById(user.uid);
+        setUserProfile(profile);
+      } else {
+        setUserProfile(null);
       }
       setUser(user);
       setLoading(false);
@@ -79,6 +88,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const value = {
     user,
+    userProfile,
     loading,
     isGuest,
     setAsGuest,
