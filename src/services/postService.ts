@@ -72,7 +72,6 @@ export async function getPostById(postId: string): Promise<Post | null> {
         if (!postDoc.exists()) {
             return null;
         }
-        // Use the full processing logic including all comments
         const data = postDoc.data();
         if (!data) return null;
 
@@ -82,6 +81,7 @@ export async function getPostById(postId: string): Promise<Post | null> {
         const comments: Comment[] = await Promise.all(
             commentsData.map(async (comment: any) => ({
                 ...comment,
+                id: comment.id || Math.random().toString(36).substring(2, 15), // fallback id
                 user: await getFullUser(comment.userId)
             }))
         );
@@ -95,7 +95,7 @@ export async function getPostById(postId: string): Promise<Post | null> {
           hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
           likes: data.likes || 0,
           likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
-          comments, // Return all comments for the single post view
+          comments,
           timestamp: data.timestamp,
           status: data.status,
           dataAiHint: data.dataAiHint,
