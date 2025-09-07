@@ -58,10 +58,12 @@ export function ProfileClientPage({ username }: { username: string }) {
         const followers = fetchedUser.followers?.length || 0;
         const following = fetchedUser.following?.length || 0;
         setFollowCount({ followers, following });
-
+        
+        // This can now safely run after fetchedUser is confirmed.
         if (authUser && !isGuest) {
           setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
         }
+
       } else {
         setUserNotFound(true);
       }
@@ -79,6 +81,15 @@ export function ProfileClientPage({ username }: { username: string }) {
         fetchUserData();
     }
   }, [username, fetchUserData]);
+  
+  // Separate effect to update following status when authUser loads,
+  // without re-fetching all profile data.
+  useEffect(() => {
+      if(user && authUser && !isGuest) {
+          setIsFollowing(user.followers?.includes(authUser.uid) || false);
+      }
+  }, [user, authUser, isGuest]);
+
 
   const handleFollowToggle = async () => {
     if (!authUser || isGuest) {
@@ -220,10 +231,10 @@ export function ProfileClientPage({ username }: { username: string }) {
                 <div className="mt-4 flex justify-center sm:justify-start">
                     {!isCurrentUserProfile && (
                        <>
-                        <Button onClick={handleFollowToggle} disabled={isFollowLoading || isGuest || authLoading}>
+                        <Button onClick={handleFollowToggle} disabled={isFollowLoading || authLoading}>
                             {isFollowLoading ? <Icons.spinner className="animate-spin" /> : (isFollowing ? "Following" : "Follow")}
                         </Button>
-                        <Button variant="outline" className="ml-2" onClick={handleMessage} disabled={isMessageLoading || isGuest || authLoading}>
+                        <Button variant="outline" className="ml-2" onClick={handleMessage} disabled={isMessageLoading || authLoading}>
                            {isMessageLoading ? <Icons.spinner className="animate-spin" /> : "Message"}
                         </Button>
                        </>

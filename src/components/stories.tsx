@@ -2,23 +2,24 @@
 "use client"
 
 import * as React from "react";
-import type { Story } from "@/lib/types";
+import type { Story, User as UserType } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Icons } from "./icons";
 import { StoryViewer } from "./story-viewer";
 import { Skeleton } from "./ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { createStory } from "@/services/storyService";
+import { createStory, updateStory } from "@/services/storyService";
 import { uploadFile } from "@/services/storageService";
 import Link from "next/link";
 import { Button } from "./ui/button";
+import { getUserById } from "@/services/userService";
 
 interface StoriesProps {
     stories: Story[];
 }
 
-export function Stories({ stories }: StoriesProps) {
+export function Stories({ stories: initialStories }: StoriesProps) {
     const { user: authUser, isGuest } = useAuth();
     const { toast } = useToast();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -26,12 +27,23 @@ export function Stories({ stories }: StoriesProps) {
     const [selectedStoryIndex, setSelectedStoryIndex] = React.useState(0);
     const [loading, setLoading] = React.useState(true);
     const [isUploading, setIsUploading] = React.useState(false);
+    const [stories, setStories] = React.useState(initialStories);
+    const [currentUserProfile, setCurrentUserProfile] = React.useState<UserType | null>(null);
 
     React.useEffect(() => {
-        if (stories) {
-            setLoading(false);
-        }
-    }, [stories]);
+        setStories(initialStories);
+        setLoading(false);
+    }, [initialStories]);
+
+    React.useEffect(() => {
+        const fetchUserProfile = async () => {
+            if (authUser && !isGuest) {
+                const profile = await getUserById(authUser.uid);
+                setCurrentUserProfile(profile);
+            }
+        };
+        fetchUserProfile();
+    }, [authUser, isGuest]);
 
     const openStory = (index: number) => {
         setSelectedStoryIndex(index);
@@ -58,22 +70,33 @@ export function Stories({ stories }: StoriesProps) {
         toast({ title: "Uploading your story..." });
     
         const backgroundUpload = async () => {
+          let storyId = '';
           try {
             const fileType = file.type.startsWith('image') ? 'image' : 'video';
-            const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${Date.now()}_${file.name}`);
-    
-            await createStory({
+            
+            storyId = await createStory({
               userId: authUser.uid,
               type: fileType,
-              contentUrl,
               duration: 5, // default duration
+            });
+
+            const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${storyId}_${file.name}`);
+    
+            await updateStory(storyId, {
+              contentUrl,
               status: 'published'
             });
     
             toast({ title: "Story posted successfully!" });
-            // You might want to trigger a refresh of the stories here
+            // Refresh stories after upload
+            // This is a simple refresh, a more optimized approach would be to just add the new story to the local state
+            const updatedStories = await getStories();
+            setStories(updatedStories);
           } catch (error) {
             console.error("Error creating story:", error);
+            if (storyId) {
+                await updateStory(storyId, { status: 'failed' });
+            }
             toast({
               title: "Failed to post story",
               description: "Please try again later.",
@@ -126,10 +149,10 @@ export function Stories({ stories }: StoriesProps) {
                             <Avatar className="w-16 h-16 mx-auto border-2 border-dashed border-muted-foreground">
                                 {currentUserStory ? (
                                      <AvatarImage src={currentUserStory.user.avatar} />
-                                ) : authUser ? (
-                                    <AvatarImage src={authUser.photoURL || ''} />
+                                ) : currentUserProfile ? (
+                                    <AvatarImage src={currentUserProfile.avatar} />
                                 ) : null}
-                                <AvatarFallback>{authUser?.displayName?.charAt(0) || 'G'}</AvatarFallback>
+                                <AvatarFallback>{currentUserProfile?.name?.charAt(0) || 'G'}</AvatarFallback>
                             </Avatar>
                             <button 
                                 onClick={handleAddStoryClick} 

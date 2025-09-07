@@ -77,12 +77,21 @@ export async function sendMessage(conversationId: string, senderId: string, text
 
 // Start a new conversation or get an existing one
 export async function findOrCreateConversation(currentUserId: string, targetUserId: string): Promise<string> {
+    if (!currentUserId || !targetUserId) {
+      throw new Error("Both currentUserId and targetUserId are required.");
+    }
+    if (currentUserId === targetUserId) {
+      throw new Error("Cannot create a conversation with yourself.");
+    }
+  
     const convosCollection = collection(db, 'conversations');
     
     // Check if a conversation between these two users already exists
-    const q = query(convosCollection, 
-        where('userIds', 'in', [[currentUserId, targetUserId], [targetUserId, currentUserId]])
-    );
+    // Firestore does not support 'array-contains-all' with two different values in a single query in all environments.
+    // A common workaround is to store a sorted key.
+    const userIds = [currentUserId, targetUserId].sort();
+    
+    const q = query(convosCollection, where('userIds', '==', userIds));
 
     const querySnapshot = await getDocs(q);
     
@@ -92,7 +101,7 @@ export async function findOrCreateConversation(currentUserId: string, targetUser
     } else {
         // Create a new conversation
         const newConvoRef = await addDoc(convosCollection, {
-            userIds: [currentUserId, targetUserId],
+            userIds: userIds,
             timestamp: serverTimestamp(),
             lastMessage: null,
         });

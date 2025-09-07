@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Icons } from "@/components/ui/icons";
+import { Icons } from "@/components/icons";
 import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,6 +125,7 @@ export function UploadReelForm() {
         } catch (error) {
             console.error("Error creating reel in background:", error);
             // Since the user has already navigated away, a toast here might be confusing.
+            // A more robust solution might use a global state manager to show a failed toast.
         }
     };
 
