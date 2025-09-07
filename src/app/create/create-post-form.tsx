@@ -30,11 +30,33 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const formSchema = z.object({
   caption: z.string().max(2200, "Caption is too long."),
   file: z.any().refine((file) => file, "Please upload an image or video."),
 });
+
+function GuestPrompt() {
+    return (
+        <Card className="w-full max-w-lg mx-auto">
+            <CardHeader>
+                <CardTitle className="text-center">Create an Account to Post</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+                <p className="text-muted-foreground">You need to be logged in to create a post and share it with the community.</p>
+                <div className="flex gap-4 justify-center">
+                    <Button asChild>
+                        <Link href="/login">Log In</Link>
+                    </Button>
+                    <Button asChild variant="secondary">
+                        <Link href="/signup">Sign Up</Link>
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 export function CreatePostForm() {
   const router = useRouter();
@@ -84,10 +106,6 @@ export function CreatePostForm() {
   };
 
   const handleSuggestHashtags = async () => {
-    if (isGuest) {
-      showLoginToast();
-      return;
-    }
     if (!mediaDataUri) {
         toast({
             title: "No media selected",
@@ -119,10 +137,6 @@ export function CreatePostForm() {
   };
 
   const handleGenerateCaptions = async () => {
-    if (isGuest) {
-      showLoginToast();
-      return;
-    }
     if (!mediaDataUri) {
       toast({
         title: 'No media selected',
@@ -161,7 +175,7 @@ export function CreatePostForm() {
   }
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!user || isGuest) {
+    if (!user) { // Should not happen if guest UI is shown, but as a safeguard.
         showLoginToast();
         return;
     }
@@ -206,6 +220,10 @@ export function CreatePostForm() {
     };
     
     backgroundUpload();
+  }
+  
+  if (isGuest) {
+      return <GuestPrompt />;
   }
 
   return (

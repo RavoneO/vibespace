@@ -23,16 +23,40 @@ import { Textarea } from "@/components/ui/textarea";
 import { Icons } from "@/components/icons";
 import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 
 const formSchema = z.object({
   caption: z.string().max(1000, "Caption is too long."),
   file: z.any().refine((file) => file, "Please upload a video."),
 });
 
+
+function GuestPrompt() {
+    return (
+        <Card className="w-full max-w-lg mx-auto">
+            <CardHeader>
+                <CardTitle className="text-center">Create an Account to Upload</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+                <p className="text-muted-foreground">You need to be logged in to upload a reel for the community to see.</p>
+                <div className="flex gap-4 justify-center">
+                    <Button asChild>
+                        <Link href="/login">Log In</Link>
+                    </Button>
+                    <Button asChild variant="secondary">
+                        <Link href="/signup">Sign Up</Link>
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 export function UploadReelForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const [preview, setPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -106,9 +130,10 @@ export function UploadReelForm() {
 
     // Start the background upload but don't wait for it to finish.
     backgroundUpload();
+  }
 
-    // Set submitting to false immediately so the UI is not blocked.
-    setIsSubmitting(false);
+  if (isGuest) {
+      return <GuestPrompt />
   }
 
   return (
