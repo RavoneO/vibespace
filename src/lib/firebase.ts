@@ -1,8 +1,8 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
-import { getStorage, connectStorageEmulator } from "firebase/storage";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   "projectId": "vibespace-h7vsa",
@@ -20,16 +20,16 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Connect to emulators unconditionally for the dev environment
-// This needs to run on both server and client.
-try {
-  // Note: Auth emulator needs to connect to localhost, others to 127.0.0.1
-  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
-  connectFirestoreEmulator(db, "127.0.0.1", 8080);
-  connectStorageEmulator(storage, "127.0.0.1", 9199);
-} catch (e) {
-    console.error('Error connecting to emulators. This is expected in production.', e);
-}
+// NOTE: The emulator connections have been removed for production.
+// If you want to connect to the emulators for local development,
+// you can uncomment the following lines.
+// try {
+//   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+//   connectFirestoreEmulator(db, "127.0.0.1", 8080);
+//   connectStorageEmulator(storage, "127.0.0.1", 9199);
+// } catch (e) {
+//     console.error('Error connecting to emulators. This is expected in production.', e);
+// }
 
 
 export { app, auth, db, storage };
