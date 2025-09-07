@@ -21,7 +21,7 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 // Connect to emulators if running in a development environment
-if (typeof window !== 'undefined' && window.location.hostname === "localhost") {
+if (typeof window !== 'undefined' && window.location.hostname.includes('localhost')) {
   console.log("Connecting to Firebase Emulators");
   // Point to the emulators running on your local machine
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
