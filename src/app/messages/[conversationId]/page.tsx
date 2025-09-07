@@ -23,7 +23,7 @@ function ChatBubble({ message, isOwnMessage }: { message: Message; isOwnMessage:
     return (
         <div className={cn("flex items-end gap-2", isOwnMessage ? "justify-end" : "justify-start")}>
             <div className={cn(
-                "max-w-xs md:max-w-md lg:max-w-lg rounded-2xl px-4 py-2",
+                "max-w-xs md:max-w-md lg:max-w-lg rounded-2xl px-4 py-3",
                 isOwnMessage ? "bg-primary text-primary-foreground" : "bg-secondary"
             )}>
                 <p className="text-sm">{message.text}</p>
@@ -94,9 +94,9 @@ export default function ChatPage({ params }: { params: { conversationId: string 
                         <Skeleton className="h-6 w-32" />
                     </header>
                     <main className="flex-1 p-4 space-y-4">
-                        <Skeleton className="h-10 w-48 rounded-lg" />
-                        <Skeleton className="h-10 w-64 rounded-lg ml-auto" />
-                        <Skeleton className="h-10 w-32 rounded-lg" />
+                        <Skeleton className="h-12 w-48 rounded-lg" />
+                        <Skeleton className="h-12 w-64 rounded-lg ml-auto" />
+                        <Skeleton className="h-12 w-32 rounded-lg" />
                     </main>
                     <footer className="p-4 border-t sticky bottom-0 bg-background z-10">
                         <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ export default function ChatPage({ params }: { params: { conversationId: string 
 
     return (
         <AppLayout>
-            <div className="flex flex-col h-screen">
+            <div className="flex flex-col h-screen bg-card text-card-foreground">
                 <header className="flex items-center p-2.5 border-b gap-4 sticky top-0 bg-background z-10">
                     <Button asChild variant="ghost" size="icon">
                         <Link href="/messages">
@@ -149,6 +149,7 @@ export default function ChatPage({ params }: { params: { conversationId: string 
                             placeholder="Type a message..."
                             disabled={isSending || !authUser}
                             autoComplete="off"
+                            className="bg-muted border-none focus-visible:ring-primary"
                         />
                         <Button type="submit" size="icon" disabled={isSending || !newMessage.trim() || !authUser}>
                             {isSending ? <Icons.spinner className="animate-spin" /> : <Icons.send />}

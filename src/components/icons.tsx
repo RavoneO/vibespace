@@ -30,6 +30,8 @@ import {
   MessageSquare,
   Plus,
   LogOut,
+  Pencil,
+  Camera,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -66,6 +68,8 @@ export const Icons = {
   messagesAndStoryReplies: MessageSquare,
   plus: Plus,
   logout: LogOut,
+  pencil: Pencil,
+  camera: Camera,
 };
 
 export type Icon = LucideIcon;
