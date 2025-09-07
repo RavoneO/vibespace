@@ -71,7 +71,6 @@ export default function UserProfilePage({
             setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
           }
         } else {
-          console.error("User not found.");
           setUserNotFound(true);
         }
       } catch (error) {
