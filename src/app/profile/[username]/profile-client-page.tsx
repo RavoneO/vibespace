@@ -3,7 +3,6 @@
 import AppLayout from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { notFound, useRouter } from "next/navigation";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,30 +22,33 @@ function ProfilePageSkeleton() {
       <AppLayout>
           <main className="flex-1 overflow-y-auto">
               <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
+                <header className="flex items-center p-4">
+                  <Skeleton className="h-8 w-48" />
+                  <Skeleton className="h-8 w-8 ml-auto" />
+                </header>
+                  <div className="flex items-center gap-6 sm:gap-10 p-4">
                       <Skeleton className="w-24 h-24 sm:w-36 sm:h-36 rounded-full" />
-                      <div className="flex-1 space-y-3 text-center sm:text-left">
-                          <Skeleton className="h-8 w-48 mx-auto sm:mx-0" />
-                          <Skeleton className="h-4 w-32 mx-auto sm:mx-0" />
-                          <Skeleton className="h-12 w-full max-w-prose" />
-                          <div className="flex justify-center sm:justify-start gap-2">
-                              <Skeleton className="h-10 w-24" />
-                              <Skeleton className="h-10 w-24" />
-                          </div>
-                      </div>
-                  </div>
-                  <Separator className="my-6" />
-                  <div className="flex justify-around text-center">
-                      {[...Array(3)].map((_, i) => (
+                      <div className="flex-1 flex justify-around text-center">
+                         {[...Array(3)].map((_, i) => (
                           <div key={i} className="space-y-1">
                               <Skeleton className="h-6 w-12 mx-auto" />
                               <Skeleton className="h-4 w-16 mx-auto" />
                           </div>
                       ))}
+                      </div>
                   </div>
-                   <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4 mt-8">
+                  <div className="px-4 space-y-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-10 w-full max-w-prose" />
+                  </div>
+                   <div className="flex gap-2 p-4">
+                        <Skeleton className="h-10 flex-1" />
+                        <Skeleton className="h-10 flex-1" />
+                    </div>
+
+                   <div className="grid grid-cols-3 gap-1 mt-4">
                       {[...Array(6)].map((_, i) => (
-                          <div key={i} className="relative aspect-square w-full overflow-hidden rounded-md">
+                          <div key={i} className="relative aspect-square w-full overflow-hidden">
                               <Skeleton className="w-full h-full" />
                           </div>
                       ))}
@@ -86,7 +88,6 @@ export function ProfileClientPage({ username }: { username: string }) {
 
   const fetchUserData = useCallback(async () => {
     try {
-      // Don't set loading to true here to prevent skeleton flash on auth change
       const fetchedUser = await getUserByUsername(username);
 
       if (fetchedUser) {
@@ -121,13 +122,10 @@ export function ProfileClientPage({ username }: { username: string }) {
     }
   }, [username, fetchUserData]);
   
-  // Separate effect to update following status when authUser loads,
-  // without re-fetching all profile data.
   useEffect(() => {
       if(user && authUser && !isGuest) {
           setIsFollowing(user.followers?.includes(authUser.uid) || false);
       }
-      // If user is guest, always set following to false
       if(isGuest) {
           setIsFollowing(false);
       }
@@ -144,7 +142,6 @@ export function ProfileClientPage({ username }: { username: string }) {
     setIsFollowLoading(true);
     const originalIsFollowing = isFollowing;
     
-    // Optimistic UI update
     setIsFollowing(!originalIsFollowing);
     setFollowCount(prev => ({
         ...prev,
@@ -154,7 +151,6 @@ export function ProfileClientPage({ username }: { username: string }) {
     try {
         await toggleFollow(authUser.uid, user.id);
     } catch (error) {
-        // Revert UI on error
         setIsFollowing(originalIsFollowing);
         setFollowCount(prev => ({
             ...prev,
@@ -195,8 +191,6 @@ export function ProfileClientPage({ username }: { username: string }) {
   }
 
   if (!user) {
-    // This case should ideally not be reached if loading and notFound are handled,
-    // but it's a good fallback.
     return <ProfilePageSkeleton />;
   }
 
@@ -211,49 +205,21 @@ export function ProfileClientPage({ username }: { username: string }) {
   return (
     <AppLayout>
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
-        <header className="flex items-center p-4">
-            <h1 className="text-lg font-semibold flex-1">@{user.username}</h1>
-            <div className="flex items-center gap-2">
-                {isCurrentUserProfile && (
-                    <Button asChild variant="ghost" size="icon">
-                        <Link href="/settings">
-                            <Icons.settings className="h-5 w-5" />
-                            <span className="sr-only">Settings</span>
-                        </Link>
-                    </Button>
-                )}
-            </div>
+        <header className="flex items-center justify-between p-4">
+            <h1 className="text-xl font-bold">@{user.username}</h1>
+            <Button variant="ghost" size="icon">
+              <Icons.menu />
+            </Button>
         </header>
-
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
-              <Avatar className="w-24 h-24 sm:w-36 sm:h-36 border-4 border-background ring-2 ring-primary">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="text-4xl">
-                  {user.name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 text-center sm:text-left">
-                <h2 className="text-2xl font-bold">{user.name}</h2>
-                <p className="text-muted-foreground">@{user.username}</p>
-                <p className="mt-3 text-sm max-w-prose">{user.bio}</p>
-                <div className="mt-4 flex justify-center sm:justify-start">
-                    {!isCurrentUserProfile && (
-                       <>
-                        <Button onClick={handleFollowToggle} disabled={isFollowLoading || authLoading}>
-                            {isFollowLoading ? <Icons.spinner className="animate-spin" /> : (isFollowing ? "Following" : "Follow")}
-                        </Button>
-                        <Button variant="outline" className="ml-2" onClick={handleMessage} disabled={isMessageLoading || authLoading}>
-                           {isMessageLoading ? <Icons.spinner className="animate-spin" /> : "Message"}
-                        </Button>
-                       </>
-                    )}
-                </div>
-              </div>
-            </div>
-            <Separator className="my-6" />
-            <div className="flex justify-around text-center">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex items-center gap-6 sm:gap-10">
+            <Avatar className="w-20 h-20 sm:w-24 sm:h-24 border-4 border-background ring-2 ring-primary">
+              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarFallback className="text-3xl">
+                {user.name.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 flex justify-around text-center">
               {stats.map((stat) => (
                 <div key={stat.label}>
                   <p className="font-bold text-lg">{stat.value}</p>
@@ -262,29 +228,50 @@ export function ProfileClientPage({ username }: { username: string }) {
               ))}
             </div>
           </div>
-          <Tabs defaultValue="posts" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="posts"><Icons.create className="mr-2 h-4 w-4" /> Posts</TabsTrigger>
-              <TabsTrigger value="reels"><Icons.reels className="mr-2 h-4 w-4" /> Reels</TabsTrigger>
-              <TabsTrigger value="tagged"><Icons.bookmark className="mr-2 h-4 w-4" /> Tagged</TabsTrigger>
+          <div className="mt-4">
+              <h2 className="text-lg font-semibold">{user.name}</h2>
+              <p className="text-sm text-muted-foreground">{user.bio}</p>
+          </div>
+          <div className="mt-4 flex gap-2">
+            {isCurrentUserProfile ? (
+              <Button asChild variant="secondary" className="flex-1">
+                <Link href="/settings/profile/edit">Edit Profile</Link>
+              </Button>
+            ) : (
+              <>
+                <Button onClick={handleFollowToggle} disabled={isFollowLoading || authLoading} className="flex-1">
+                    {isFollowLoading ? <Icons.spinner className="animate-spin" /> : (isFollowing ? "Following" : "Follow")}
+                </Button>
+                <Button variant="secondary" className="flex-1" onClick={handleMessage} disabled={isMessageLoading || authLoading}>
+                   {isMessageLoading ? <Icons.spinner className="animate-spin" /> : "Message"}
+                </Button>
+              </>
+            )}
+          </div>
+          
+          <Tabs defaultValue="posts" className="w-full mt-6">
+            <TabsList className="grid w-full grid-cols-3 bg-transparent">
+              <TabsTrigger value="posts" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.grid className="h-5 w-5" /></TabsTrigger>
+              <TabsTrigger value="reels" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.reels className="h-5 w-5" /></TabsTrigger>
+              <TabsTrigger value="tagged" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.bookmark className="h-5 w-5" /></TabsTrigger>
             </TabsList>
-            <TabsContent value="posts" className="p-2 sm:p-4">
+            <TabsContent value="posts" className="mt-0">
               {userPosts.filter(p => p.type === 'image').length > 0 ? (
-                <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4">
+                <div className="grid grid-cols-3 gap-0.5">
                   {userPosts.filter(p => p.type === 'image').map((post) => (
-                    <div key={post.id} className="relative aspect-square w-full overflow-hidden rounded-md group">
+                    <div key={post.id} className="relative aspect-square w-full overflow-hidden group">
                       <Image
                         src={post.contentUrl}
                         alt={post.caption}
                         fill
-                        className="object-cover transition-all duration-300 group-hover:opacity-80 group-hover:scale-110"
+                        className="object-cover transition-all duration-300 group-hover:opacity-80"
                         data-ai-hint={post.dataAiHint}
                       />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white">
-                          <div className="flex items-center gap-1 font-bold">
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white">
+                          <div className="flex items-center gap-1 font-bold text-sm">
                               <Icons.like className="h-5 w-5 fill-white" /> {post.likes}
                           </div>
-                          <div className="flex items-center gap-1 font-bold">
+                          <div className="flex items-center gap-1 font-bold text-sm">
                               <Icons.comment className="h-5 w-5 fill-white" /> {post.comments.length}
                           </div>
                       </div>
@@ -293,24 +280,24 @@ export function ProfileClientPage({ username }: { username: string }) {
                 </div>
               ) : (
                 <div className="text-center text-muted-foreground py-24">
-                    <Icons.create className="mx-auto h-12 w-12" />
+                    <Icons.camera className="mx-auto h-12 w-12" />
                     <p className="mt-4 font-semibold">No posts yet</p>
                 </div>
               )}
             </TabsContent>
-            <TabsContent value="reels">
+            <TabsContent value="reels" className="mt-0">
                  {userPosts.filter(p => p.type === 'video').length > 0 ? (
-                    <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4">
+                    <div className="grid grid-cols-3 gap-0.5">
                       {userPosts.filter(p => p.type === 'video').map((post) => (
-                        <div key={post.id} className="relative aspect-square w-full overflow-hidden rounded-md group">
+                        <div key={post.id} className="relative aspect-[9/16] w-full overflow-hidden group">
                           <video
                             src={post.contentUrl}
-                            className="object-cover w-full h-full transition-all duration-300 group-hover:opacity-80 group-hover:scale-110"
+                            className="object-cover w-full h-full transition-all duration-300"
                           />
                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <Icons.reels className="h-10 w-10 text-white" />
                            </div>
-                          <div className="absolute bottom-2 left-2 text-white flex items-center gap-2 text-xs font-bold">
+                          <div className="absolute bottom-2 left-2 text-white flex items-center gap-2 text-xs font-bold bg-black/30 rounded-full px-2 py-1">
                               <div className="flex items-center gap-1">
                                   <Icons.like className="h-4 w-4 fill-white" /> {post.likes}
                               </div>
@@ -328,7 +315,7 @@ export function ProfileClientPage({ username }: { username: string }) {
                     </div>
                  )}
             </TabsContent>
-            <TabsContent value="tagged">
+            <TabsContent value="tagged" className="mt-0">
                 <div className="text-center text-muted-foreground py-24">
                     <Icons.bookmark className="mx-auto h-12 w-12" />
                     <p className="mt-4 font-semibold">No tagged posts</p>
@@ -340,5 +327,3 @@ export function ProfileClientPage({ username }: { username: string }) {
     </AppLayout>
   );
 }
-
-    

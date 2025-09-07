@@ -32,6 +32,8 @@ import {
   LogOut,
   Pencil,
   Camera,
+  Grid,
+  Menu,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -70,6 +72,8 @@ export const Icons = {
   logout: LogOut,
   pencil: Pencil,
   camera: Camera,
+  grid: Grid,
+  menu: Menu,
 };
 
 export type Icon = LucideIcon;
