@@ -8,7 +8,7 @@ import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { getUserByUsername, toggleFollow } from "@/services/userService";
 import { getPostsByUserId, getSavedPosts } from "@/services/postService";
 import type { User, Post } from "@/lib/types";
@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { findOrCreateConversation } from "@/services/messageService";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { UserPosts, PostGridSkeleton } from "./user-posts";
 
 function ProfilePageSkeleton() {
   return (
@@ -67,7 +68,7 @@ export function ProfileClientPage({ username }: { username: string }) {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
-  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [postCount, setPostCount] = useState(0);
   const [savedPosts, setSavedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -94,8 +95,9 @@ export function ProfileClientPage({ username }: { username: string }) {
 
       if (fetchedUser) {
         setUser(fetchedUser);
-        const fetchedPosts = await getPostsByUserId(fetchedUser.id);
-        setUserPosts(fetchedPosts);
+        // We will fetch posts separately now, but we can get the count from the user object if we stored it
+        // For now, let's assume we don't have it and will get it from the posts query.
+        // This is a placeholder, the actual count will come from the UserPosts component.
         
         if (fetchedUser.savedPosts && fetchedUser.savedPosts.length > 0) {
             const fetchedSavedPosts = await getSavedPosts(fetchedUser.savedPosts);
@@ -211,7 +213,7 @@ export function ProfileClientPage({ username }: { username: string }) {
   const isCurrentUserProfile = authUser?.uid === user.id;
 
   const stats = [
-    { label: "Posts", value: userPosts.length },
+    { label: "Posts", value: postCount },
     { label: "Followers", value: followCount.followers },
     { label: "Following", value: followCount.following },
   ];
@@ -245,7 +247,7 @@ export function ProfileClientPage({ username }: { username: string }) {
             <div className="flex-1 flex justify-around text-center">
               {stats.map((stat) => (
                 <div key={stat.label}>
-                  <p className="font-bold text-lg">{stat.value}</p>
+                  <p className="font-bold text-lg">{stat.label === 'Posts' ? postCount : stat.value}</p>
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
                 </div>
               ))}
@@ -278,66 +280,9 @@ export function ProfileClientPage({ username }: { username: string }) {
               <TabsTrigger value="reels" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.reels className="h-5 w-5" /></TabsTrigger>
               <TabsTrigger value="saved" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.bookmark className="h-5 w-5" /></TabsTrigger>
             </TabsList>
-            <TabsContent value="posts" className="mt-0">
-              {userPosts.filter(p => p.type === 'image').length > 0 ? (
-                <div className="grid grid-cols-3 gap-0.5">
-                  {userPosts.filter(p => p.type === 'image').map((post) => (
-                    <div key={post.id} className="relative aspect-square w-full overflow-hidden group">
-                      <Image
-                        src={post.contentUrl}
-                        alt={post.caption}
-                        fill
-                        className="object-cover transition-all duration-300 group-hover:opacity-80"
-                        data-ai-hint={post.dataAiHint}
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white">
-                          <div className="flex items-center gap-1 font-bold text-sm">
-                              <Icons.like className="h-5 w-5 fill-white" /> {post.likes}
-                          </div>
-                          <div className="flex items-center gap-1 font-bold text-sm">
-                              <Icons.comment className="h-5 w-5 fill-white" /> {post.comments.length}
-                          </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground py-24">
-                    <Icons.camera className="mx-auto h-12 w-12" />
-                    <p className="mt-4 font-semibold">No posts yet</p>
-                </div>
-              )}
-            </TabsContent>
-            <TabsContent value="reels" className="mt-0">
-                 {userPosts.filter(p => p.type === 'video').length > 0 ? (
-                    <div className="grid grid-cols-3 gap-0.5">
-                      {userPosts.filter(p => p.type === 'video').map((post) => (
-                        <div key={post.id} className="relative aspect-[9/16] w-full overflow-hidden group">
-                          <video
-                            src={post.contentUrl}
-                            className="object-cover w-full h-full transition-all duration-300"
-                          />
-                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <Icons.reels className="h-10 w-10 text-white" />
-                           </div>
-                          <div className="absolute bottom-2 left-2 text-white flex items-center gap-2 text-xs font-bold bg-black/30 rounded-full px-2 py-1">
-                              <div className="flex items-center gap-1">
-                                  <Icons.like className="h-4 w-4 fill-white" /> {post.likes}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                  <Icons.comment className="h-4 w-4 fill-white" /> {post.comments.length}
-                              </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center text-muted-foreground py-24">
-                        <Icons.reels className="mx-auto h-12 w-12" />
-                        <p className="mt-4 font-semibold">No reels yet</p>
-                    </div>
-                 )}
-            </TabsContent>
+            <Suspense fallback={<PostGridSkeleton />}>
+                <UserPosts userId={user.id} setPostCount={setPostCount} />
+            </Suspense>
             <TabsContent value="saved" className="mt-0">
                {isCurrentUserProfile ? (
                  savedPosts.length > 0 ? (
