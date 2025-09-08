@@ -78,7 +78,7 @@ export function Stories({ stories: initialStories }: StoriesProps) {
             storyId = await createStory({
               userId: authUser.uid,
               type: fileType,
-              duration: 5,
+              duration: fileType === 'video' ? 15 : 5, // Example duration
             });
 
             const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${storyId}_${file.name}`);

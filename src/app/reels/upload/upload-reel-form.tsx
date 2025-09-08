@@ -83,7 +83,7 @@ export function UploadReelForm() {
         description: "Please upload a video file.",
         variant: "destructive",
       });
-      form.setValue("file", null);
+      form.resetField("file");
       setPreview(null);
     }
   };
@@ -107,8 +107,9 @@ export function UploadReelForm() {
     const backgroundUpload = async () => {
         const file = values.file as File;
         const hashtags = values.caption.match(/#\w+/g) || [];
+        let postId = '';
         try {
-            const postId = await createPost({
+            postId = await createPost({
                 userId: user.uid,
                 type: 'video',
                 caption: values.caption,
@@ -124,8 +125,9 @@ export function UploadReelForm() {
 
         } catch (error) {
             console.error("Error creating reel in background:", error);
-            // Since the user has already navigated away, a toast here might be confusing.
-            // A more robust solution might use a global state manager to show a failed toast.
+            if (postId) {
+                await updatePost(postId, { status: 'failed' });
+            }
         }
     };
 
