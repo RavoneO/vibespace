@@ -1,0 +1,13 @@
+# Tells automated crawlers which pages they can and cannot access.
+User-agent: *
+Allow: /
+
+# Disallow common paths that bots scan for, which don't exist in this app.
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+Disallow: /wp-includes/
+Disallow: /xmlrpc.php
+Disallow: /info.php
+Disallow: /actuator/
+Disallow: /.env
+Disallow: /.git/
