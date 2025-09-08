@@ -15,6 +15,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+function ConversationListSkeleton() {
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground/90">Messages</h1>
+          <Skeleton className="h-8 w-8 rounded-full" />
+      </div>
+      <Skeleton className="h-10 w-full" />
+      {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center gap-4 p-2">
+              <Skeleton className="h-14 w-14 rounded-full" />
+              <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-48" />
+              </div>
+          </div>
+      ))}
+    </div>
+  );
+}
+
 function ConversationItem({ convo, authUserId }: { convo: Conversation, authUserId: string | undefined }) {
     const otherUser = convo.users.find((u) => u.id !== authUserId);
     if (!otherUser) return null;
@@ -63,12 +84,20 @@ export function ConversationList() {
 
   useEffect(() => {
     async function fetchConversations() {
-      if (!authUser) return;
+      if (!authUser) {
+        if (!useAuth().isGuest) return; // Wait for auth state to resolve
+      }
       try {
         setLoading(true);
-        const convos = await getConversations(authUser.uid);
-        setConversations(convos);
-        setFilteredConversations(convos);
+        if (authUser) {
+            const convos = await getConversations(authUser.uid);
+            setConversations(convos);
+            setFilteredConversations(convos);
+        } else {
+            // Handle guest state
+            setConversations([]);
+            setFilteredConversations([]);
+        }
       } catch (error) {
         console.error("Failed to fetch conversations", error);
       } finally {
@@ -76,7 +105,7 @@ export function ConversationList() {
       }
     }
     fetchConversations();
-  }, [authUser]);
+  }, [authUser, useAuth().isGuest]);
 
   useEffect(() => {
     const results = conversations.filter(convo => {
@@ -91,24 +120,20 @@ export function ConversationList() {
   }
 
   if (loading) {
-    return (
-      <div className="p-4 space-y-4">
-        <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground/90">Messages</h1>
-            <Skeleton className="h-8 w-8 rounded-full" />
-        </div>
-        <Skeleton className="h-10 w-full" />
-        {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex items-center gap-4 p-2">
-                <Skeleton className="h-14 w-14 rounded-full" />
-                <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-4 w-48" />
-                </div>
-            </div>
-        ))}
-      </div>
-    );
+    return <ConversationListSkeleton />;
+  }
+  
+  if (useAuth().isGuest) {
+      return (
+          <div className="text-center text-muted-foreground py-24 px-4">
+            <Icons.messages className="mx-auto h-12 w-12" />
+            <p className="mt-4 font-semibold">Messages are for users only</p>
+            <p className="text-sm">Sign up or log in to start a conversation.</p>
+            <Button asChild className="mt-4">
+                <Link href="/signup">Sign Up</Link>
+            </Button>
+          </div>
+      )
   }
 
   return (

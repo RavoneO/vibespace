@@ -20,6 +20,34 @@ import { Icons } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
+function ChatPageSkeleton() {
+    return (
+        <AppLayout>
+            <div className="flex flex-col h-full">
+                <header className="flex items-center p-2.5 border-b gap-4 sticky top-0 bg-background z-10">
+                     <Link href="/messages">
+                        <Icons.back />
+                    </Link>
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <Skeleton className="h-6 w-32" />
+                </header>
+                <main className="flex-1 p-4 space-y-4">
+                    <Skeleton className="h-12 w-48 rounded-lg" />
+                    <Skeleton className="h-12 w-64 rounded-lg ml-auto" />
+                    <Skeleton className="h-12 w-32 rounded-lg" />
+                </main>
+                <footer className="p-4 border-t sticky bottom-0 bg-background z-10">
+                    <div className="flex items-center gap-2">
+                         <Skeleton className="h-10 w-full" />
+                         <Skeleton className="h-10 w-10 rounded-md" />
+                    </div>
+                </footer>
+            </div>
+        </AppLayout>
+    )
+}
+
+
 function ChatBubble({ message, isOwnMessage }: { message: Message; isOwnMessage: boolean }) {
     return (
         <div className={cn("flex items-end gap-2", isOwnMessage ? "justify-end" : "justify-start")}>
@@ -86,30 +114,7 @@ function ChatPageContent() {
     };
     
     if (conversationLoading || (messagesLoading && !messages.length) || (!otherUser && !conversationLoading)) {
-        return (
-             <AppLayout>
-                <div className="flex flex-col h-full">
-                    <header className="flex items-center p-2.5 border-b gap-4 sticky top-0 bg-background z-10">
-                         <Link href="/messages">
-                            <Icons.back />
-                        </Link>
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <Skeleton className="h-6 w-32" />
-                    </header>
-                    <main className="flex-1 p-4 space-y-4">
-                        <Skeleton className="h-12 w-48 rounded-lg" />
-                        <Skeleton className="h-12 w-64 rounded-lg ml-auto" />
-                        <Skeleton className="h-12 w-32 rounded-lg" />
-                    </main>
-                    <footer className="p-4 border-t sticky bottom-0 bg-background z-10">
-                        <div className="flex items-center gap-2">
-                             <Skeleton className="h-10 w-full" />
-                             <Skeleton className="h-10 w-10 rounded-md" />
-                        </div>
-                    </footer>
-                </div>
-            </AppLayout>
-        )
+        return <ChatPageSkeleton />;
     }
 
     return (
@@ -167,7 +172,7 @@ function ChatPageContent() {
 
 export default function ChatPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<ChatPageSkeleton />}>
             <ChatPageContent />
         </Suspense>
     )

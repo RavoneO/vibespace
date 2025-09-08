@@ -87,9 +87,7 @@ export default function FeedPage() {
   }, []);
 
   useEffect(() => {
-    if (!authUser) {
-        setLoading(false);
-        // Optionally handle non-logged-in state, maybe show a generic feed or prompt to log in
+    if (!authUser && !useAuth().isGuest) { // Wait for auth state to resolve
         return;
     }
     
@@ -108,7 +106,7 @@ export default function FeedPage() {
             
             // Filter posts to only show 'published' or user's own 'processing' posts
             const filteredPosts = postsData.filter(p => 
-                p.status === 'published' || (p.status === 'processing' && p.user.id === authUser.uid)
+                p.status === 'published' || (p.status === 'processing' && p.user.id === authUser?.uid)
             );
 
             setPosts(filteredPosts);
@@ -126,7 +124,7 @@ export default function FeedPage() {
     });
 
     return () => unsubscribe();
-  }, [authUser]);
+  }, [authUser, useAuth().isGuest]);
 
   return (
     <AppLayout>
