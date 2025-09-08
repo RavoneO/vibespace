@@ -179,7 +179,7 @@ export function ProfileClientPage({ username }: { username: string }) {
     setIsMessageLoading(true);
     try {
         const conversationId = await findOrCreateConversation(authUser.uid, user.id);
-        router.push(`/messages/${conversationId}`);
+        router.push(`/messages/chat?id=${conversationId}`);
     } catch (error) {
         console.error("Failed to start conversation", error);
         toast({ title: "Could not start conversation.", variant: "destructive" });

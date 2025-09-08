@@ -22,7 +22,7 @@ function ConversationItem({ convo, authUserId }: { convo: Conversation, authUser
     const isActive = Math.random() > 0.5; // Mocking active status
 
     return (
-        <Link href={`/messages/${convo.id}`} className="block hover:bg-muted/50">
+        <Link href={`/messages/chat?id=${convo.id}`} className="block hover:bg-muted/50">
             <div className="flex items-center gap-4 p-4">
                 <div className="relative">
                     <Avatar className="h-14 w-14">

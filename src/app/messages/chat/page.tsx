@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { getMessagesQuery, sendMessage } from '@/services/messageService';
@@ -32,7 +33,9 @@ function ChatBubble({ message, isOwnMessage }: { message: Message; isOwnMessage:
     );
 }
 
-export default function ChatPage({ params }: { params: { conversationId: string } }) {
+function ChatPageContent() {
+    const searchParams = useSearchParams();
+    const conversationId = searchParams.get('id');
     const { user: authUser } = useAuth();
     const [otherUser, setOtherUser] = useState<User | null>(null);
     const [newMessage, setNewMessage] = useState("");
@@ -40,12 +43,12 @@ export default function ChatPage({ params }: { params: { conversationId: string 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     
     const [conversationDoc, conversationLoading] = useDocumentData(
-        params.conversationId ? doc(db, 'conversations', params.conversationId) : null
+        conversationId ? doc(db, 'conversations', conversationId) : null
     );
     const conversation = conversationDoc as Conversation | undefined;
 
     const [messagesSnapshot, messagesLoading, error] = useCollection(
-        params.conversationId ? getMessagesQuery(params.conversationId) : null
+        conversationId ? getMessagesQuery(conversationId) : null
     );
 
     const messages = messagesSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message)) || [];
@@ -69,11 +72,11 @@ export default function ChatPage({ params }: { params: { conversationId: string 
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !authUser) return;
+        if (!newMessage.trim() || !authUser || !conversationId) return;
 
         setIsSending(true);
         try {
-            await sendMessage(params.conversationId, authUser.uid, newMessage);
+            await sendMessage(conversationId, authUser.uid, newMessage);
             setNewMessage("");
         } catch (error) {
             console.error("Failed to send message", error);
@@ -160,4 +163,12 @@ export default function ChatPage({ params }: { params: { conversationId: string 
             </div>
         </AppLayout>
     );
+}
+
+export default function ChatPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <ChatPageContent />
+        </Suspense>
+    )
 }
