@@ -2,16 +2,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { collection, query, where, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import AppLayout from "@/components/app-layout";
 import { PostCard } from "@/components/post-card";
 import { Stories } from "@/components/stories";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPosts } from "@/services/postService";
 import { getStories } from "@/services/storyService";
-import type { Post, Story } from "@/lib/types";
+import { getUserById } from "@/services/userService";
+import type { Post, Story, User } from "@/lib/types";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 
 function FeedSkeleton() {
   return (
@@ -34,33 +37,96 @@ function FeedSkeleton() {
   );
 }
 
+async function processPostDoc(doc: any): Promise<Post> {
+    const data = doc.data();
+    const user = await getUserById(data.userId);
+    
+    const commentsData = Array.isArray(data.comments) ? data.comments : [];
+    const comments = await Promise.all(
+        commentsData.map(async (comment: any) => ({
+            ...comment,
+            user: await getUserById(comment.userId) ?? { id: comment.userId, name: "Unknown User", username: "unknown", avatar: "", bio: "" }
+        }))
+    );
+
+    return {
+      id: doc.id,
+      user: user ?? { id: data.userId, name: "Unknown User", username: "unknown", avatar: "", bio: "" },
+      type: data.type,
+      contentUrl: data.contentUrl,
+      caption: data.caption,
+      hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
+      likes: data.likes || 0,
+      likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
+      comments,
+      timestamp: data.timestamp,
+      status: data.status,
+      dataAiHint: data.dataAiHint,
+    } as Post;
+}
+
 
 export default function FeedPage() {
+  const { user: authUser } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        setError(null);
-        const [postsData, storiesData] = await Promise.all([
-          getPosts(),
-          getStories(),
-        ]);
-        setPosts(postsData);
-        setStories(storiesData);
-      } catch (err) {
-        console.error("Failed to load feed data:", err);
-        setError("Could not load the feed. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
+    async function loadStories() {
+        try {
+            const storiesData = await getStories();
+            setStories(storiesData);
+        } catch(err) {
+            console.error("Failed to load stories:", err);
+            // Non-critical, so we don't set a main error state
+        }
     }
-    loadData();
+    loadStories();
   }, []);
+
+  useEffect(() => {
+    if (!authUser) {
+        setLoading(false);
+        // Optionally handle non-logged-in state, maybe show a generic feed or prompt to log in
+        return;
+    }
+    
+    setLoading(true);
+
+    const postsCollection = collection(db, 'posts');
+    const q = query(
+      postsCollection, 
+      orderBy('timestamp', 'desc'),
+      where('status', 'in', ['published', 'processing'])
+    );
+    
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+        try {
+            const postsData = await Promise.all(querySnapshot.docs.map(processPostDoc));
+            
+            // Filter posts to only show 'published' or user's own 'processing' posts
+            const filteredPosts = postsData.filter(p => 
+                p.status === 'published' || (p.status === 'processing' && p.user.id === authUser.uid)
+            );
+
+            setPosts(filteredPosts);
+            setError(null);
+        } catch (err) {
+            console.error("Failed to process posts:", err);
+            setError("Could not load the feed. Please try again later.");
+        } finally {
+            setLoading(false);
+        }
+    }, (err) => {
+        console.error("Snapshot error:", err);
+        setError("Could not connect to the feed. Please check your connection.");
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [authUser]);
 
   return (
     <AppLayout>

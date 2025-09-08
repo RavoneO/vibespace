@@ -23,6 +23,7 @@ import { toggleBookmark, getUserById } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "./ui/aspect-ratio";
 import { formatDistanceToNow } from "date-fns";
+import { Skeleton } from "./ui/skeleton";
 
 interface PostCardProps {
   post: PostType;
@@ -39,6 +40,8 @@ export function PostCard({ post: initialPost }: PostCardProps) {
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
   const likeButtonRef = useRef<HTMLButtonElement>(null);
   
+  const isProcessing = post.status === 'processing';
+
   useEffect(() => {
     async function checkBookmarkStatus() {
         if(user && !isGuest) {
@@ -59,11 +62,12 @@ export function PostCard({ post: initialPost }: PostCardProps) {
   }, [user, post, isGuest]);
 
   const refreshPost = useCallback(async () => {
+    if (isProcessing) return;
     const updatedPost = await getPostById(post.id);
     if (updatedPost) {
       setPost(updatedPost);
     }
-  }, [post.id]);
+  }, [post.id, isProcessing]);
 
   const showLoginToast = () => {
     toast({
@@ -75,8 +79,8 @@ export function PostCard({ post: initialPost }: PostCardProps) {
   }
 
   const handleLike = async () => {
-    if (!user || isGuest) {
-      showLoginToast();
+    if (!user || isGuest || isProcessing) {
+      if (!user || isGuest) showLoginToast();
       return;
     }
 
@@ -110,8 +114,8 @@ export function PostCard({ post: initialPost }: PostCardProps) {
   };
 
   const handleBookmark = async () => {
-      if (!user || isGuest) {
-          showLoginToast();
+      if (!user || isGuest || isProcessing) {
+          if (!user || isGuest) showLoginToast();
           return;
       }
       const newIsBookmarked = !isBookmarked;
@@ -130,6 +134,7 @@ export function PostCard({ post: initialPost }: PostCardProps) {
   };
 
   const handleShare = async () => {
+    if (isProcessing) return;
     if(navigator.share) {
         try {
             await navigator.share({
@@ -149,10 +154,12 @@ export function PostCard({ post: initialPost }: PostCardProps) {
   };
   
   const handleCommentClick = () => {
+      if (isProcessing) return;
       setIsCommentSheetOpen(true);
   }
 
   const getTimestamp = (timestamp: any) => {
+      if (isProcessing) return "Publishing...";
       if (!timestamp) return "";
       try {
         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -164,7 +171,7 @@ export function PostCard({ post: initialPost }: PostCardProps) {
 
   return (
     <>
-      <Card className="overflow-hidden animate-fade-in bg-transparent border-0 border-b rounded-none shadow-none">
+      <Card className={cn("overflow-hidden animate-fade-in bg-transparent border-0 border-b rounded-none shadow-none", isProcessing && "opacity-50 pointer-events-none")}>
         <CardHeader className="flex flex-row items-center gap-3 p-4">
           <Avatar>
             <AvatarImage src={post.user.avatar} alt={post.user.name} />
@@ -176,7 +183,7 @@ export function PostCard({ post: initialPost }: PostCardProps) {
             </Link>
             <div className="text-muted-foreground">{getTimestamp(post.timestamp)}</div>
           </div>
-          <Button variant="ghost" size="icon" className="ml-auto">
+          <Button variant="ghost" size="icon" className="ml-auto" disabled={isProcessing}>
             <Icons.more />
             <span className="sr-only">More options</span>
           </Button>
@@ -195,7 +202,14 @@ export function PostCard({ post: initialPost }: PostCardProps) {
             </div>
           </div>
           <div className="relative w-full overflow-hidden rounded-lg">
-             {post.type === 'image' ? (
+             {isProcessing ? (
+                <AspectRatio ratio={1/1} className="bg-muted flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Icons.spinner className="animate-spin h-8 w-8" />
+                        <span>Uploading...</span>
+                    </div>
+                </AspectRatio>
+             ) : post.type === 'image' ? (
                 <AspectRatio ratio={1 / 1}>
                     <Image
                         src={post.contentUrl}
@@ -222,7 +236,7 @@ export function PostCard({ post: initialPost }: PostCardProps) {
         </CardContent>
         <CardFooter className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-1">
-                <Button ref={likeButtonRef} variant="ghost" size="sm" onClick={handleLike} aria-label="Like post" className="flex items-center gap-2">
+                <Button ref={likeButtonRef} variant="ghost" size="sm" onClick={handleLike} aria-label="Like post" className="flex items-center gap-2" disabled={isProcessing}>
                     <Icons.like
                         className={cn(
                         "transition-all duration-200 h-5 w-5",
@@ -231,25 +245,27 @@ export function PostCard({ post: initialPost }: PostCardProps) {
                     />
                     <span className="font-medium">{likeCount.toLocaleString()}</span>
                 </Button>
-                <Button variant="ghost" size="sm" onClick={handleCommentClick} aria-label="Comment on post" className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={handleCommentClick} aria-label="Comment on post" className="flex items-center gap-2" disabled={isProcessing}>
                     <Icons.comment className="text-foreground/70 h-5 w-5" />
                     <span className="font-medium">{post.comments.length}</span>
                 </Button>
-                <Button variant="ghost" size="sm" onClick={handleShare} aria-label="Share post" className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={handleShare} aria-label="Share post" className="flex items-center gap-2" disabled={isProcessing}>
                     <Icons.send className="text-foreground/70 h-5 w-5" />
                 </Button>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleBookmark} className="ml-auto" aria-label="Bookmark post">
+            <Button variant="ghost" size="icon" onClick={handleBookmark} className="ml-auto" aria-label="Bookmark post" disabled={isProcessing}>
                 <Icons.bookmark className={cn("text-foreground/70 h-5 w-5", isBookmarked && "fill-current text-foreground")} />
             </Button>
         </CardFooter>
       </Card>
-      <CommentSheet 
-        open={isCommentSheetOpen} 
-        onOpenChange={setIsCommentSheetOpen} 
-        post={post}
-        onCommentPosted={refreshPost}
-      />
+      {!isProcessing && (
+        <CommentSheet 
+            open={isCommentSheetOpen} 
+            onOpenChange={setIsCommentSheetOpen} 
+            post={post}
+            onCommentPosted={refreshPost}
+        />
+      )}
     </>
   );
 }

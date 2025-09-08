@@ -74,34 +74,7 @@ export async function getPostById(postId: string): Promise<Post | null> {
         if (!postDoc.exists()) {
             return null;
         }
-        const data = postDoc.data();
-        if (!data) return null;
-
-        const user = await getFullUser(data.userId);
-        
-        const commentsData = Array.isArray(data.comments) ? data.comments : [];
-        const comments: Comment[] = await Promise.all(
-            commentsData.map(async (comment: any) => ({
-                ...comment,
-                id: comment.id || Math.random().toString(36).substring(2, 15), // fallback id
-                user: await getFullUser(comment.userId)
-            }))
-        );
-
-        return {
-          id: postDoc.id,
-          user,
-          type: data.type,
-          contentUrl: data.contentUrl,
-          caption: data.caption,
-          hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
-          likes: data.likes || 0,
-          likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
-          comments,
-          timestamp: data.timestamp,
-          status: data.status,
-          dataAiHint: data.dataAiHint,
-        } as Post;
+        return await processPostDoc(postDoc);
     } catch (error) {
         console.error("Error fetching post by ID:", error);
         return null;
