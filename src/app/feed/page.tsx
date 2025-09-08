@@ -67,7 +67,7 @@ async function processPostDoc(doc: any): Promise<Post> {
 
 
 export default function FeedPage() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, isGuest } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +87,7 @@ export default function FeedPage() {
   }, []);
 
   useEffect(() => {
-    if (!authUser && !useAuth().isGuest) { // Wait for auth state to resolve
+    if (!authUser && !isGuest) { // Wait for auth state to resolve
         return;
     }
     
@@ -124,7 +124,7 @@ export default function FeedPage() {
     });
 
     return () => unsubscribe();
-  }, [authUser, useAuth().isGuest]);
+  }, [authUser, isGuest]);
 
   return (
     <AppLayout>
