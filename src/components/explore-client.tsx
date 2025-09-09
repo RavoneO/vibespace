@@ -17,10 +17,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 
-function UserSearchResult({ user, currentUserId, onFollowToggle }: { user: User, currentUserId: string | null, onFollowToggle: (userId: string, isFollowing: boolean) => void }) {
+function UserSearchResult({ user, onFollowToggle }: { user: User, onFollowToggle: (userId: string, isFollowing: boolean) => void }) {
     const { toast } = useToast();
     const router = useRouter();
-    const { isGuest } = useAuth();
+    const { userProfile, isGuest } = useAuth();
+    const currentUserId = userProfile?.id
     const [isFollowing, setIsFollowing] = useState(user.followers?.includes(currentUserId || '') || false);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -210,7 +211,6 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
                             <UserSearchResult 
                                 key={user.id} 
                                 user={user} 
-                                currentUserId={userProfile?.id || null}
                                 onFollowToggle={handleFollowToggle} 
                             />
                             ))}

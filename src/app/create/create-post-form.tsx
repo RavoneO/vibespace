@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useDebounce } from "use-debounce";
-import { useSession, signIn } from "next-auth/react";
+import { useAuth } from "@/hooks/use-auth";
 
 import type { DetectObjectsOutput } from "@/ai/flows/ai-object-detection";
 import { createPost, updatePost } from "@/services/postService";
@@ -59,6 +59,7 @@ async function callAiApi(action: string, payload: any) {
 }
 
 function GuestPrompt() {
+    const router = useRouter();
     return (
         <Card className="w-full max-w-lg mx-auto">
             <CardHeader>
@@ -67,7 +68,8 @@ function GuestPrompt() {
             <CardContent className="text-center space-y-4">
                 <p className="text-muted-foreground">You need to be logged in to create a post and share it with the community.</p>
                 <div className="flex gap-4 justify-center">
-                    <Button onClick={() => signIn('google')}>Log In with Google</Button>
+                    <Button onClick={() => router.push('/login')}>Log In</Button>
+                    <Button onClick={() => router.push('/signup')} variant="secondary">Sign Up</Button>
                 </div>
             </CardContent>
         </Card>
@@ -77,9 +79,8 @@ function GuestPrompt() {
 export function CreatePostForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { data: session, status } = useSession();
-  const user = session?.user;
-
+  const { user, userProfile, loading, isGuest } = useAuth();
+  
   const [preview, setPreview] = useState<string | null>(null);
   const [mediaDataUri, setMediaDataUri] = useState<string | null>(null);
   const [fileType, setFileType] = useState<'image' | 'video' | null>(null);
@@ -253,7 +254,7 @@ export function CreatePostForm() {
         setIsSearchingCollabs(true);
         const results = await searchUsers(debouncedCollabSearchQuery);
         // Exclude self and already added collaborators
-        const filteredResults = results.filter(u => u.email !== user?.email && !collaborators.some(c => c.email === u.email));
+        const filteredResults = results.filter(u => u.id !== userProfile?.id && !collaborators.some(c => c.id === u.id));
         setCollabSearchResults(filteredResults);
         setIsSearchingCollabs(false);
       } else {
@@ -261,7 +262,7 @@ export function CreatePostForm() {
       }
     }
     searchForCollaborators();
-  }, [debouncedCollabSearchQuery, user?.email, collaborators]);
+  }, [debouncedCollabSearchQuery, userProfile?.id, collaborators]);
 
   const addCollaborator = (collabUser: User) => {
     if (collaborators.length < 1) { // Limit to 1 collaborator for now
@@ -278,7 +279,7 @@ export function CreatePostForm() {
 
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!user) {
+    if (!user || !userProfile) {
         toast({ title: "Please log in to create a post.", variant: "destructive" });
         return;
     }
@@ -299,7 +300,7 @@ export function CreatePostForm() {
             const hashtags = values.caption.match(/#\w+/g) || [];
     
             const postId = await createPost({
-                userId: user.email!, // Assuming email as user id
+                userId: userProfile.id,
                 type: fileType,
                 caption: values.caption,
                 hashtags,
@@ -307,7 +308,7 @@ export function CreatePostForm() {
                 collaboratorIds: collaborators.map(c => c.id),
             });
     
-            const contentUrl = await uploadFile(file, `posts/${user.email!}/${postId}_${file.name}`);
+            const contentUrl = await uploadFile(file, `posts/${userProfile.id}/${postId}_${file.name}`);
             
             await updatePost(postId, {
                 contentUrl,
@@ -327,11 +328,11 @@ export function CreatePostForm() {
     backgroundUpload();
   }
   
-  if (status === 'loading') {
+  if (loading) {
     return <Icons.spinner className="animate-spin h-8 w-8 mx-auto mt-24" />;
   }
 
-  if (status === 'unauthenticated') {
+  if (isGuest) {
       return <GuestPrompt />;
   }
 

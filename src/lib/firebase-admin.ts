@@ -12,9 +12,13 @@ if (!serviceAccountString) {
 const serviceAccount = serviceAccountString ? JSON.parse(serviceAccountString) : {};
 
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  } catch (e) {
+    console.error('Firebase Admin SDK initialization error', e);
+  }
 }
 
 export default admin;
