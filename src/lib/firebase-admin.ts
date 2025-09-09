@@ -3,8 +3,9 @@ import * as admin from 'firebase-admin';
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    // projectId, etc. will be picked up from the environment
-    // when running in App Hosting.
+    // Explicitly providing the projectId can make initialization more robust in some environments.
+    // The rest of the credentials will be picked up automatically from the environment.
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   });
 }
 
