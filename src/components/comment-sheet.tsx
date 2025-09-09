@@ -18,7 +18,6 @@ import { Icons } from "./icons";
 import { Separator } from "./ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useCallback, memo } from "react";
-import { addComment } from "@/services/postService.server";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -30,7 +29,7 @@ interface CommentSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   post: Post;
-  onCommentPosted: () => void;
+  onCommentPosted: (newCommentText: string) => void;
 }
 
 const CommentItem = memo(({ comment }: { comment: Comment }) => {
@@ -85,12 +84,16 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
 
     setIsSubmitting(true);
     try {
-      await addComment(post.id, {
-        userId: userProfile.id,
-        text: commentText,
+      const response = await fetch(`/api/posts/${post.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: userProfile.id, text: commentText })
       });
+
+      if (!response.ok) throw new Error('Failed to post comment');
+
+      onCommentPosted(commentText);
       setCommentText("");
-      onCommentPosted(); // This triggers the refresh in PostCard
       toast({ title: "Comment posted!" });
     } catch (error) {
       console.error("Error posting comment:", error);
