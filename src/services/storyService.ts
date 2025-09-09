@@ -1,7 +1,7 @@
 
 'use server';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { Story, User } from '@/lib/types';
 import { getUserById } from './userService.server';
 
@@ -13,15 +13,15 @@ async function getFullUser(userId: string): Promise<User> {
 
 export async function getStories(): Promise<Story[]> {
   try {
-    const storiesCollection = collection(db, 'stories');
+    const storiesCollection = adminDb.collection('stories');
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     
-    const q = query(storiesCollection,
-        where('status', '==', 'published'),
-        where('timestamp', '>', twentyFourHoursAgo),
-        orderBy('timestamp', 'desc'));
+    const q = storiesCollection
+        .where('status', '==', 'published')
+        .where('timestamp', '>', twentyFourHoursAgo)
+        .orderBy('timestamp', 'desc');
     
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await q.get();
     
     const results = await Promise.allSettled(querySnapshot.docs.map(async (doc) => {
       const data = doc.data();
@@ -66,10 +66,10 @@ export async function createStory(storyData: {
     duration: number;
 }): Promise<string> {
     try {
-        const docRef = await addDoc(collection(db, 'stories'), {
+        const docRef = await adminDb.collection('stories').add({
             ...storyData,
             contentUrl: '',
-            timestamp: serverTimestamp(),
+            timestamp: FieldValue.serverTimestamp(),
             status: 'processing',
         });
         return docRef.id;
@@ -81,8 +81,8 @@ export async function createStory(storyData: {
 
 export async function updateStory(storyId: string, data: Partial<Story>) {
     try {
-        const storyRef = doc(db, 'stories', storyId);
-        await updateDoc(storyRef, data as any);
+        const storyRef = adminDb.collection('stories').doc(storyId);
+        await storyRef.update(data as any);
     } catch (error) {
         console.error("Error updating story:", error);
         throw new Error("Failed to update story.");

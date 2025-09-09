@@ -1,8 +1,8 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, getDocs, query, where, orderBy, limit, doc, writeBatch } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { Activity, Post } from '@/lib/types';
 import { getUserById } from './userService.server';
 import { getPostById } from './postService';
@@ -22,12 +22,12 @@ export async function createActivity(params: CreateActivityParams) {
     }
 
     try {
-        await addDoc(collection(db, 'activity'), {
+        await adminDb.collection('activity').add({
             type: params.type,
             actorId: params.actorId,
             notifiedUserId: params.notifiedUserId,
             postId: params.postId || null,
-            timestamp: serverTimestamp(),
+            timestamp: FieldValue.serverTimestamp(),
             read: false,
         });
     } catch (error) {
@@ -37,13 +37,13 @@ export async function createActivity(params: CreateActivityParams) {
 
 export async function getActivity(userId: string): Promise<Activity[]> {
     try {
-        const activityCollection = collection(db, 'activity');
-        const q = query(activityCollection,
-            where('notifiedUserId', '==', userId),
-            orderBy('timestamp', 'desc'),
-            limit(50));
+        const activityCollection = adminDb.collection('activity');
+        const q = activityCollection
+            .where('notifiedUserId', '==', userId)
+            .orderBy('timestamp', 'desc')
+            .limit(50);
 
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await q.get();
         
         const activities: Activity[] = (await Promise.all(
             querySnapshot.docs.map(async (doc) => {
@@ -86,18 +86,18 @@ export async function getActivity(userId: string): Promise<Activity[]> {
 
 
 export async function markAllActivitiesAsRead(userId: string) {
-    const activityCollection = collection(db, 'activity');
-    const q = query(activityCollection,
-        where('notifiedUserId', '==', userId),
-        where('read', '==', false));
+    const activityCollection = adminDb.collection('activity');
+    const q = activityCollection
+        .where('notifiedUserId', '==', userId)
+        .where('read', '==', false);
 
     try {
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await q.get();
         if (querySnapshot.empty) {
             return;
         }
         
-        const batch = writeBatch(db);
+        const batch = adminDb.batch();
         querySnapshot.forEach(docSnapshot => {
             batch.update(docSnapshot.ref, { read: true });
         });

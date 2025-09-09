@@ -2,6 +2,7 @@
 'use client';
 
 import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
 import { 
     collection, 
     doc, 
@@ -18,6 +19,7 @@ import {
     orderBy, 
     setDoc 
 } from 'firebase/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { User, Post } from '@/lib/types';
 import { uploadFile } from './storageService';
 import { createActivity } from './activityService';
@@ -65,30 +67,32 @@ export async function toggleFollow(currentUserId: string, targetUserId: string):
         throw new Error("You cannot follow yourself.");
     }
 
-    const currentUserRef = doc(db, 'users', currentUserId);
-    const targetUserRef = doc(db, 'users', targetUserId);
+    const currentUserRef = adminDb.collection('users').doc(currentUserId);
+    const targetUserRef = adminDb.collection('users').doc(targetUserId);
 
     try {
         let isFollowing = false;
-        await runTransaction(db, async (transaction) => {
+        await adminDb.runTransaction(async (transaction) => {
             const currentUserDoc = await transaction.get(currentUserRef);
             
-            if (!currentUserDoc.exists()) {
+            if (!currentUserDoc.exists) {
                 throw new Error("Current user does not exist!");
             }
 
             const currentUserData = currentUserDoc.data();
+            if (!currentUserData) throw new Error("Current user data not found");
+            
             const following = currentUserData.following || [];
             
             if (following.includes(targetUserId)) {
                 // Unfollow
-                transaction.update(currentUserRef, { following: arrayRemove(targetUserId) });
-                transaction.update(targetUserRef, { followers: arrayRemove(currentUserId) });
+                transaction.update(currentUserRef, { following: FieldValue.arrayRemove(targetUserId) });
+                transaction.update(targetUserRef, { followers: FieldValue.arrayRemove(currentUserId) });
                 isFollowing = false;
             } else {
                 // Follow
-                transaction.update(currentUserRef, { following: arrayUnion(targetUserId) });
-                transaction.update(targetUserRef, { followers: arrayUnion(currentUserId) });
+                transaction.update(currentUserRef, { following: FieldValue.arrayUnion(targetUserId) });
+                transaction.update(targetUserRef, { followers: FieldValue.arrayUnion(currentUserId) });
                 isFollowing = true;
             }
         });
@@ -104,37 +108,10 @@ export async function toggleFollow(currentUserId: string, targetUserId: string):
     }
 }
 
-export async function toggleBookmark(userId: string, postId: string): Promise<boolean> {
-    const userRef = doc(db, 'users', userId);
-    try {
-        let isBookmarked = false;
-        await runTransaction(db, async (transaction) => {
-            const userDoc = await transaction.get(userRef);
-            if (!userDoc.exists()) {
-                throw new Error("User not found");
-            }
-            const savedPosts = userDoc.data().savedPosts || [];
-            if (savedPosts.includes(postId)) {
-                // Un-bookmark
-                transaction.update(userRef, { savedPosts: arrayRemove(postId) });
-                isBookmarked = false;
-            } else {
-                // Bookmark
-                transaction.update(userRef, { savedPosts: arrayUnion(postId) });
-                isBookmarked = true;
-            }
-        });
-        return isBookmarked;
-    } catch (error) {
-        console.error("Error toggling bookmark:", error);
-        throw new Error("Failed to toggle bookmark status.");
-    }
-}
-
 export async function updateUserSettings(userId: string, settings: Partial<Pick<User, 'isPrivate' | 'showActivityStatus'>>) {
     try {
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, settings);
+        const userRef = adminDb.collection('users').doc(userId);
+        await userRef.update(settings);
     } catch (error) {
         console.error("Error updating user settings:", error);
         throw new Error("Failed to update user settings.");
@@ -142,7 +119,7 @@ export async function updateUserSettings(userId: string, settings: Partial<Pick<
 }
 
 export async function updateUserProfile(userId: string, data: { name: string; bio: string; avatarFile?: File }) {
-    const userRef = doc(db, 'users', userId);
+    const userRef = adminDb.collection('users').doc(userId);
     
     const updateData: { name: string; bio: string; avatar?: string } = {
         name: data.name,
@@ -154,5 +131,5 @@ export async function updateUserProfile(userId: string, data: { name: string; bi
         updateData.avatar = avatarUrl;
     }
 
-    await updateDoc(userRef, updateData);
+    await userRef.update(updateData);
 }

@@ -42,7 +42,7 @@ import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { CommentSheet } from "./comment-sheet";
 import { getPostById, deletePost, toggleLike, updatePost } from "@/services/postService";
-import { toggleBookmark } from "@/services/userService";
+import { toggleBookmark } from "@/services/userService.server";
 import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "./ui/aspect-ratio";
 import { formatDistanceToNow } from "date-fns";

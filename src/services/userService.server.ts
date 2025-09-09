@@ -1,26 +1,18 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
-import { 
-    collection, 
-    doc, 
-    getDoc, 
-    getDocs, 
-    query, 
-    where, 
-    orderBy, 
-    setDoc 
-} from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { User, Post } from '@/lib/types';
+import { createActivity } from './activityService';
 
 
 export async function getUserById(userId: string): Promise<User | null> {
   if (!userId) return null;
   try {
-    const userDocRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userDocRef);
-    if (userDoc.exists()) {
+    const userDocRef = adminDb.collection('users').doc(userId);
+    const userDoc = await userDocRef.get();
+    if (userDoc.exists) {
       return { id: userDoc.id, ...userDoc.data() } as User;
     }
     return null;
@@ -32,9 +24,9 @@ export async function getUserById(userId: string): Promise<User | null> {
 
 export async function getUserByUsername(username: string): Promise<User | null> {
     try {
-      const usersCollection = collection(db, 'users');
-      const q = query(usersCollection, where('username', '==', username));
-      const querySnapshot = await getDocs(q);
+      const usersCollection = adminDb.collection('users');
+      const q = usersCollection.where('username', '==', username);
+      const querySnapshot = await q.get();
       if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
         return { id: userDoc.id, ...userDoc.data() } as User;
@@ -47,10 +39,10 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 }
 
 export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
-    const userRef = doc(db, 'users', userId);
+    const userRef = adminDb.collection('users').doc(userId);
     
-    const existingUser = await getDoc(userRef);
-    if(existingUser.exists()) {
+    const existingUser = await userRef.get();
+    if(existingUser.exists) {
         console.log(`Profile for user ${userId} already exists.`);
         return;
     }
@@ -61,7 +53,7 @@ export async function createUserProfile(userId: string, data: { name: string; us
     }
 
     const nameForAvatar = data.name.split(' ').join('+');
-    await setDoc(userRef, {
+    await userRef.set({
         name: data.name,
         username: data.username.toLowerCase(),
         email: data.email,
@@ -77,12 +69,12 @@ export async function createUserProfile(userId: string, data: { name: string; us
 
 export async function getPostsByUserId(userId: string): Promise<Post[]> {
   try {
-    const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection,
-        where('status', '==', 'published'),
-        where('userId', '==', userId),
-        orderBy('timestamp', 'desc'));
-    const querySnapshot = await getDocs(q);
+    const postsCollection = adminDb.collection('posts');
+    const q = postsCollection
+        .where('status', '==', 'published')
+        .where('userId', '==', userId)
+        .orderBy('timestamp', 'desc');
+    const querySnapshot = await q.get();
 
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
         const data = doc.data();
@@ -103,12 +95,12 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
 
 export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
     try {
-      const postsCollection = collection(db, 'posts');
-      const q = query(postsCollection,
-          where('likedBy', 'array-contains', userId),
-          where('status', '==', 'published'),
-          orderBy('timestamp', 'desc'));
-      const querySnapshot = await getDocs(q);
+      const postsCollection = adminDb.collection('posts');
+      const q = postsCollection
+          .where('likedBy', 'array-contains', userId)
+          .where('status', '==', 'published')
+          .orderBy('timestamp', 'desc');
+      const querySnapshot = await q.get();
       const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
         const data = doc.data();
         const user = await getUserById(data.userId);
@@ -131,10 +123,11 @@ export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
     }
     try {
         const postPromises = postIds.map(async id => {
-            const postRef = doc(db, 'posts', id);
-            const postDoc = await getDoc(postRef);
-            if (!postDoc.exists() || postDoc.data().status !== 'published') return null;
+            const postRef = adminDb.collection('posts').doc(id);
+            const postDoc = await postRef.get();
+            if (!postDoc.exists || postDoc.data()?.status !== 'published') return null;
             const data = postDoc.data();
+            if(!data) return null;
             const user = await getUserById(data.userId);
             return user ? { id: postDoc.id, ...data, user } as Post : null;
         });
@@ -143,5 +136,36 @@ export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
     } catch (error) {
         console.error("Error fetching saved posts:", error);
         return [];
+    }
+}
+
+
+export async function toggleBookmark(userId: string, postId: string): Promise<boolean> {
+    const userRef = adminDb.collection('users').doc(userId);
+    try {
+        let isBookmarked = false;
+        await adminDb.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists) {
+                throw new Error("User not found");
+            }
+            const data = userDoc.data();
+            if (!data) throw new Error("User data not found");
+
+            const savedPosts = data.savedPosts || [];
+            if (savedPosts.includes(postId)) {
+                // Un-bookmark
+                transaction.update(userRef, { savedPosts: FieldValue.arrayRemove(postId) });
+                isBookmarked = false;
+            } else {
+                // Bookmark
+                transaction.update(userRef, { savedPosts: FieldValue.arrayUnion(postId) });
+                isBookmarked = true;
+            }
+        });
+        return isBookmarked;
+    } catch (error) {
+        console.error("Error toggling bookmark:", error);
+        throw new Error("Failed to toggle bookmark status.");
     }
 }

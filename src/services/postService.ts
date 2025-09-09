@@ -1,24 +1,8 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
-import { 
-    collection, 
-    addDoc, 
-    serverTimestamp, 
-    doc, 
-    updateDoc, 
-    getDocs, 
-    query, 
-    where,     
-    orderBy, 
-    limit,
-    getDoc,
-    arrayUnion,
-    arrayRemove,
-    runTransaction,
-    deleteDoc
-} from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { Post, PostTag, User, Comment } from '@/lib/types';
 import { getUserById } from './userService.server';
 import { createActivity } from './activityService';
@@ -38,7 +22,7 @@ async function getFullUser(userId: string): Promise<User | null> {
 }
 
 
-async function processPostDoc(docSnapshot: any): Promise<Post | null> {
+async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): Promise<Post | null> {
     const data = docSnapshot.data();
     if (!data) return null;
 
@@ -83,7 +67,7 @@ export async function createPost(postData: {
         throw new Error(moderationResult.reason || 'This content is not allowed.');
     }
 
-    const docRef = await addDoc(collection(db, 'posts'),{
+    const docRef = await adminDb.collection('posts').add({
         userId: postData.userId,
         type: postData.type,
         caption: postData.caption,
@@ -94,7 +78,7 @@ export async function createPost(postData: {
         likes: 0,
         likedBy: [],
         comments: [],
-        timestamp: serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
         status: 'processing',
     });
     
@@ -111,8 +95,8 @@ export async function updatePost(postId: string, data: Partial<{ caption: string
             throw new Error(moderationResult.reason || 'This content is not allowed.');
         }
     }
-    const postRef = doc(db, 'posts', postId);
-    await updateDoc(postRef, data);
+    const postRef = adminDb.collection('posts').doc(postId);
+    await postRef.update(data);
     
     if (data.caption && data.status === 'published') {
         const post = await getPostById(postId);
@@ -123,20 +107,20 @@ export async function updatePost(postId: string, data: Partial<{ caption: string
 }
 
 export async function deletePost(postId: string) {
-    const postRef = doc(db, 'posts', postId);
-    await deleteDoc(postRef);
+    const postRef = adminDb.collection('posts').doc(postId);
+    await postRef.delete();
 }
 
 
 export async function getPosts(): Promise<Post[]> {
   try {
-    const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection,
-        where('status', '==', 'published'),
-        orderBy('timestamp', 'desc'),
-        limit(50));
+    const postsCollection = adminDb.collection('posts');
+    const q = postsCollection
+        .where('status', '==', 'published')
+        .orderBy('timestamp', 'desc')
+        .limit(50);
     
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await q.get();
     userCache.clear();
     const posts = await Promise.all(querySnapshot.docs.map(processPostDoc));
     return posts.filter((p): p is Post => p !== null);
@@ -148,13 +132,13 @@ export async function getPosts(): Promise<Post[]> {
 
 export async function getReels(): Promise<Post[]> {
   try {
-    const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection,
-        where('status', '==', 'published'),
-        where('type', '==', 'video'),
-        orderBy('timestamp', 'desc'),
-        limit(50));
-    const querySnapshot = await getDocs(q);
+    const postsCollection = adminDb.collection('posts');
+    const q = postsCollection
+        .where('status', '==', 'published')
+        .where('type', '==', 'video')
+        .orderBy('timestamp', 'desc')
+        .limit(50);
+    const querySnapshot = await q.get();
     
     userCache.clear();
     const posts = await Promise.all(querySnapshot.docs.map(processPostDoc));
@@ -167,9 +151,9 @@ export async function getReels(): Promise<Post[]> {
 
 export async function getPostById(postId: string): Promise<Post | null> {
     try {
-        const postRef = doc(db, 'posts', postId);
-        const postDoc = await getDoc(postRef);
-        if (!postDoc.exists()) {
+        const postRef = adminDb.collection('posts').doc(postId);
+        const postDoc = await postRef.get();
+        if (!postDoc.exists) {
             return null;
         }
         userCache.clear();
@@ -182,31 +166,32 @@ export async function getPostById(postId: string): Promise<Post | null> {
 
 
 export async function toggleLike(postId: string, userId: string): Promise<boolean> {
-  const postRef = doc(db, 'posts', postId);
+  const postRef = adminDb.collection('posts').doc(postId);
 
   let isLiked = false;
   
-  await runTransaction(db, async (transaction) => {
+  await adminDb.runTransaction(async (transaction) => {
     const postDoc = await transaction.get(postRef);
-    if (!postDoc.exists()) {
+    if (!postDoc.exists) {
       throw new Error("Post does not exist!");
     }
     
     const postData = postDoc.data();
+    if (!postData) throw new Error("Post data not found");
     const likedBy: string[] = postData.likedBy || [];
     
     if (likedBy.includes(userId)) {
       // Unlike
       transaction.update(postRef, { 
-        likedBy: arrayRemove(userId),
-        likes: (postData.likes || 1) - 1,
+        likedBy: FieldValue.arrayRemove(userId),
+        likes: FieldValue.increment(-1),
       });
       isLiked = false;
     } else {
       // Like
       transaction.update(postRef, { 
-        likedBy: arrayUnion(userId),
-        likes: (postData.likes || 0) + 1,
+        likedBy: FieldValue.arrayUnion(userId),
+        likes: FieldValue.increment(1),
       });
       isLiked = true;
     }
@@ -230,7 +215,7 @@ export async function toggleLike(postId: string, userId: string): Promise<boolea
 
 
 export async function addComment(postId: string, comment: { userId: string, text: string }) {
-  const postRef = doc(db, 'posts', postId);
+  const postRef = adminDb.collection('posts').doc(postId);
 
   const moderationResult = await analyzeContent({ text: comment.text });
   if (!moderationResult.isAllowed) {
@@ -240,11 +225,11 @@ export async function addComment(postId: string, comment: { userId: string, text
   const newComment = {
     ...comment,
     timestamp: new Date(),
-    id: doc(collection(db, 'tmp')).id // Generate a unique ID for the comment
+    id: adminDb.collection('tmp').doc().id // Generate a unique ID for the comment
   };
 
-  await updateDoc(postRef, {
-    comments: arrayUnion(newComment)
+  await postRef.update({
+    comments: FieldValue.arrayUnion(newComment)
   });
   
   // Handle Mentions & Notifications
@@ -264,14 +249,12 @@ export async function addComment(postId: string, comment: { userId: string, text
 
 export async function getPostsByHashtag(tag: string): Promise<Post[]> {
   try {
-    const postsCollection = collection(db, 'posts');
-    const q = query(
-      postsCollection,
-      where('status', '==', 'published'),
-      where('hashtags', 'array-contains', `#${tag}`),
-      orderBy('timestamp', 'desc')
-    );
-    const querySnapshot = await getDocs(q);
+    const postsCollection = adminDb.collection('posts');
+    const q = postsCollection
+      .where('status', '==', 'published')
+      .where('hashtags', 'array-contains', `#${tag}`)
+      .orderBy('timestamp', 'desc');
+    const querySnapshot = await q.get();
     const posts = await Promise.all(
       querySnapshot.docs.map((doc) => processPostDoc(doc))
     );

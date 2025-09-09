@@ -14,9 +14,10 @@ import { auth } from "@/lib/firebase";
 import type { User as AppUser } from "@/lib/types";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { createUserProfile, getUserById } from "@/services/userService.server";
 
 
-async function getUserProfile(userId: string): Promise<AppUser | null> {
+async function getUserProfileClient(userId: string): Promise<AppUser | null> {
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
     if (userDoc.exists()) {
@@ -24,25 +25,6 @@ async function getUserProfile(userId: string): Promise<AppUser | null> {
     }
     return null;
 }
-
-async function createUserProfileClient(userId: string, data: { name: string; username: string; email: string; }) {
-    const userRef = doc(db, 'users', userId);
-    
-    const nameForAvatar = data.name.split(' ').join('+');
-    await setDoc(userRef, {
-        name: data.name,
-        username: data.username.toLowerCase(),
-        email: data.email,
-        avatar: `https://ui-avatars.com/api/?name=${nameForAvatar}&background=random`,
-        bio: "Welcome to Vibespace!",
-        followers: [],
-        following: [],
-        savedPosts: [],
-        isPrivate: false,
-        showActivityStatus: true,
-    });
-}
-
 
 export const AuthContext = createContext<{
   user: FirebaseUser | null;
@@ -74,7 +56,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        let profile = await getUserProfile(firebaseUser.uid);
+        let profile = await getUserById(firebaseUser.uid);
         if (!profile) {
           try {
             const username = firebaseUser.email?.split('@')[0].toLowerCase() || `user${Date.now()}`;
@@ -83,8 +65,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               username: username,
               email: firebaseUser.email!,
             };
-            await createUserProfileClient(firebaseUser.uid, newProfileData);
-            profile = await getUserProfile(firebaseUser.uid);
+            await createUserProfile(firebaseUser.uid, newProfileData);
+            profile = await getUserById(firebaseUser.uid);
           } catch (e) {
             console.error("Failed to create user profile on-the-fly", e);
           }

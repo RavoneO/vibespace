@@ -1,64 +1,71 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default: Deny all reads and writes
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Default deny all
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Users Collection
+    // Users collection
     match /users/{userId} {
-      // Anyone can read a user's public profile
+      // Anyone can read user profiles
       allow read: if true;
-
-      // Only the authenticated user can update their own profile
-      allow update: if request.auth.uid == userId;
-      
-      // A user can be created if the userId matches the auth uid
-      allow create: if request.auth.uid == userId;
-    }
-
-    // Posts Collection
-    match /posts/{postId} {
-      // Anyone can read a published post
-      allow read: if resource.data.status == 'published';
-
-      // The post owner or a collaborator can update or delete it
-      allow update, delete: if request.auth.uid == resource.data.userId || request.auth.uid in resource.data.collaboratorIds;
-      
-      // Any authenticated user can create a post
-      allow create: if request.auth.uid != null;
-    }
-
-    // Stories Collection
-    match /stories/{storyId} {
-        // Anyone can read a published story
-        allow read: if resource.data.status == 'published';
-        // Only the owner can create, update or delete a story
-        allow create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-
-    // Activity Collection
-    match /activity/{activityId} {
-        // A user can read their own activity feed
-        allow read: if request.auth.uid == resource.data.notifiedUserId;
-        // Authenticated users can create activity
-        allow create: if request.auth.uid != null;
+      // Only the user themselves can create or update their profile
+      allow create, update: if isOwner(userId);
     }
     
-    // Conversations and Messages
-    match /conversations/{conversationId} {
-        // A user can access a conversation if they are a participant
-        allow read, write: if request.auth.uid in resource.data.userIds;
+    // Posts collection
+    match /posts/{postId} {
+      // Anyone can read published posts
+      allow read: if resource.data.status == 'published';
+      // Signed-in users can create posts
+      allow create: if isSignedIn();
+      // Only the owner or a collaborator can update or delete a post
+      allow update, delete: if isSignedIn() && (isOwner(resource.data.userId) || request.auth.uid in resource.data.collaboratorIds);
+    }
 
-        match /messages/{messageId} {
-            // A user can read messages in a conversation they are part of
-            allow read: if get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
-            // A user can write messages if they are the sender and part of the conversation
-            allow create: if request.auth.uid == request.resource.data.senderId && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
-        }
+    // Stories collection
+    match /stories/{storyId} {
+      // Anyone can read published stories
+      allow read: if resource.data.status == 'published';
+      // Signed-in users can create stories
+      allow create: if isSignedIn();
+      // Only the owner can update or delete
+      allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+
+    // Conversations & Messages
+    match /conversations/{conversationId} {
+      // Users can only access conversations they are a part of
+      allow read, create: if isSignedIn() && request.auth.uid in resource.data.userIds;
+      allow update: if isSignedIn() && request.auth.uid in resource.data.userIds;
+
+      match /messages/{messageId} {
+        // Users can only read/write messages in conversations they are a part of
+        allow read, create: if isSignedIn() && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
+      }
+    }
+    
+    // Activity Feed
+    match /activity/{activityId} {
+        // A user can only read their own activity feed
+        allow read: if isSignedIn() && isOwner(resource.data.notifiedUserId);
+        // Any signed-in user can create an activity (like, comment, follow)
+        allow create: if isSignedIn();
+        // Allow updating the 'read' status
+        allow update: if isSignedIn() && isOwner(resource.data.notifiedUserId);
     }
   }
 }
