@@ -179,8 +179,7 @@ export default function SettingsPage() {
           {loading ? <SettingsSkeleton /> : (
             <div className="p-4 space-y-6">
                 <SettingsGroup title="Account">
-                    <SettingsItem label="Username" value={`@${userProfile?.username || 'guest'}`} disabled={true} tooltip="Username cannot be changed." />
-                    <SettingsItem label="Email" value={userProfile?.email || 'guest@example.com'} disabled={true} tooltip="Email cannot be changed." />
+                    <SettingsItem label="Edit Profile" href="/settings/profile" disabled={isDisabled} />
                     <SettingsItem label="Password" value="Change" onClick={handlePasswordChange} disabled={isDisabled} />
                 </SettingsGroup>
 
@@ -217,3 +216,5 @@ export default function SettingsPage() {
     </AppLayout>
   );
 }
+
+    

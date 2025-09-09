@@ -230,9 +230,18 @@ export function ProfileClientPage({ username }: { username: string }) {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                    <DropdownMenuItem onSelect={() => handleProfileAction("Block")} className="text-destructive">Block</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleProfileAction("Restrict")} className="text-destructive">Restrict</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleProfileAction("Report")} className="text-destructive">Report</DropdownMenuItem>
+                    {isCurrentUserProfile ? (
+                         <DropdownMenuItem onSelect={() => router.push('/settings')}>
+                            <Icons.settings className="mr-2" />
+                            Settings
+                        </DropdownMenuItem>
+                    ) : (
+                        <>
+                        <DropdownMenuItem onSelect={() => handleProfileAction("Block")} className="text-destructive">Block</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleProfileAction("Restrict")} className="text-destructive">Restrict</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleProfileAction("Report")} className="text-destructive">Report</DropdownMenuItem>
+                        </>
+                    )}
                 </DropdownMenuContent>
             </DropdownMenu>
         </header>
@@ -260,7 +269,7 @@ export function ProfileClientPage({ username }: { username: string }) {
           <div className="mt-4 flex gap-2">
             {isCurrentUserProfile ? (
               <Button asChild variant="secondary" className="flex-1">
-                <Link href="/settings">Edit Profile</Link>
+                <Link href="/settings/profile">Edit Profile</Link>
               </Button>
             ) : (
               <>
@@ -319,3 +328,5 @@ export function ProfileClientPage({ username }: { username: string }) {
     </AppLayout>
   );
 }
+
+    

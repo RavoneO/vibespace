@@ -1,9 +1,10 @@
 
 "use client";
 
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
+import { uploadFile } from './storageService';
 
 export async function getUserById(userId: string): Promise<User | null> {
   try {
@@ -152,3 +153,25 @@ export async function updateUserSettings(userId: string, settings: Partial<Pick<
         throw new Error("Failed to update user settings.");
     }
 }
+
+export async function updateUserProfile(userId: string, data: { name: string; bio: string; avatarFile?: File }) {
+    try {
+        const userRef = doc(db, 'users', userId);
+        const updateData: { name: string; bio: string; avatar?: string } = {
+            name: data.name,
+            bio: data.bio,
+        };
+
+        if (data.avatarFile) {
+            const avatarUrl = await uploadFile(data.avatarFile, `avatars/${userId}_${Date.now()}`);
+            updateData.avatar = avatarUrl;
+        }
+
+        await updateDoc(userRef, updateData);
+    } catch (error) {
+        console.error("Error updating user profile:", error);
+        throw new Error("Failed to update user profile.");
+    }
+}
+
+    
