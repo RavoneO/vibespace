@@ -10,7 +10,6 @@ import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { toggleFollow, getUserById } from "@/services/userService";
-import { getSavedPosts, getLikedPostsByUserId } from "@/services/postService";
 import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,8 +21,9 @@ import { UserPosts, PostGridSkeleton } from "./user-posts";
 interface ProfileClientPageProps {
   user: User;
   initialPosts: Post[];
-  initialPostCount: number;
   initialVibe: string;
+  initialSavedPosts: Post[];
+  initialLikedPosts: Post[];
 }
 
 function ProfilePageSkeleton() {
@@ -68,20 +68,17 @@ function ProfilePageSkeleton() {
   )
 }
 
-export function ProfileClientPage({ user, initialPosts, initialPostCount, initialVibe }: ProfileClientPageProps) {
+export function ProfileClientPage({ user, initialPosts, initialVibe, initialSavedPosts, initialLikedPosts }: ProfileClientPageProps) {
   const { user: authUser, loading: authLoading, isGuest } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   
-  const [postCount, setPostCount] = useState(initialPostCount);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followCount, setFollowCount] = useState({
       followers: user.followers?.length || 0,
       following: user.following?.length || 0,
   });
 
-  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
-  const [likedPosts, setLikedPosts] = useState<Post[]>([]);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   
@@ -103,21 +100,6 @@ export function ProfileClientPage({ user, initialPosts, initialPostCount, initia
       setIsFollowing(false);
     }
   }, [user, authUser, isGuest]);
-
-  useEffect(() => {
-    async function fetchExtraData() {
-        if(isCurrentUserProfile) {
-             const [fetchedSavedPosts, fetchedLikedPosts] = await Promise.all([
-                user.savedPosts && user.savedPosts.length > 0 ? getSavedPosts(user.savedPosts) : Promise.resolve([]),
-                getLikedPostsByUserId(user.id)
-            ]);
-            setSavedPosts(fetchedSavedPosts);
-            setLikedPosts(fetchedLikedPosts);
-        }
-    }
-    fetchExtraData();
-  }, [isCurrentUserProfile, user.id, user.savedPosts])
-
 
   const handleFollowToggle = async () => {
     if (!authUser || isGuest) {
@@ -178,7 +160,7 @@ export function ProfileClientPage({ user, initialPosts, initialPostCount, initia
   }
 
   const stats = [
-    { label: "Posts", value: postCount },
+    { label: "Posts", value: initialPosts.length },
     { label: "Followers", value: followCount.followers },
     { label: "Following", value: followCount.following },
   ];
@@ -266,13 +248,13 @@ export function ProfileClientPage({ user, initialPosts, initialPostCount, initia
               )}
             </TabsList>
             <Suspense fallback={<PostGridSkeleton />}>
-                <UserPosts userId={user.id} setPostCount={setPostCount} initialPosts={initialPosts} />
+                <UserPosts posts={initialPosts} />
             </Suspense>
             <TabsContent value="saved" className="mt-0">
                {isCurrentUserProfile ? (
-                 savedPosts.length > 0 ? (
+                 initialSavedPosts.length > 0 ? (
                     <div className="grid grid-cols-3 gap-0.5">
-                      {savedPosts.map((post) => (
+                      {initialSavedPosts.map((post) => (
                         <div key={post.id} className="relative aspect-square w-full overflow-hidden group">
                            <Image
                                 src={post.contentUrl}
@@ -300,9 +282,9 @@ export function ProfileClientPage({ user, initialPosts, initialPostCount, initia
             </TabsContent>
             {isCurrentUserProfile && (
                 <TabsContent value="likes" className="mt-0">
-                    {likedPosts.length > 0 ? (
+                    {initialLikedPosts.length > 0 ? (
                         <div className="grid grid-cols-3 gap-0.5">
-                            {likedPosts.map((post) => (
+                            {initialLikedPosts.map((post) => (
                                 <div key={post.id} className="relative aspect-square w-full overflow-hidden group">
                                     <Image
                                         src={post.contentUrl}

@@ -1,10 +1,8 @@
 
 "use client"
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import { TabsContent } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
-import { getPostsByUserId } from "@/services/postService";
 import type { Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -20,23 +18,10 @@ export function PostGridSkeleton() {
   )
 }
 
-export function UserPosts({ userId, setPostCount, initialPosts }: { userId: string, setPostCount: (count: number) => void, initialPosts: Post[] }) {
-    const [userPosts, setUserPosts] = useState<Post[]>(initialPosts);
-    const [loading, setLoading] = useState(false);
-    
-    // We get initial posts, but we can also re-fetch or listen for updates.
-    // For this optimization, we'll just use the initial posts.
-    useEffect(() => {
-        setPostCount(initialPosts.length);
-        setUserPosts(initialPosts);
-    }, [userId, initialPosts, setPostCount]);
+export function UserPosts({ posts }: { posts: Post[] }) {
 
-    if (loading) {
-        return <PostGridSkeleton />
-    }
-
-    const imagePosts = userPosts.filter(p => p.type === 'image');
-    const videoPosts = userPosts.filter(p => p.type === 'video');
+    const imagePosts = posts.filter(p => p.type === 'image');
+    const videoPosts = posts.filter(p => p.type === 'video');
 
     return (
         <>
@@ -103,5 +88,3 @@ export function UserPosts({ userId, setPostCount, initialPosts }: { userId: stri
         </>
     );
 }
-
-    

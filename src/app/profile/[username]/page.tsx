@@ -5,6 +5,7 @@ import { generateVibe } from "@/ai/flows/ai-profile-vibe";
 import { auth } from "@/lib/firebase";
 import { ProfileClientPage } from "./profile-client-page";
 import type { Post } from "@/lib/types";
+import { getAuth } from "firebase/auth/node";
 
 export default async function UserProfilePage({ params }: { params: { username: string }}) {
   const { username } = params;
@@ -15,27 +16,44 @@ export default async function UserProfilePage({ params }: { params: { username: 
     notFound();
   }
 
-  // Parallelize data fetching
-  const postsPromise = getPostsByUserId(fetchedUser.id);
-  const vibePromise = postsPromise.then(posts => generateVibe({ captions: posts.map(p => p.caption).filter(Boolean) }));
+  // --- Start Parallel Data Fetching ---
   
-  // These are only needed if viewing your own profile, but we can't know that on the server without auth state
-  // This logic will be handled client-side for now to avoid complexity with server-side auth.
-  // In a full server-component app, you'd get the session here.
+  // 1. Fetch the user's own posts
+  const postsPromise = getPostsByUserId(fetchedUser.id);
+  
+  // 2. Generate the user's "vibe" based on their posts
+  const vibePromise = postsPromise.then(posts => 
+    generateVibe({ captions: posts.map(p => p.caption).filter(Boolean) })
+  );
 
-  const [userPosts, { vibe }] = await Promise.all([
+  // 3. Fetch saved and liked posts
+  // In a real app, you'd get the current authenticated user's ID from the session.
+  // For now, we'll assume we can't see another user's saved/liked posts.
+  // This logic is simplified for this context but showcases parallel fetching.
+  const savedPostsPromise = getSavedPosts(fetchedUser.savedPosts || []);
+  const likedPostsPromise = getLikedPostsByUserId(fetchedUser.id);
+
+  // Await all fetches concurrently
+  const [
+    userPosts, 
+    { vibe }, 
+    savedPosts,
+    likedPosts
+  ] = await Promise.all([
     postsPromise,
     vibePromise,
+    savedPostsPromise,
+    likedPostsPromise,
   ]);
+  // --- End Parallel Data Fetching ---
 
-  const initialPostCount = userPosts.length;
-  
   return (
     <ProfileClientPage
       user={fetchedUser}
       initialPosts={userPosts}
-      initialPostCount={initialPostCount}
       initialVibe={vibe}
+      initialSavedPosts={savedPosts}
+      initialLikedPosts={likedPosts}
     />
   );
 }
