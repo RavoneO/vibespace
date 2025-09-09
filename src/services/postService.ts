@@ -177,7 +177,12 @@ export async function createPost(postData: {
 }) {
     try {
         const docRef = await addDoc(collection(db, 'posts'), {
-            ...postData,
+            userId: postData.userId,
+            type: postData.type,
+            caption: postData.caption,
+            hashtags: postData.hashtags,
+            tags: postData.tags,
+            collaboratorIds: postData.collaboratorIds || [],
             contentUrl: '',
             likes: 0,
             likedBy: [],
@@ -217,7 +222,7 @@ export async function addComment(postId: string, commentData: { userId: string, 
 
         // Create activity notification
         const postDoc = await getDoc(postRef);
-        const postData = postDoc.data() as Post;
+        const postData = await processPostDoc(postDoc);
         if (postData.user.id !== commentData.userId) {
             await createActivity({
                 type: 'comment',

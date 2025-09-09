@@ -1,12 +1,14 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useDebounce } from "use-debounce";
+
 import { suggestHashtags } from "@/ai/flows/ai-suggested-hashtags";
 import { generateCaption } from "@/ai/flows/ai-generated-caption";
 import { detectObjectsInImage } from "@/ai/flows/ai-object-detection";
@@ -14,6 +16,7 @@ import type { DetectObjectsOutput } from "@/ai/flows/ai-object-detection";
 import { createPost, updatePost } from "@/services/postService";
 import { uploadFile } from "@/services/storageService";
 import { useAuth } from "@/hooks/use-auth";
+import { searchUsers } from "@/services/userService";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,7 +38,8 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { PostTag } from "@/lib/types";
+import type { PostTag, User } from "@/lib/types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const formSchema = z.object({
   caption: z.string().max(2200, "Caption is too long."),
@@ -82,6 +86,14 @@ export function CreatePostForm() {
   const [tags, setTags] = useState<PostTag[]>([]);
   const [activeTaggingBox, setActiveTaggingBox] = useState<{box: number[], label: string} | null>(null);
   const [tagInput, setTagInput] = useState("");
+
+  // New states for collaborators
+  const [collaborators, setCollaborators] = useState<User[]>([]);
+  const [collabSearchQuery, setCollabSearchQuery] = useState("");
+  const [debouncedCollabSearchQuery] = useDebounce(collabSearchQuery, 300);
+  const [collabSearchResults, setCollabSearchResults] = useState<User[]>([]);
+  const [isSearchingCollabs, setIsSearchingCollabs] = useState(false);
+  const [isCollabPopoverOpen, setIsCollabPopoverOpen] = useState(false);
 
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -225,6 +237,37 @@ export function CreatePostForm() {
     form.setValue("caption", caption);
   }
 
+  // Collaborator search logic
+  useEffect(() => {
+    async function searchForCollaborators() {
+      if (debouncedCollabSearchQuery) {
+        setIsSearchingCollabs(true);
+        const results = await searchUsers(debouncedCollabSearchQuery);
+        // Exclude self and already added collaborators
+        const filteredResults = results.filter(u => u.id !== user?.uid && !collaborators.some(c => c.id === u.id));
+        setCollabSearchResults(filteredResults);
+        setIsSearchingCollabs(false);
+      } else {
+        setCollabSearchResults([]);
+      }
+    }
+    searchForCollaborators();
+  }, [debouncedCollabSearchQuery, user?.uid, collaborators]);
+
+  const addCollaborator = (collabUser: User) => {
+    if (collaborators.length < 1) { // Limit to 1 collaborator for now
+        setCollaborators([...collaborators, collabUser]);
+    }
+    setCollabSearchQuery("");
+    setCollabSearchResults([]);
+    setIsCollabPopoverOpen(false);
+  };
+
+  const removeCollaborator = (collabUser: User) => {
+    setCollaborators(collaborators.filter(c => c.id !== collabUser.id));
+  };
+
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
         toast({ title: "Please log in to create a post.", variant: "destructive" });
@@ -252,6 +295,7 @@ export function CreatePostForm() {
                 caption: values.caption,
                 hashtags,
                 tags: fileType === 'image' ? tags : [],
+                collaboratorIds: collaborators.map(c => c.id),
             });
     
             const contentUrl = await uploadFile(file, `posts/${user.uid}/${postId}_${file.name}`);
@@ -424,6 +468,76 @@ export function CreatePostForm() {
               </FormItem>
             )}
           />
+          
+          <div>
+            <FormLabel>Collaborators</FormLabel>
+            <div className="mt-2 space-y-2">
+                {collaborators.map(collab => (
+                    <div key={collab.id} className="flex items-center justify-between p-2 bg-secondary rounded-md">
+                        <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={collab.avatar} />
+                                <AvatarFallback>{collab.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium">{collab.username}</span>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removeCollaborator(collab)}>
+                            <Icons.close className="h-4 w-4" />
+                        </Button>
+                    </div>
+                ))}
+                {collaborators.length < 1 && (
+                     <Popover open={isCollabPopoverOpen} onOpenChange={setIsCollabPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button type="button" variant="outline" className="w-full">
+                                <Icons.plus className="mr-2 h-4 w-4" /> Add Collaborator
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80">
+                            <div className="space-y-2">
+                                <p className="font-medium">Invite a collaborator</p>
+                                <div className="relative">
+                                    <Icons.search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Search username..."
+                                        value={collabSearchQuery}
+                                        onChange={(e) => setCollabSearchQuery(e.target.value)}
+                                        className="pl-8"
+                                    />
+                                </div>
+                                {isSearchingCollabs ? (
+                                    <div className="text-center p-4">
+                                        <Icons.spinner className="animate-spin" />
+                                    </div>
+                                ) : collabSearchResults.length > 0 ? (
+                                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                                        {collabSearchResults.map(u => (
+                                            <button 
+                                                key={u.id} 
+                                                type="button" 
+                                                onClick={() => addCollaborator(u)}
+                                                className="w-full text-left flex items-center gap-2 p-2 rounded-md hover:bg-muted"
+                                            >
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarImage src={u.avatar} />
+                                                    <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <p className="text-sm font-semibold">{u.name}</p>
+                                                    <p className="text-xs text-muted-foreground">@{u.username}</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : debouncedCollabSearchQuery && (
+                                    <p className="text-sm text-center text-muted-foreground p-4">No users found.</p>
+                                )}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                )}
+            </div>
+          </div>
 
           <div>
              <Button type="button" variant="outline" onClick={handleSuggestHashtags} disabled={isSuggesting || !mediaDataUri || isSubmitting}>
