@@ -1,71 +1,57 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Users collection
+    // Users:
+    // - Anyone can read user profiles.
+    // - Authenticated users can create or update their own profiles.
     match /users/{userId} {
-      // Anyone can read a user's profile
       allow read: if true;
-      
-      // Only the user can create or update their own profile
-      allow create, update: if isOwner(userId);
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false; // Deleting user docs is disallowed for safety.
     }
-    
-    // Posts collection
+
+    // Posts:
+    // - Anyone can read posts.
+    // - Authenticated users can create posts.
+    // - The post owner or a collaborator can update or delete the post.
     match /posts/{postId} {
-      // Anyone can read a published post
-      allow read: if resource.data.status == 'published';
-      
-      // An authenticated user can create a post
-      allow create: if isSignedIn();
-      
-      // The post owner or a collaborator can update or delete it
-      allow update, delete: if isOwner(resource.data.userId) || request.auth.uid in resource.data.collaboratorIds;
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (get(/databases/$(database)/documents/posts/$(postId)).data.userId == request.auth.uid || request.auth.uid in get(/databases/$(database)/documents/posts/$(postId)).data.collaboratorIds);
     }
-    
-    // Stories collection
+
+    // Stories:
+    // - Anyone can read stories.
+    // - Authenticated users can create stories.
+    // - The story owner can update or delete the story.
     match /stories/{storyId} {
-        // Anyone can read a published story
-        allow read: if resource.data.status == 'published';
-
-        // An authenticated user can create a story
-        allow create: if isSignedIn();
-
-        // Only the owner can update a story (e.g., status)
-        allow update: if isOwner(resource.data.userId);
-    }
-
-    // Activity collection
-    match /activity/{activityId} {
-        // A user can only read their own activity notifications
-        allow read: if isOwner(resource.data.notifiedUserId);
-        
-        // Activity is created by the server-side functions/triggers, so client-side create is not allowed.
-        // For this app, we'll allow any signed-in user to create, as it's handled by server functions
-        allow create: if isSignedIn();
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/stories/$(storyId)).data.userId == request.auth.uid;
     }
     
-    // Conversations collection
+    // Conversations:
+    // - Only users who are part of a conversation can read or write to it.
     match /conversations/{conversationId} {
-        // Users can only read conversations they are a part of
-        allow read, create, update: if isSignedIn() && request.auth.uid in resource.data.userIds;
-
-        // Messages subcollection
-        match /messages/{messageId} {
-            // Users can read/write messages in conversations they are a part of
-            allow read, create: if isSignedIn() && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
-        }
+      allow read, write: if request.auth != null && request.auth.uid in resource.data.userIds;
+      
+      // Messages sub-collection:
+      // - Users in the conversation can read and create messages.
+      match /messages/{messageId} {
+        allow read, create: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds;
+        allow update, delete: if false; // Disallow editing/deleting messages for simplicity.
+      }
+    }
+    
+    // Activity:
+    // - A user can only read their own activity feed.
+    // - Authenticated users can create activity items.
+    match /activity/{activityId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.notifiedUserId;
+      allow create: if request.auth != null;
+      allow update, delete: if false; // Activity is immutable.
     }
   }
 }
