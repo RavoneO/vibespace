@@ -6,7 +6,7 @@ import AppLayout from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
-import { getPosts } from "@/services/postService";
+import { getReels } from "@/services/postService";
 import type { Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReelViewer } from "@/components/reel-viewer";
@@ -32,8 +32,7 @@ export default function ReelsPage() {
   useEffect(() => {
     async function loadReels() {
         setLoading(true);
-        const allPosts = await getPosts();
-        const videoPosts = allPosts.filter(p => p.type === 'video');
+        const videoPosts = await getReels();
         setReels(videoPosts);
         setLoading(false);
     }

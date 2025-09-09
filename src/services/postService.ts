@@ -69,6 +69,27 @@ export async function getPosts(): Promise<Post[]> {
   }
 }
 
+export async function getReels(): Promise<Post[]> {
+  try {
+    const postsCollection = collection(db, 'posts');
+    const q = query(
+        postsCollection, 
+        where('status', '==', 'published'), 
+        where('type', '==', 'video'),
+        orderBy('timestamp', 'desc'), 
+        limit(50)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
+    
+    return posts;
+  } catch (error) {
+    console.error("Error fetching reels:", error);
+    return [];
+  }
+}
+
 export async function getPostById(postId: string): Promise<Post | null> {
     try {
         const postRef = doc(db, 'posts', postId);
