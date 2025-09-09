@@ -416,3 +416,5 @@ export function PostCard({ post: initialPost }: PostCardProps) {
     </>
   );
 }
+
+    
