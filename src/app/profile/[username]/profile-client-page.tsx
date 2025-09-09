@@ -1,4 +1,3 @@
-
 "use client"
 import AppLayout from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,7 +11,7 @@ import { useEffect, useState, useCallback, Suspense } from "react";
 import { toggleFollow, getUserById } from "@/services/userService";
 import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/hooks/use-auth";
+import { useSession } from "next-auth/react";
 import { useToast } from "@/hooks/use-toast";
 import { findOrCreateConversation } from "@/services/messageService";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -69,7 +68,11 @@ function ProfilePageSkeleton() {
 }
 
 export function ProfileClientPage({ user, initialPosts, initialVibe, initialSavedPosts, initialLikedPosts }: ProfileClientPageProps) {
-  const { user: authUser, loading: authLoading, isGuest } = useAuth();
+  const { data: session, status } = useSession();
+  const authUser = session?.user;
+  const authLoading = status === 'loading';
+  const isGuest = status === 'unauthenticated';
+
   const { toast } = useToast();
   const router = useRouter();
   
@@ -82,7 +85,7 @@ export function ProfileClientPage({ user, initialPosts, initialVibe, initialSave
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   
-  const isCurrentUserProfile = authUser?.uid === user.id;
+  const isCurrentUserProfile = authUser?.email === user.email;
 
   const showLoginToast = useCallback(() => {
     toast({
@@ -95,7 +98,7 @@ export function ProfileClientPage({ user, initialPosts, initialVibe, initialSave
   
   useEffect(() => {
     if(authUser && !isGuest) {
-      setIsFollowing(user.followers?.includes(authUser.uid) || false);
+      setIsFollowing(user.followers?.includes(authUser.email!) || false);
     } else {
       setIsFollowing(false);
     }
@@ -117,7 +120,7 @@ export function ProfileClientPage({ user, initialPosts, initialVibe, initialSave
     }));
 
     try {
-        await toggleFollow(authUser.uid, user.id);
+        await toggleFollow(authUser.email!, user.id);
     } catch (error) {
         setIsFollowing(originalIsFollowing);
         setFollowCount(prev => ({
@@ -138,7 +141,7 @@ export function ProfileClientPage({ user, initialPosts, initialVibe, initialSave
     }
     setIsMessageLoading(true);
     try {
-        const conversationId = await findOrCreateConversation(authUser.uid, user.id);
+        const conversationId = await findOrCreateConversation(authUser.email!, user.id);
         router.push(`/messages/chat?id=${conversationId}`);
     } catch (error) {
         console.error("Failed to start conversation", error);

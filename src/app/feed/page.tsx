@@ -12,7 +12,7 @@ import { getPosts } from "@/services/postService.server";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { AdCard } from "@/app/feed/ad-card";
+import { AdCard } from "@/components/ad-card";
 import { Suspense } from "react";
 import { getAvailableAds } from "@/services/adService";
 import { selectAd } from "@/ai/flows/ai-ad-selector";
