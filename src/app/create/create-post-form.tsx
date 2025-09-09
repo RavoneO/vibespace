@@ -10,7 +10,6 @@ import * as z from "zod";
 import { useDebounce } from "use-debounce";
 import { useSession, signIn } from "next-auth/react";
 
-import { suggestHashtags, generateCaption, detectObjectsInImage } from "@/services/aiService";
 import type { DetectObjectsOutput } from "@/ai/flows/ai-object-detection";
 import { createPost, updatePost } from "@/services/postService";
 import { uploadFile } from "@/services/storageService";
@@ -43,6 +42,21 @@ const formSchema = z.object({
   caption: z.string().max(2200, "Caption is too long."),
   file: z.any().refine((file) => file, "Please upload an image or video."),
 });
+
+async function callAiApi(action: string, payload: any) {
+    const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, payload }),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'AI API request failed');
+    }
+
+    return response.json();
+}
 
 function GuestPrompt() {
     return (
@@ -111,7 +125,7 @@ export function CreatePostForm() {
     setIsDetecting(true);
     setDetectedObjects([]);
     try {
-        const result = await detectObjectsInImage({ mediaDataUri: dataUri });
+        const result = await callAiApi('detect-objects', { mediaDataUri: dataUri });
         setDetectedObjects(result.objects);
     } catch (error) {
         console.error("Error detecting objects:", error);
@@ -177,7 +191,7 @@ export function CreatePostForm() {
     setSuggestedHashtags([]);
 
     try {
-        const result = await suggestHashtags({
+        const result = await callAiApi('suggest-hashtags', {
             mediaDataUri: mediaDataUri,
             description: form.getValues("caption"),
         });
@@ -207,7 +221,7 @@ export function CreatePostForm() {
     setIsGenerating(true);
     setSuggestedCaptions([]);
     try {
-      const result = await generateCaption({
+      const result = await callAiApi('generate-caption', {
         mediaDataUri: mediaDataUri,
       });
       setSuggestedCaptions(result.captions);
@@ -570,5 +584,3 @@ export function CreatePostForm() {
     </div>
   );
 }
-
-    

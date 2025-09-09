@@ -1,3 +1,4 @@
+
 "use client"
 import AppLayout from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useState, useCallback, Suspense } from "react";
-import { toggleFollow, getUserById } from "@/services/userService";
+import { toggleFollow } from "@/services/userService";
 import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "next-auth/react";

@@ -35,7 +35,7 @@ export default async function UserProfilePage({ params }: { params: { username: 
   // Await all fetches concurrently
   const [
     userPosts, 
-    { vibe }, 
+    vibe, 
     savedPosts,
     likedPosts
   ] = await Promise.all([

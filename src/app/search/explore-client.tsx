@@ -10,7 +10,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { searchUsers, toggleFollow } from "@/services/userService";
-import { searchPostsAndUsers } from "./actions";
 import type { SemanticSearchOutput } from "@/ai/flows/ai-semantic-search";
 import type { User, Post } from "@/lib/types";
 import { useSession } from "next-auth/react";
@@ -108,6 +107,21 @@ function ExploreGrid({ posts }: { posts: Post[] }) {
     )
 }
 
+async function searchPosts(query: string): Promise<SemanticSearchOutput> {
+    const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'semantic-search', payload: { query } }),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'AI API request failed');
+    }
+
+    return response.json();
+}
+
 export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Post[] }) {
   const { data: session } = useSession();
   const authUser = session?.user;
@@ -126,12 +140,12 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
         setIsSearching(true);
         startTransition(async () => {
             const userPromise = searchUsers(debouncedQuery);
-            const postPromise = searchPostsAndUsers(debouncedQuery);
+            const postPromise = searchPosts(debouncedQuery);
             
             const [users, searchResult] = await Promise.all([userPromise, postPromise]);
             
             setUserResults(users);
-            setPostResults(searchResult.posts || []);
+            setPostResults(searchResult.results || []);
 
             setIsSearching(false);
         });
@@ -140,9 +154,7 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
         setPostResults([]);
       }
     };
-    if (debouncedQuery) {
-        performSearch();
-    }
+    performSearch();
   }, [debouncedQuery]);
   
   const handleFollowToggle = (userId: string, isFollowing: boolean) => {
