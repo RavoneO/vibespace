@@ -3,69 +3,62 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isUser(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-    
-    function isProfileOwner(userId) {
-      return isUser(userId);
+    // Default: Deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
     }
 
     // Users Collection
-    // - Anyone can read public user profiles.
-    // - Authenticated users can create their own profile.
-    // - A user can only update their own profile.
-    // - A user can update another user's 'followers' list (to follow/unfollow them).
     match /users/{userId} {
+      // Anyone can read a user's public profile
       allow read: if true;
-      allow create: if isUser(userId);
-      allow update: if isProfileOwner(userId) || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followers']));
+
+      // Only the authenticated user can update their own profile
+      allow update: if request.auth.uid == userId;
+      
+      // A user can be created if the userId matches the auth uid
+      allow create: if request.auth.uid == userId;
     }
 
     // Posts Collection
-    // - Anyone can read published posts.
-    // - Authenticated users can create posts.
-    // - A user can only update or delete their own posts.
     match /posts/{postId} {
+      // Anyone can read a published post
       allow read: if resource.data.status == 'published';
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // The post owner or a collaborator can update or delete it
+      allow update, delete: if request.auth.uid == resource.data.userId || request.auth.uid in resource.data.collaboratorIds;
+      
+      // Any authenticated user can create a post
+      allow create: if request.auth.uid != null;
     }
 
     // Stories Collection
-    // - Anyone can read published stories.
-    // - Authenticated users can create stories for themselves.
-    // - Users can only update/delete their own stories.
     match /stories/{storyId} {
+        // Anyone can read a published story
         allow read: if resource.data.status == 'published';
-        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+        // Only the owner can create, update or delete a story
+        allow create, update, delete: if request.auth.uid == request.resource.data.userId;
     }
 
     // Activity Collection
-    // - Only the notified user can read their activity.
-    // - Authenticated users can create activity entries (e.g., likes, comments, follows).
     match /activity/{activityId} {
-      allow read: if isSignedIn() && resource.data.notifiedUserId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.actorId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.notifiedUserId == request.auth.uid && request.resource.data.read == true;
+        // A user can read their own activity feed
+        allow read: if request.auth.uid == resource.data.notifiedUserId;
+        // Authenticated users can create activity
+        allow create: if request.auth.uid != null;
     }
-
-    // Conversations & Messages
-    // - Users can only read conversations they are a part of.
-    // - Users can only write messages to conversations they are a part of.
+    
+    // Conversations and Messages
     match /conversations/{conversationId} {
-      allow read, create: if isSignedIn() && request.auth.uid in resource.data.userIds;
-      allow update: if isSignedIn() && request.auth.uid in resource.data.userIds;
+        // A user can access a conversation if they are a participant
+        allow read, write: if request.auth.uid in resource.data.userIds;
 
-      match /messages/{messageId} {
-        allow read, create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds;
-      }
+        match /messages/{messageId} {
+            // A user can read messages in a conversation they are part of
+            allow read: if get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
+            // A user can write messages if they are the sender and part of the conversation
+            allow create: if request.auth.uid == request.resource.data.senderId && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
+        }
     }
   }
 }
