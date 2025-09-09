@@ -20,7 +20,7 @@ import {
 } from 'firebase/firestore';
 import type { User, Post } from '@/lib/types';
 import { uploadFile } from './storageService';
-import { createActivity } from './activityService';
+import { createActivity } from './activityService.server';
 
 
 export async function getUserById(userId: string): Promise<User | null> {

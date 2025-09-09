@@ -1,11 +1,10 @@
-
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { Activity, Post } from '@/lib/types';
+import type { Activity } from '@/lib/types';
 import { getUserById } from './userService.server';
-import { getPostById } from './postService';
+import { getPostById } from './postService.server';
 
 
 interface CreateActivityParams {
