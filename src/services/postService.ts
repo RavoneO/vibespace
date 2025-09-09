@@ -1,11 +1,15 @@
 
 import { db, storage } from '@/lib/firebase';
-import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, limit, deleteDoc } from 'firebase/firestore';
+import { firestore as adminDb, adminStorage } from '@/lib/firebase-admin';
+import * as admin from 'firebase-admin';
+import { collection, getDocs as getDocsClient, query as queryClient, where as whereClient, orderBy as orderByClient, doc as docClient, getDoc as getDocClient, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, limit as limitClient, deleteDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import type { Post, Comment, User, PostTag } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService';
 import { createActivity } from './activityService';
 import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
+
+const isServer = typeof window === 'undefined';
 
 // Helper to get a user by ID, with caching to prevent duplicate fetches
 const userCache = new Map<string, User>();
@@ -67,16 +71,15 @@ async function processPostDoc(doc: any): Promise<Post> {
 
 export async function getPosts(): Promise<Post[]> {
   try {
-    const postsCollection = collection(db, 'posts');
-    const q = query(
-        postsCollection, 
-        where('status', '==', 'published'), 
-        orderBy('timestamp', 'desc'), 
-        limit(50)
-    );
-    const querySnapshot = await getDocs(q);
+    const dbInstance = isServer ? adminDb : db;
+    const postsCollection = dbInstance.collection('posts');
+    const q = postsCollection
+        .where('status', '==', 'published')
+        .orderBy('timestamp', 'desc')
+        .limit(50);
     
-    // Clear cache for each new request
+    const querySnapshot = await q.get();
+    
     userCache.clear();
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
     
@@ -89,15 +92,14 @@ export async function getPosts(): Promise<Post[]> {
 
 export async function getReels(): Promise<Post[]> {
   try {
-    const postsCollection = collection(db, 'posts');
-    const q = query(
-        postsCollection, 
-        where('status', '==', 'published'), 
-        where('type', '==', 'video'),
-        orderBy('timestamp', 'desc'), 
-        limit(50)
-    );
-    const querySnapshot = await getDocs(q);
+    const dbInstance = isServer ? adminDb : db;
+    const postsCollection = dbInstance.collection('posts');
+    const q = postsCollection
+        .where('status', '==', 'published') 
+        .where('type', '==', 'video')
+        .orderBy('timestamp', 'desc')
+        .limit(50);
+    const querySnapshot = await q.get();
     
     userCache.clear();
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
@@ -111,9 +113,10 @@ export async function getReels(): Promise<Post[]> {
 
 export async function getPostById(postId: string): Promise<Post | null> {
     try {
-        const postRef = doc(db, 'posts', postId);
-        const postDoc = await getDoc(postRef);
-        if (!postDoc.exists()) {
+        const dbInstance = isServer ? adminDb : db;
+        const postRef = dbInstance.collection('posts').doc(postId);
+        const postDoc = await postRef.get();
+        if (!postDoc.exists) {
             return null;
         }
         userCache.clear();
@@ -127,14 +130,13 @@ export async function getPostById(postId: string): Promise<Post | null> {
 
 export async function getPostsByUserId(userId: string): Promise<Post[]> {
   try {
-    const postsCollection = collection(db, 'posts');
-    const q = query(
-        postsCollection, 
-        where('status', '==', 'published'),
-        where('userId', '==', userId), 
-        orderBy('timestamp', 'desc')
-    );
-    const querySnapshot = await getDocs(q);
+    const dbInstance = isServer ? adminDb : db;
+    const postsCollection = dbInstance.collection('posts');
+    const q = postsCollection
+        .where('status', '==', 'published')
+        .where('userId', '==', userId)
+        .orderBy('timestamp', 'desc');
+    const querySnapshot = await q.get();
 
     userCache.clear();
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
@@ -148,14 +150,13 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
 
 export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
     try {
-      const postsCollection = collection(db, 'posts');
-      const q = query(
-          postsCollection,
-          where('likedBy', 'array-contains', userId),
-          where('status', '==', 'published'),
-          orderBy('timestamp', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
+      const dbInstance = isServer ? adminDb : db;
+      const postsCollection = dbInstance.collection('posts');
+      const q = postsCollection
+          .where('likedBy', 'array-contains', userId)
+          .where('status', '==', 'published')
+          .orderBy('timestamp', 'desc');
+      const querySnapshot = await q.get();
       userCache.clear();
       const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
       return posts;
@@ -167,14 +168,13 @@ export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
 
 export async function getPostsByHashtag(hashtag: string): Promise<Post[]> {
     try {
-        const postsCollection = collection(db, 'posts');
-        const q = query(
-            postsCollection,
-            where('hashtags', 'array-contains', `#${hashtag}`),
-            where('status', '==', 'published'),
-            orderBy('timestamp', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
+        const dbInstance = isServer ? adminDb : db;
+        const postsCollection = dbInstance.collection('posts');
+        const q = postsCollection
+            .where('hashtags', 'array-contains', `#${hashtag}`)
+            .where('status', '==', 'published')
+            .orderBy('timestamp', 'desc');
+        const querySnapshot = await q.get();
         userCache.clear();
         const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
         return posts;
@@ -236,7 +236,7 @@ export async function createPost(postData: {
 
 // Helper to find mentions and create notifications
 const processMentions = async (text: string, actorId: string, postId: string) => {
-    const mentionRegex = /@(\w+)/g;
+    const mentionRegex = /@(\\w+)/g;
     const mentions = text.match(mentionRegex);
     if (!mentions) return;
 
@@ -270,7 +270,7 @@ export async function updatePost(postId: string, data: Partial<Post>) {
 
         // If caption is updated or post is newly published, process mentions
         if (data.caption || data.status === 'published') {
-            const postDoc = await getDoc(postRef);
+            const postDoc = await getDocClient(postRef);
             const postData = postDoc.data();
             if (postData) {
                 await processMentions(postData.caption, postData.userId, postId);
@@ -301,7 +301,7 @@ export async function addComment(postId: string, commentData: { userId: string, 
             comments: arrayUnion(newComment)
         });
 
-        const postDoc = await getDoc(postRef);
+        const postDoc = await getDocClient(postRef);
         const postData = postDoc.data();
         if(!postData) return;
 
@@ -327,7 +327,7 @@ export async function addComment(postId: string, commentData: { userId: string, 
 export async function toggleLike(postId: string, userId: string) {
     try {
         const postRef = doc(db, 'posts', postId);
-        const postDoc = await getDoc(postRef);
+        const postDoc = await getDocClient(postRef);
 
         if (!postDoc.exists()) {
             throw new Error("Post not found");
@@ -369,7 +369,7 @@ export async function deletePost(postId: string) {
   const postRef = doc(db, 'posts', postId);
   
   try {
-    const postDoc = await getDoc(postRef);
+    const postDoc = await getDocClient(postRef);
     if (!postDoc.exists()) {
       throw new Error("Post not found");
     }
@@ -386,7 +386,6 @@ export async function deletePost(postId: string) {
         // It's okay if the object doesn't exist, it might have been deleted already or failed to upload.
         if (storageError.code !== 'storage/object-not-found') {
           console.error("Error deleting file from storage:", storageError);
-          // We might still want to delete the post doc, so we don't re-throw here unless it's critical.
         }
       }
     }

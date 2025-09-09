@@ -1,11 +1,12 @@
 
-"use client";
-
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, limit, writeBatch, doc } from 'firebase/firestore';
-import type { Activity } from '@/lib/types';
+import { firestore as adminDb } from '@/lib/firebase-admin';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, limit, writeBatch, doc, getDoc as getDocClient } from 'firebase/firestore';
+import type { Activity, Post } from '@/lib/types';
 import { getUserById } from './userService';
 import { getPostById } from './postService';
+
+const isServer = typeof window === 'undefined';
 
 interface CreateActivityParams {
     type: 'like' | 'comment' | 'follow' | 'mention';
@@ -21,12 +22,13 @@ export async function createActivity(params: CreateActivityParams) {
     }
 
     try {
-        await addDoc(collection(db, 'activity'), {
+        const dbInstance = isServer ? adminDb : db;
+        await dbInstance.collection('activity').add({
             type: params.type,
             actorId: params.actorId,
             notifiedUserId: params.notifiedUserId,
             postId: params.postId || null,
-            timestamp: serverTimestamp(),
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
             read: false,
         });
     } catch (error) {
@@ -36,15 +38,14 @@ export async function createActivity(params: CreateActivityParams) {
 
 export async function getActivity(userId: string): Promise<Activity[]> {
     try {
-        const activityCollection = collection(db, 'activity');
-        const q = query(
-            activityCollection,
-            where('notifiedUserId', '==', userId),
-            orderBy('timestamp', 'desc'),
-            limit(50)
-        );
+        const dbInstance = isServer ? adminDb : db;
+        const activityCollection = dbInstance.collection('activity');
+        const q = activityCollection
+            .where('notifiedUserId', '==', userId)
+            .orderBy('timestamp', 'desc')
+            .limit(50);
 
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await q.get();
         
         const activities: Activity[] = (await Promise.all(
             querySnapshot.docs.map(async (doc) => {
@@ -52,7 +53,6 @@ export async function getActivity(userId: string): Promise<Activity[]> {
                 const actor = await getUserById(data.actorId);
                 
                 if (!actor) {
-                    // Skip activity if the actor doesn't exist
                     return null;
                 }
 
@@ -76,7 +76,7 @@ export async function getActivity(userId: string): Promise<Activity[]> {
                     timestamp: data.timestamp,
                 } as Activity;
             })
-        )).filter((activity): activity is Activity => activity !== null); // Filter out nulls right away
+        )).filter((activity): activity is Activity => activity !== null);
         
         return activities;
 
@@ -88,22 +88,21 @@ export async function getActivity(userId: string): Promise<Activity[]> {
 
 
 export async function markAllActivitiesAsRead(userId: string) {
-    const activityCollection = collection(db, 'activity');
-    const q = query(
-        activityCollection,
-        where('notifiedUserId', '==', userId),
-        where('read', '==', false)
-    );
+    const dbInstance = isServer ? adminDb : db;
+    const activityCollection = dbInstance.collection('activity');
+    const q = activityCollection
+        .where('notifiedUserId', '==', userId)
+        .where('read', '==', false);
 
     try {
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await q.get();
         if (querySnapshot.empty) {
             return;
         }
         
-        const batch = writeBatch(db);
+        const batch = dbInstance.batch();
         querySnapshot.forEach(docSnapshot => {
-            batch.update(doc(db, 'activity', docSnapshot.id), { read: true });
+            batch.update(docSnapshot.ref, { read: true });
         });
         
         await batch.commit();
@@ -112,4 +111,3 @@ export async function markAllActivitiesAsRead(userId: string) {
         console.error("Error marking activities as read:", error);
     }
 }
-

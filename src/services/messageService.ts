@@ -1,7 +1,8 @@
 
-"use client";
-
 import { db } from '@/lib/firebase';
+import { firestore as adminDb } from '@/lib/firebase-admin';
+import * as admin from 'firebase-admin';
+
 import { 
     collection, 
     query, 
@@ -20,6 +21,8 @@ import {
 import type { Conversation, Message, User } from '@/lib/types';
 import { getUserById } from './userService';
 
+const isServer = typeof window === 'undefined';
+
 // Helper to get full user details for conversations
 async function getFullUsers(userIds: string[]): Promise<User[]> {
     const userPromises = userIds.map(id => getUserById(id));
@@ -29,10 +32,11 @@ async function getFullUsers(userIds: string[]): Promise<User[]> {
 
 // Get all conversations for a user
 export async function getConversations(userId: string): Promise<Conversation[]> {
-    const convosCollection = collection(db, 'conversations');
-    const q = query(convosCollection, where('userIds', 'array-contains', userId), orderBy('timestamp', 'desc'));
+    const dbInstance = isServer ? adminDb : db;
+    const convosCollection = dbInstance.collection('conversations');
+    const q = convosCollection.where('userIds', 'array-contains', userId).orderBy('timestamp', 'desc');
     
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await q.get();
     const conversations: Conversation[] = await Promise.all(
         querySnapshot.docs.map(async (doc) => {
             const data = doc.data();
@@ -49,31 +53,35 @@ export async function getConversations(userId: string): Promise<Conversation[]> 
 
 // Get messages for a specific conversation
 export function getMessagesQuery(conversationId: string) {
+    // This function is client-only because it returns a query for use with hooks.
     const messagesCollection = collection(db, 'conversations', conversationId, 'messages');
     return query(messagesCollection, orderBy('timestamp', 'asc'));
 }
 
 // Send a new message
 export async function sendMessage(conversationId: string, senderId: string, text: string) {
-    const messagesCollection = collection(db, 'conversations', conversationId, 'messages');
-    const conversationRef = doc(db, 'conversations', conversationId);
+    const dbInstance = isServer ? adminDb : db;
+    const messagesCollection = dbInstance.collection('conversations').doc(conversationId).collection('messages');
+    const conversationRef = dbInstance.collection('conversations').doc(conversationId);
 
-    const newMessage: Omit<Message, 'id' | 'sender'> = {
+    const timestamp = isServer ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp();
+
+    const newMessage = {
         senderId,
         text,
-        timestamp: serverTimestamp() as any,
+        timestamp,
     };
     
-    await addDoc(messagesCollection, newMessage);
+    await messagesCollection.add(newMessage);
 
     // Update the lastMessage and timestamp on the conversation
-    await updateDoc(conversationRef, {
+    await conversationRef.update({
         lastMessage: {
             text,
             senderId,
-            timestamp: serverTimestamp()
+            timestamp
         },
-        timestamp: serverTimestamp(),
+        timestamp,
     });
 }
 
@@ -85,26 +93,24 @@ export async function findOrCreateConversation(currentUserId: string, targetUser
     if (currentUserId === targetUserId) {
       throw new Error("Cannot create a conversation with yourself.");
     }
+
+    const dbInstance = isServer ? adminDb : db;
+    const convosCollection = dbInstance.collection('conversations');
   
-    const convosCollection = collection(db, 'conversations');
-    
-    // Check if a conversation between these two users already exists
-    // Firestore does not support 'array-contains-all' with two different values in a single query in all environments.
-    // A common workaround is to store a sorted key.
     const userIds = [currentUserId, targetUserId].sort();
     
-    const q = query(convosCollection, where('userIds', '==', userIds));
+    const q = convosCollection.where('userIds', '==', userIds);
 
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await q.get();
     
     if (!querySnapshot.empty) {
         // Conversation already exists
         return querySnapshot.docs[0].id;
     } else {
         // Create a new conversation
-        const newConvoRef = await addDoc(convosCollection, {
+        const newConvoRef = await convosCollection.add({
             userIds: userIds,
-            timestamp: serverTimestamp(),
+            timestamp: isServer ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
             lastMessage: null,
         });
         return newConvoRef.id;
