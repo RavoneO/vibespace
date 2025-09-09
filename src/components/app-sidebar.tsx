@@ -17,14 +17,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "./ui/skeleton";
-import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { useRouter, usePathname } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 export function AppSidebar() {
+  const { data: session, status } = useSession();
   const { userProfile, isGuest, setAsGuest, loading: authLoading } = useAuth();
   const { hasUnreadNotifications } = useNotifications();
   const router = useRouter();
@@ -40,16 +40,9 @@ export function AppSidebar() {
     { href: "/profile", icon: Icons.profile, label: "Profile" },
   ];
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    setAsGuest(false);
-    router.push("/");
-  }
+  const handleLogout = () => signOut({ callbackUrl: '/' });
 
-  const handleGuestLogin = () => {
-    setAsGuest(false);
-    router.push("/login");
-  }
+  const loading = status === 'loading' || authLoading;
 
   return (
     <Sidebar>
@@ -65,7 +58,7 @@ export function AppSidebar() {
         <SidebarMenu>
           {menuItems.map((item) => {
              const isActive = (item.href === "/feed" && pathname === item.href) || (item.href !== "/feed" && pathname.startsWith(item.href) && item.href !== "/profile") || (item.href === "/profile" && userProfile && pathname.startsWith(`/profile/${userProfile.username}`));
-             const finalHref = item.href === '/profile' ? (userProfile ? `/profile/${userProfile.username}` : (isGuest ? '/login' : '/feed')) : item.href;
+             const finalHref = item.href === '/profile' ? (userProfile ? `/profile/${userProfile.username}` : (isGuest ? '/feed' : '/')) : item.href;
              return (
                  <SidebarMenuItem key={item.label}>
                     <Link href={finalHref} className="w-full">
@@ -95,17 +88,7 @@ export function AppSidebar() {
         </Link>
       </SidebarContent>
       <SidebarFooter className="p-2 border-t mt-auto">
-        { isGuest ? (
-            <div className={cn("text-center space-y-2", sidebarState === 'collapsed' && "hidden")}>
-                <p className="text-sm">Sign up to get the full experience.</p>
-                <Button size="sm" className="w-full" onClick={() => router.push("/signup")}>
-                    Sign Up
-                </Button>
-                 <Button size="sm" variant="outline" className="w-full" onClick={handleGuestLogin}>
-                    Log In
-                </Button>
-            </div>
-        ) : authLoading ? (
+        { loading ? (
             <div className="flex items-center gap-3 p-2">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className={cn("flex-1 space-y-1", sidebarState === 'collapsed' && 'hidden')}>
@@ -113,17 +96,17 @@ export function AppSidebar() {
                     <Skeleton className="h-3 w-16" />
                 </div>
             </div>
-        ) : userProfile ? (
-            <DropdownMenu>
+        ) : session ? (
+             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 cursor-pointer w-full p-2 hover:bg-secondary rounded-md">
                     <Avatar>
-                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
-                        <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={session.user?.image!} alt={session.user?.name!} />
+                        <AvatarFallback>{session.user?.name?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className={cn("flex flex-col overflow-hidden flex-1", sidebarState === 'collapsed' && 'hidden')}>
-                        <span className="font-semibold truncate">{userProfile.name}</span>
-                        <span className="text-sm text-muted-foreground truncate">@{userProfile.username}</span>
+                        <span className="font-semibold truncate">{session.user?.name}</span>
+                        <span className="text-sm text-muted-foreground truncate">@{session.user?.email}</span>
                     </div>
                     <Icons.more className={cn("text-muted-foreground", sidebarState === 'collapsed' && 'hidden')} />
                 </div>
@@ -135,7 +118,14 @@ export function AppSidebar() {
                  </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-        ) : null }
+        ) : (
+            <div className={cn("text-center space-y-2", sidebarState === 'collapsed' && "hidden")}>
+                <p className="text-sm">Sign in to get the full experience.</p>
+                <Button size="sm" className="w-full" onClick={() => signIn('google')}>
+                    Sign In with Google
+                </Button>
+            </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

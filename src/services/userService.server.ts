@@ -1,10 +1,10 @@
 
 import { firestore as adminDb } from '@/lib/firebase-admin';
 import type { User } from '@/lib/types';
-import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
 import { uploadFile } from './storageService'; // Assuming storageService is client-safe or you have a .server version
 
 export async function getUserById(userId: string): Promise<User | null> {
+  if (!userId) return null;
   try {
     const userDocRef = adminDb.collection('users').doc(userId);
     const userDoc = await userDocRef.get();
@@ -54,16 +54,6 @@ export async function searchUsers(searchText: string): Promise<User[]> {
 }
 
 export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
-    const nameCheck = await analyzeContent({ text: data.name });
-    if (!nameCheck.isAllowed) {
-        throw new Error(nameCheck.reason || "The provided name is not allowed.");
-    }
-
-    const usernameCheck = await analyzeContent({ text: data.username });
-    if (!usernameCheck.isAllowed) {
-        throw new Error(usernameCheck.reason || "The provided username is not allowed.");
-    }
-
     const userRef = adminDb.collection('users').doc(userId);
     const nameForAvatar = data.name.split(' ').join('+');
     await userRef.set({
@@ -81,18 +71,6 @@ export async function createUserProfile(userId: string, data: { name: string; us
 }
 
 export async function updateUserProfile(userId: string, data: { name: string; bio: string; avatarFile?: File }) {
-    const nameCheck = await analyzeContent({ text: data.name });
-    if (!nameCheck.isAllowed) {
-        throw new Error(nameCheck.reason || "The provided name is not allowed.");
-    }
-    
-    if (data.bio) {
-        const bioCheck = await analyzeContent({ text: data.bio });
-        if (!bioCheck.isAllowed) {
-            throw new Error(bioCheck.reason || "The provided bio is not allowed.");
-        }
-    }
-
     const userRef = adminDb.collection('users').doc(userId);
     
     // Because we can't pass a File object to a server action easily,

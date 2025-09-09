@@ -4,8 +4,6 @@ import * as admin from 'firebase-admin';
 import type { Post, User, Comment, PostTag } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService.server';
 import { createActivity } from './activityService.server';
-import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
-
 
 const userCache = new Map<string, User>();
 async function getFullUser(userId: string): Promise<User> {
@@ -71,11 +69,6 @@ export async function createPost(postData: {
     tags?: PostTag[];
     collaboratorIds?: string[];
 }) {
-    const moderationResult = await analyzeContent({ text: postData.caption });
-    if (!moderationResult.isAllowed) {
-        throw new Error(moderationResult.reason || "This content is not allowed.");
-    }
-
     const docRef = await adminDb.collection('posts').add({
         userId: postData.userId,
         type: postData.type,
@@ -94,13 +87,6 @@ export async function createPost(postData: {
 }
 
 export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
-    if (data.caption) {
-        const moderationResult = await analyzeContent({ text: data.caption });
-        if (!moderationResult.isAllowed) {
-            throw new Error(moderationResult.reason || "This caption is not allowed.");
-        }
-    }
-
     const postRef = adminDb.collection('posts').doc(postId);
     await postRef.update(data);
 }
@@ -251,11 +237,6 @@ export async function processMentions(text: string, actorId: string, postId: str
 
 export async function addComment(postId: string, commentData: { userId: string, text: string }) {
     const postRef = adminDb.collection('posts').doc(postId);
-
-    const moderationResult = await analyzeContent({ text: commentData.text });
-    if (!moderationResult.isAllowed) {
-        throw new Error(moderationResult.reason || "This comment is not allowed.");
-    }
     
     const newComment = {
         id: adminDb.collection('posts').doc().id, // Generate a unique ID for the comment

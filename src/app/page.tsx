@@ -4,29 +4,22 @@
 import Link from "next/link";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
+import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WelcomePage() {
-  const { user, loading, setAsGuest, showSplashAd } = useAuth();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (status === "authenticated") {
       router.replace("/feed");
-    } else if (!loading && !user) {
-        showSplashAd();
     }
-  }, [user, loading, router, showSplashAd]);
+  }, [status, router]);
 
-  const handleGuestAccess = () => {
-    setAsGuest(true);
-    router.push("/feed");
-  };
-
-  if (loading || (!loading && user)) {
+  if (status === "loading" || status === "authenticated") {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background">
             <div className="flex flex-col items-center space-y-6">
@@ -41,7 +34,6 @@ export default function WelcomePage() {
     );
   }
 
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
         <div className="flex flex-col items-center space-y-6 max-w-sm">
@@ -55,14 +47,11 @@ export default function WelcomePage() {
               Join the community to share your vibes, connect with friends, and discover new content.
             </p>
             <div className="w-full space-y-4 pt-4">
-                <Button asChild size="lg" className="w-full">
-                    <Link href="/signup">Create Account</Link>
+                <Button size="lg" className="w-full" onClick={() => signIn("google")}>
+                    Sign in with Google
                 </Button>
-                <Button asChild size="lg" variant="secondary" className="w-full">
-                    <Link href="/login">Log In</Link>
-                </Button>
-                <Button size="lg" variant="outline" className="w-full" onClick={handleGuestAccess}>
-                    Continue as Guest
+                 <Button asChild size="lg" variant="secondary" className="w-full">
+                    <Link href="/feed">Continue as Guest</Link>
                 </Button>
             </div>
         </div>

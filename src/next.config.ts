@@ -29,7 +29,13 @@ const nextConfig: NextConfig = {
         hostname: 'ui-avatars.com',
         port: '',
         pathname: '/api/**',
-      }
+      },
+       {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   async redirects() {

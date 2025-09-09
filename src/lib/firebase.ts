@@ -23,6 +23,6 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 // Initialize Analytics if supported
-const analytics = typeof window !== 'undefined' ? isSupported().then(yes => yes ? getAnalytics(app) : null) : Promise.resolve(null);
+const analytics = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID ? isSupported().then(yes => yes ? getAnalytics(app) : null) : Promise.resolve(null);
 
 export { app, auth, db, storage, analytics };

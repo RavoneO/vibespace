@@ -2,12 +2,11 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, arrayUnion, increment, arrayRemove, deleteDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, increment, arrayRemove, deleteDoc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 import type { PostTag } from '@/lib/types';
 import { createActivity } from './activityService';
-import { createPost as createPostServer, updatePost as updatePostServer, addComment as addCommentServer } from './postService.server';
 
 export async function createPost(postData: {
     userId: string;
@@ -17,15 +16,52 @@ export async function createPost(postData: {
     tags?: PostTag[];
     collaboratorIds?: string[];
 }) {
-    return await createPostServer(postData);
+    const docRef = await addDoc(collection(db, 'posts'), {
+        userId: postData.userId,
+        type: postData.type,
+        caption: postData.caption,
+        hashtags: postData.hashtags,
+        tags: postData.tags || [],
+        collaboratorIds: postData.collaboratorIds || [],
+        contentUrl: '',
+        likes: 0,
+        likedBy: [],
+        comments: [],
+        timestamp: serverTimestamp(),
+        status: 'processing',
+    });
+    return docRef.id;
 }
 
 export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
-    return await updatePostServer(postId, data);
+    const postRef = doc(db, 'posts', postId);
+    await updateDoc(postRef, data);
 }
 
 export async function addComment(postId: string, commentData: { userId: string, text: string }) {
-    await addCommentServer(postId, commentData);
+     const postRef = doc(db, 'posts', postId);
+    
+    const newComment = {
+        id: doc(collection(db, 'posts')).id,
+        ...commentData,
+        timestamp: serverTimestamp()
+    };
+    await updateDoc(postRef, {
+        comments: arrayUnion(newComment)
+    });
+
+    const postDoc = await getDoc(postRef);
+    const postData = postDoc.data();
+    if(!postData) return;
+
+    if (postData.userId !== commentData.userId) {
+        await createActivity({
+            type: 'comment',
+            actorId: commentData.userId,
+            notifiedUserId: postData.userId,
+            postId: postId
+        });
+    }
 }
 
 export async function toggleLike(postId: string, userId:string) {

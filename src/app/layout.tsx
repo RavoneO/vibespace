@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
+import SessionProvider from "@/components/session-provider";
 
 export const metadata: Metadata = {
   title: "Vibespace",
@@ -28,12 +29,14 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <ThemeProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </ThemeProvider>
-        <Toaster />
+        <SessionProvider>
+            <ThemeProvider>
+            <AuthProvider>
+                {children}
+            </AuthProvider>
+            </ThemeProvider>
+            <Toaster />
+        </SessionProvider>
       </body>
     </html>
   );

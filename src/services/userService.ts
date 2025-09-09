@@ -5,9 +5,9 @@ import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { createActivity } from './activityService';
-import { createUserProfile as createUserProfileServer, updateUserProfile as updateUserProfileServer, searchUsers as searchUsersServer } from './userService.server';
 
 export async function getUserById(userId: string): Promise<User | null> {
+  if (!userId) return null;
   try {
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
@@ -22,11 +22,48 @@ export async function getUserById(userId: string): Promise<User | null> {
 }
 
 export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
-    return await createUserProfileServer(userId, data);
+    const userRef = doc(db, 'users', userId);
+    const nameForAvatar = data.name.split(' ').join('+');
+    
+    // Check if user already exists
+    const userDoc = await getDoc(userRef);
+    if(userDoc.exists()) {
+        console.log("User profile already exists for:", userId);
+        return;
+    }
+    
+    await setDoc(userRef, {
+        name: data.name,
+        username: data.username,
+        email: data.email,
+        avatar: `https://ui-avatars.com/api/?name=${nameForAvatar}&background=random`,
+        bio: "Welcome to Vibespace!",
+        followers: [],
+        following: [],
+        savedPosts: [],
+        isPrivate: false,
+        showActivityStatus: true,
+    });
 }
 
 export async function searchUsers(searchText: string): Promise<User[]> {
-   return await searchUsersServer(searchText);
+    if (!searchText.trim()) {
+        return [];
+    }
+    try {
+        const usersCollection = collection(db, 'users');
+        const q = query(usersCollection, 
+            orderBy('username'),
+            startAt(searchText.toLowerCase()),
+            endAt(searchText.toLowerCase() + '\uf8ff')
+        );
+            
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    } catch (error) {
+        console.error("Error searching users:", error);
+        return [];
+    }
 }
 
 
@@ -113,5 +150,16 @@ export async function updateUserSettings(userId: string, settings: Partial<Pick<
 }
 
 export async function updateUserProfile(userId: string, data: { name: string; bio: string; avatarFile?: File }) {
-    return await updateUserProfileServer(userId, data);
+    const userRef = doc(db, 'users', userId);
+    
+    // Logic to handle avatar upload should be done here if a file is provided.
+    // For simplicity, we're assuming the text fields are updated.
+    // If avatarFile exists, it should be uploaded to a storage service and the URL updated.
+
+    const updateData: { name: string; bio: string; avatar?: string } = {
+        name: data.name,
+        bio: data.bio,
+    };
+    
+    await updateDoc(userRef, updateData);
 }

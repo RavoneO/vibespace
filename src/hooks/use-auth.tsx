@@ -8,13 +8,14 @@ import {
   useEffect,
   useState,
 } from "react";
-import { onAuthStateChanged, User as FirebaseAuthUser } from "firebase/auth";
+import { onAuthStateChanged, User as FirebaseAuthUser, signInWithCustomToken } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { usePathname, useRouter } from "next/navigation";
 import { User, Ad } from "@/lib/types";
-import { getUserById } from "@/services/userService";
+import { getUserById, createUserProfile } from "@/services/userService";
 import { getSplashAd } from "@/services/adService";
 import { SplashAd } from "@/components/splash-ad";
+import { useSession } from "next-auth/react";
 
 export const AuthContext = createContext<{
   user: FirebaseAuthUser | null;
@@ -39,9 +40,10 @@ interface AuthProviderProps {
 }
 
 const PROTECTED_ROUTES = ["/feed", "/create", "/reels", "/settings", "/messages", "/profile", "/activity", "/search"];
-const PUBLIC_ROUTES = ["/", "/login", "/signup"];
+const PUBLIC_ROUTES = ["/"];
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState<FirebaseAuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,21 +56,57 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const guestStatus = sessionStorage.getItem("isGuest") === "true";
     setIsGuest(guestStatus);
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        sessionStorage.removeItem("isGuest");
-        setIsGuest(false);
-        const profile = await getUserById(user.uid);
-        setUserProfile(profile);
-      } else {
-        setUserProfile(null);
-      }
-      setUser(user);
-      setLoading(false);
-    });
-    return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const handleAuth = async () => {
+      if (status === "authenticated" && session) {
+        // NextAuth session exists, now we link with Firebase
+        try {
+          // This is a placeholder for a function that gets a custom token from your backend
+          // You would need to create an API route for this
+          // const response = await fetch('/api/firebase/custom-token');
+          // const { token } = await response.json();
+          // await signInWithCustomToken(auth, token);
+          
+          // For now, we will simulate user profile creation/fetching
+          let profile = await getUserById(session.user.email!); // Using email as a temporary ID
+          
+          if (!profile) {
+            await createUserProfile(session.user.email!, {
+              name: session.user.name!,
+              username: session.user.email!.split('@')[0],
+              email: session.user.email!
+            });
+            profile = await getUserById(session.user.email!);
+          }
+          setUserProfile(profile);
+
+        } catch (error) {
+          console.error("Firebase custom auth failed:", error);
+        }
+      } else if (status === "unauthenticated") {
+        // No NextAuth session, check for Firebase session or guest status
+        const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+          if (fbUser) {
+            const profile = await getUserById(fbUser.uid);
+            setUserProfile(profile);
+            setUser(fbUser);
+          } else {
+            setUserProfile(null);
+            setUser(null);
+          }
+        });
+        return () => unsubscribe();
+      }
+    };
+    
+    handleAuth();
+    
+    if (status !== 'loading') {
+        setLoading(false);
+    }
+  }, [session, status]);
   
   const setAsGuest = (isGuest: boolean) => {
     if (isGuest) {
@@ -96,18 +134,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (loading) return;
 
     const pathIsProtected = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
-
-    if (!user && !isGuest && pathIsProtected) {
+    
+    if (status === "unauthenticated" && !isGuest && pathIsProtected) {
       router.replace("/");
       return;
     }
 
-  }, [user, isGuest, loading, pathname, router]);
+  }, [status, isGuest, loading, pathname, router]);
 
   const value = {
     user,
     userProfile,
-    loading,
+    loading: status === "loading" || loading,
     isGuest,
     setAsGuest,
     showSplashAd,
