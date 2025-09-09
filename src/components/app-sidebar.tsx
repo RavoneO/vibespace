@@ -22,9 +22,11 @@ import { auth } from "@/lib/firebase";
 import { useRouter, usePathname } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useNotifications } from "@/hooks/use-notifications";
 
 export function AppSidebar() {
   const { userProfile, isGuest, setAsGuest, loading: authLoading } = useAuth();
+  const { hasUnreadNotifications } = useNotifications();
   const router = useRouter();
   const pathname = usePathname();
   const { state: sidebarState, toggleSidebar } = useSidebar();
@@ -33,7 +35,7 @@ export function AppSidebar() {
     { href: "/feed", icon: Icons.home, label: "Home" },
     { href: "/search", icon: Icons.search, label: "Search" },
     { href: "/reels", icon: Icons.reels, label: "Reels" },
-    { href: "/activity", icon: Icons.like, label: "Activity" },
+    { href: "/activity", icon: Icons.like, label: "Activity", hasNotification: hasUnreadNotifications },
     { href: "/messages", icon: Icons.messages, label: "Messages" },
     { href: "/profile", icon: Icons.profile, label: "Profile" },
   ];
@@ -68,7 +70,7 @@ export function AppSidebar() {
                  <SidebarMenuItem key={item.label}>
                     <Link href={finalHref} className="w-full">
                         <SidebarMenuButton
-                        className="w-full justify-start"
+                        className="w-full justify-start relative"
                         variant="ghost"
                         size="lg"
                         isActive={isActive}
@@ -76,6 +78,9 @@ export function AppSidebar() {
                         >
                         <item.icon className="size-5 mr-3" />
                         <span>{item.label}</span>
+                         {item.hasNotification && (
+                            <span className="absolute left-2 top-2 h-2 w-2 rounded-full bg-red-500" />
+                        )}
                         </SidebarMenuButton>
                     </Link>
                 </SidebarMenuItem>
