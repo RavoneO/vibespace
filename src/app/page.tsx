@@ -17,15 +17,18 @@ export default function WelcomePage() {
     const [splashAd, setSplashAd] = useState<Ad | null>(null);
 
     useEffect(() => {
-        const ad = getSplashAd();
-        if (ad) {
-            setSplashAd(ad);
-            const hasSeenAd = sessionStorage.getItem('hasSeenSplashAd');
-            if (!hasSeenAd) {
-                setIsSplashAdOpen(true);
-                sessionStorage.setItem('hasSeenSplashAd', 'true');
+        async function fetchSplashAd() {
+            const ad = await getSplashAd();
+            if (ad) {
+                setSplashAd(ad);
+                const hasSeenAd = sessionStorage.getItem('hasSeenSplashAd');
+                if (!hasSeenAd) {
+                    setIsSplashAdOpen(true);
+                    sessionStorage.setItem('hasSeenSplashAd', 'true');
+                }
             }
         }
+        fetchSplashAd();
     }, []);
 
     const handleGuestLogin = () => {

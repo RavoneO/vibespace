@@ -44,7 +44,7 @@ export default async function FeedPage() {
 
   // Inject ads into the feed on the server
   const postsWithAds: (any)[] = [];
-  const availableAds = getAvailableAds();
+  const availableAds = await getAvailableAds();
 
   for(let i = 0; i < posts.length; i++) {
     postsWithAds.push(posts[i]);

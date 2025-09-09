@@ -69,12 +69,12 @@ const isSplashAdActive = true;
 // -----------------------------
 
 
-export function getAvailableAds(): Ad[] {
+export async function getAvailableAds(): Promise<Ad[]> {
     // In a real scenario, this could involve complex logic to fetch ads based on user segments, budget, etc.
     return adInventory;
 }
 
-export function getSplashAd(): Ad | null {
+export async function getSplashAd(): Promise<Ad | null> {
     // This function returns the splash ad only if it's currently active.
     return isSplashAdActive ? splashAd : null;
 }
