@@ -56,7 +56,26 @@ const adInventory: Ad[] = [
     }
 ];
 
+// --- Splash Ad Configuration ---
+const splashAd: Ad = {
+    id: 'ad-splash-001',
+    headline: 'Vibespace Pro is Here!',
+    description: 'Unlock exclusive features, remove ads, and get a special badge on your profile. Upgrade your vibe today!',
+    imageUrl: 'https://picsum.photos/seed/splash1/800/800',
+    keywords: ['pro', 'upgrade', 'premium']
+};
+
+// Set this to false to disable the splash ad
+const isSplashAdActive = true; 
+// -----------------------------
+
+
 export function getAvailableAds(): Ad[] {
     // In a real scenario, this could involve complex logic to fetch ads based on user segments, budget, etc.
     return adInventory;
+}
+
+export function getSplashAd(): Ad | null {
+    // This function returns the splash ad only if it's currently active.
+    return isSplashAdActive ? splashAd : null;
 }
