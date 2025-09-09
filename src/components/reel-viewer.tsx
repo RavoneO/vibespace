@@ -48,9 +48,10 @@ export function ReelViewer({
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown") goToNextReel();
-      if (e.key === "ArrowUp") goToPrevReel();
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") goToNextReel();
+      if (e.key === "ArrowUp" || e.key === "ArrowLeft") goToPrevReel();
       if (e.key === "Escape") onClose();
+      if (e.key === " ") togglePlayPause();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -64,7 +65,7 @@ export function ReelViewer({
 
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center animate-fade-in">
-      <div className="relative w-full h-full max-w-md mx-auto aspect-[9/16] overflow-hidden">
+      <div className="relative w-full h-full max-w-md mx-auto aspect-[9/16] overflow-hidden bg-black rounded-lg">
         
         {/* Close Button */}
         <button
@@ -100,7 +101,7 @@ export function ReelViewer({
                         animate={{ opacity: 1, scale: 1 }}
                         className="absolute inset-0 flex items-center justify-center pointer-events-none"
                     >
-                        <Icons.reels className="w-16 h-16 text-white/50" />
+                        <Icons.play className="w-16 h-16 text-white/50" />
                     </motion.div>
                 )}
             </motion.div>
@@ -137,10 +138,10 @@ export function ReelViewer({
         </div>
         
         {/* Navigation */}
-        <button onClick={goToPrevReel} className="absolute top-1/2 -translate-y-1/2 left-2 z-30 p-2 bg-black/20 rounded-full text-white">
-            <Icons.back className="rotate-90"/>
+        <button onClick={goToPrevReel} className="absolute top-1/2 -translate-y-1/2 left-2 z-30 p-2 bg-black/20 rounded-full text-white md:hidden">
+            <Icons.chevronRight className="-rotate-90"/>
         </button>
-         <button onClick={goToNextReel} className="absolute top-1/2 -translate-y-1/2 right-2 z-30 p-2 bg-black/20 rounded-full text-white">
+         <button onClick={goToNextReel} className="absolute top-1/2 -translate-y-1/2 right-2 z-30 p-2 bg-black/20 rounded-full text-white md:hidden">
             <Icons.chevronRight className="rotate-90"/>
         </button>
 
