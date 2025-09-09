@@ -9,13 +9,13 @@ import { PostCard } from "@/components/post-card";
 import { Stories } from "@/components/stories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getStories } from "@/services/storyService.server";
-import { getPosts, selectAd } from "@/services/postService.server";
+import { getPosts } from "@/services/postService.server";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AdCard } from "@/components/ad-card";
 import { Suspense } from "react";
-import { getAvailableAds } from "@/services/adService";
+import { getAvailableAds, selectAd } from "@/services/adService.server";
 import type { Ad } from "@/services/adService";
 
 function FeedSkeleton() {
