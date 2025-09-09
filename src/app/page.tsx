@@ -12,7 +12,7 @@ import type { Ad } from "@/services/adService";
 
 
 export default function WelcomePage() {
-    const { user, loading, isGuest, setAsGuest } = useAuth();
+    const { user, loading, profileLoading, isGuest, setAsGuest } = useAuth();
     const [isSplashAdOpen, setIsSplashAdOpen] = useState(false);
     const [splashAd, setSplashAd] = useState<Ad | null>(null);
 
