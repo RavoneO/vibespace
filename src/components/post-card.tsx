@@ -11,13 +11,30 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { CommentSheet } from "./comment-sheet";
 import { useAuth } from "@/hooks/use-auth";
-import { getPostById } from "@/services/postService";
+import { getPostById, deletePost } from "@/services/postService";
 import { toggleLike } from "@/services/postService";
 import { toggleBookmark, getUserById } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
@@ -38,9 +55,13 @@ export function PostCard({ post: initialPost }: PostCardProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const likeButtonRef = useRef<HTMLButtonElement>(null);
   
   const isProcessing = post.status === 'processing';
+  const isOwner = user?.uid === post.user.id;
 
   useEffect(() => {
     async function checkBookmarkStatus() {
@@ -158,6 +179,23 @@ export function PostCard({ post: initialPost }: PostCardProps) {
       setIsCommentSheetOpen(true);
   }
 
+  const handleDelete = async () => {
+    if (!isOwner) return;
+
+    setIsDeleting(true);
+    try {
+        await deletePost(post.id);
+        toast({ title: "Post deleted successfully" });
+        setIsDeleteDialogOpen(false);
+        // The post will be removed from the feed by the real-time listener in `FeedPage`
+    } catch (error) {
+        console.error("Error deleting post:", error);
+        toast({ title: "Failed to delete post", variant: "destructive" });
+    } finally {
+        setIsDeleting(false);
+    }
+  };
+
   const getTimestamp = (timestamp: any) => {
       if (isProcessing) return "Publishing...";
       if (!timestamp) return "";
@@ -183,10 +221,27 @@ export function PostCard({ post: initialPost }: PostCardProps) {
             </Link>
             <div className="text-muted-foreground">{getTimestamp(post.timestamp)}</div>
           </div>
-          <Button variant="ghost" size="icon" className="ml-auto" disabled={isProcessing}>
-            <Icons.more />
-            <span className="sr-only">More options</span>
-          </Button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="ml-auto" disabled={isProcessing}>
+                        <Icons.more />
+                        <span className="sr-only">More options</span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuItem onSelect={() => console.log('Report')}>
+                        Report
+                    </DropdownMenuItem>
+                    {isOwner && (
+                        <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => setIsDeleteDialogOpen(true)} className="text-destructive">
+                           Delete
+                        </DropdownMenuItem>
+                        </>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
         </CardHeader>
         <CardContent className="px-4 py-0">
           <div className="text-sm text-foreground/90 mb-4">
@@ -258,6 +313,25 @@ export function PostCard({ post: initialPost }: PostCardProps) {
             </Button>
         </CardFooter>
       </Card>
+      
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this post?</AlertDialogTitle>
+            <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete your post and remove its data from our servers.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                {isDeleting && <Icons.spinner className="animate-spin mr-2" />}
+                Delete
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {!isProcessing && (
         <CommentSheet 
             open={isCommentSheetOpen} 

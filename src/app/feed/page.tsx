@@ -102,8 +102,9 @@ export default function FeedPage() {
     
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         try {
-            const postsData = await Promise.all(querySnapshot.docs.map(processPostDoc));
-            
+            const postsDataPromises = querySnapshot.docs.map(processPostDoc);
+            const postsData = (await Promise.all(postsDataPromises));
+
             // Filter posts to only show 'published' or user's own 'processing' posts
             const filteredPosts = postsData.filter(p => 
                 p.status === 'published' || (p.status === 'processing' && p.user.id === authUser?.uid)

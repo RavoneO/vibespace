@@ -1,8 +1,9 @@
 
 "use client";
 
-import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, limit } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
+import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, limit, deleteDoc } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
 import type { Post, Comment, User } from '@/lib/types';
 import { getUserById } from './userService';
 
@@ -216,4 +217,37 @@ export async function toggleLike(postId: string, userId: string) {
         console.error("Error toggling like:", error);
         throw new Error("Failed to toggle like.");
     }
+}
+
+export async function deletePost(postId: string) {
+  const postRef = doc(db, 'posts', postId);
+  
+  try {
+    const postDoc = await getDoc(postRef);
+    if (!postDoc.exists()) {
+      throw new Error("Post not found");
+    }
+    
+    const postData = postDoc.data() as Post;
+    
+    // Delete media from Cloud Storage
+    if (postData.contentUrl) {
+      try {
+        const fileRef = ref(storage, postData.contentUrl);
+        await deleteObject(fileRef);
+      } catch (storageError: any) {
+        // It's okay if the object doesn't exist, it might have been deleted already or failed to upload.
+        if (storageError.code !== 'storage/object-not-found') {
+          console.error("Error deleting file from storage:", storageError);
+          // We might still want to delete the post doc, so we don't re-throw here unless it's critical.
+        }
+      }
+    }
+    
+    // Delete the post document from Firestore
+    await deleteDoc(postRef);
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    throw new Error("Failed to delete post.");
+  }
 }
