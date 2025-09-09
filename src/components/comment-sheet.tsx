@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { getUserById } from "@/services/userService";
 import { formatDistanceToNowStrict } from "date-fns";
+import { CaptionWithLinks } from "./caption-with-links";
 
 
 interface CommentSheetProps {
@@ -56,7 +57,7 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
       toast({ 
         title: "Please log in to comment.", 
         variant: "destructive",
-        action: <Link href="/signup"><Button>Sign Up</Button></Link>
+        action: <Link href="/signup"><Button>Sign Up</Button></Link> 
       });
       return;
     }
@@ -116,7 +117,9 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
                     <Link href={`/profile/${comment.user.username}`} className="font-semibold hover:underline">{comment.user.username}</Link>
                     <span className="ml-2 text-muted-foreground">{getCommentTimestamp(comment)}</span>
                   </p>
-                  <p className="text-foreground/90">{comment.text}</p>
+                  <div className="text-foreground/90">
+                    <CaptionWithLinks text={comment.text} />
+                  </div>
                 </div>
               </div>
             ))}
