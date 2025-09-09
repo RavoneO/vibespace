@@ -32,12 +32,15 @@ export function UserPosts({ userId, setPostCount }: { userId: string, setPostCou
         fetchUserPosts();
     }, [userId, setPostCount]);
 
+    const imagePosts = userPosts.filter(p => p.type === 'image');
+    const videoPosts = userPosts.filter(p => p.type === 'video');
+
     return (
         <>
             <TabsContent value="posts" className="mt-0">
-                {userPosts.filter(p => p.type === 'image').length > 0 ? (
+                {imagePosts.length > 0 ? (
                     <div className="grid grid-cols-3 gap-0.5">
-                    {userPosts.filter(p => p.type === 'image').map((post) => (
+                    {imagePosts.map((post) => (
                         <div key={post.id} className="relative aspect-square w-full overflow-hidden group">
                         <Image
                             src={post.contentUrl}
@@ -65,9 +68,9 @@ export function UserPosts({ userId, setPostCount }: { userId: string, setPostCou
                 )}
             </TabsContent>
             <TabsContent value="reels" className="mt-0">
-                    {userPosts.filter(p => p.type === 'video').length > 0 ? (
+                    {videoPosts.length > 0 ? (
                     <div className="grid grid-cols-3 gap-0.5">
-                        {userPosts.filter(p => p.type === 'video').map((post) => (
+                        {videoPosts.map((post) => (
                         <div key={post.id} className="relative aspect-[9/16] w-full overflow-hidden group">
                             <video
                             src={post.contentUrl}
