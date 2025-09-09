@@ -9,6 +9,7 @@ import Link from "next/link";
 import { getPosts } from "@/services/postService";
 import type { Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ReelViewer } from "@/components/reel-viewer";
 
 function ReelsSkeleton() {
     return (
@@ -25,6 +26,8 @@ function ReelsSkeleton() {
 export default function ReelsPage() {
   const [reels, setReels] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [selectedReelIndex, setSelectedReelIndex] = useState(0);
 
   useEffect(() => {
     async function loadReels() {
@@ -37,6 +40,14 @@ export default function ReelsPage() {
     loadReels();
   }, []);
 
+  const openReelViewer = (index: number) => {
+    setSelectedReelIndex(index);
+    setViewerOpen(true);
+  };
+
+  const closeReelViewer = () => {
+    setViewerOpen(false);
+  };
 
   return (
     <AppLayout>
@@ -56,9 +67,8 @@ export default function ReelsPage() {
             <ReelsSkeleton />
         ) : reels.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
-            {reels.map((reel) => (
-              <Link href="#" key={reel.id}>
-                <div className="relative aspect-[9/16] w-full overflow-hidden rounded-lg group cursor-pointer">
+            {reels.map((reel, index) => (
+                <div key={reel.id} onClick={() => openReelViewer(index)} className="relative aspect-[9/16] w-full overflow-hidden rounded-lg group cursor-pointer">
                   <video
                     src={reel.contentUrl}
                     className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
@@ -81,7 +91,6 @@ export default function ReelsPage() {
                     </div>
                   </div>
                 </div>
-              </Link>
             ))}
           </div>
         ) : (
@@ -92,6 +101,13 @@ export default function ReelsPage() {
           </div>
         )}
       </main>
+       {viewerOpen && (
+        <ReelViewer
+          reels={reels}
+          initialReelIndex={selectedReelIndex}
+          onClose={closeReelViewer}
+        />
+      )}
     </AppLayout>
   );
 }
