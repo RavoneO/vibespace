@@ -1,7 +1,6 @@
 
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
-import { createActivity as createActivityServer } from './activityService.server';
 
 interface CreateActivityParams {
     type: 'like' | 'comment' | 'follow' | 'mention';
@@ -11,9 +10,20 @@ interface CreateActivityParams {
 }
 
 export async function createActivity(params: CreateActivityParams) {
-    // This function will now be primarily a client-side wrapper,
-    // or we can delegate all activity creation to server actions
-    // for better security and to avoid duplicating logic.
-    // For now, let's call the server version.
-    return createActivityServer(params);
+    if (params.actorId === params.notifiedUserId) {
+        return;
+    }
+
+    try {
+        await addDoc(collection(db, 'activity'), {
+            type: params.type,
+            actorId: params.actorId,
+            notifiedUserId: params.notifiedUserId,
+            postId: params.postId || null,
+            timestamp: serverTimestamp(),
+            read: false,
+        });
+    } catch (error) {
+        console.error("Error creating activity:", error);
+    }
 }

@@ -6,14 +6,6 @@ import type { PostTag } from '@/lib/types';
 import { createActivity } from './activityService';
 import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
 
-// This function is defined and exported in postService.server.ts and called from the server-side addComment implementation there.
-// We will call it from our client implementation as well.
-async function processMentionsOnServer(text: string, actorId: string, postId: string) {
-    const { processMentions } = await import('./postService.server');
-    return processMentions(text, actorId, postId);
-}
-
-
 export async function createPost(postData: {
     userId: string;
     type: 'image' | 'video';
@@ -61,15 +53,6 @@ export async function updatePost(postId: string, data: Partial<{ caption: string
         const postRef = doc(db, 'posts', postId);
         await updateDoc(postRef, data as any);
 
-        // If caption is updated or post is newly published, process mentions
-        if (data.caption || data.status === 'published') {
-            const postDoc = await getDoc(postRef);
-            const postData = postDoc.data();
-            if (postData) {
-                await processMentionsOnServer(postData.caption, postData.userId, postId);
-            }
-        }
-
     } catch (error) {
         console.error("Error updating post:", error);
         throw new Error("Failed to update post.");
@@ -108,9 +91,6 @@ export async function addComment(postId: string, commentData: { userId: string, 
             });
         }
         
-        // Process mentions in the comment
-        await processMentionsOnServer(commentData.text, commentData.userId, postId);
-
     } catch (error) {
         console.error("Error adding comment:", error);
         throw new Error("Failed to add comment.");

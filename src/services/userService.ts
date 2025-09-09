@@ -5,7 +5,6 @@ import type { User } from '@/lib/types';
 import { uploadFile } from './storageService';
 import { createActivity } from './activityService';
 import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
-import { searchUsers as searchUsersServer } from './userService.server';
 
 export async function getUserById(userId: string): Promise<User | null> {
   try {
@@ -54,9 +53,24 @@ export async function createUserProfile(userId: string, data: { name: string; us
 }
 
 export async function searchUsers(searchText: string): Promise<User[]> {
-    // This now delegates to the server-only function for consistency,
-    // though it could be a client-side implementation if desired.
-    return searchUsersServer(searchText);
+    if (!searchText.trim()) {
+        return [];
+    }
+    try {
+        const usersCollection = collection(db, 'users');
+        const q = query(
+            usersCollection,
+            orderBy('username'),
+            startAt(searchText.toLowerCase()),
+            endAt(searchText.toLowerCase() + '\uf8ff')
+        );
+            
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    } catch (error) {
+        console.error("Error searching users:", error);
+        return [];
+    }
 }
 
 
