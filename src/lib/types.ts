@@ -31,6 +31,7 @@ export type PostTag = {
 export type Post = {
   id: string;
   user: User;
+  collaborators?: User[];
   type: 'image' | 'video';
   contentUrl: string;
   caption: string;

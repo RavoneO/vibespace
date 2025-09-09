@@ -28,10 +28,18 @@ async function processPostDoc(doc: any): Promise<Post> {
             user: await getFullUser(comment.userId)
         }))
     );
+    
+    // Fetch collaborators if they exist
+    let collaborators: User[] = [];
+    if (Array.isArray(data.collaboratorIds) && data.collaboratorIds.length > 0) {
+        const collaboratorPromises = data.collaboratorIds.map((id: string) => getFullUser(id));
+        collaborators = await Promise.all(collaboratorPromises);
+    }
 
     return {
       id: doc.id,
       user,
+      collaborators,
       type: data.type,
       contentUrl: data.contentUrl,
       caption: data.caption,
@@ -111,8 +119,8 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
     const postsCollection = collection(db, 'posts');
     const q = query(
         postsCollection, 
-        where('userId', '==', userId), 
         where('status', '==', 'published'),
+        where('userId', '==', userId), 
         orderBy('timestamp', 'desc')
     );
     const querySnapshot = await getDocs(q);
@@ -165,6 +173,7 @@ export async function createPost(postData: {
     caption: string;
     hashtags: string[];
     tags: PostTag[];
+    collaboratorIds?: string[];
 }) {
     try {
         const docRef = await addDoc(collection(db, 'posts'), {
@@ -209,11 +218,11 @@ export async function addComment(postId: string, commentData: { userId: string, 
         // Create activity notification
         const postDoc = await getDoc(postRef);
         const postData = postDoc.data() as Post;
-        if (postData.userId !== commentData.userId) {
+        if (postData.user.id !== commentData.userId) {
             await createActivity({
                 type: 'comment',
                 actorId: commentData.userId,
-                notifiedUserId: postData.userId,
+                notifiedUserId: postData.user.id,
                 postId: postId
             });
         }
@@ -274,7 +283,7 @@ export async function deletePost(postId: string) {
       throw new Error("Post not found");
     }
     
-    const postData = postDoc.data() as Post;
+    const postData = await processPostDoc(postDoc);
     
     // Delete media from Cloud Storage
     if (postData.contentUrl) {
