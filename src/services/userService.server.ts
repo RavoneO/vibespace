@@ -38,35 +38,6 @@ export async function getUserByUsername(username: string): Promise<User | null> 
     }
 }
 
-export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
-    const userRef = adminDb.collection('users').doc(userId);
-    
-    const existingUser = await userRef.get();
-    if(existingUser.exists) {
-        console.log(`Profile for user ${userId} already exists.`);
-        return;
-    }
-
-    const usernameExists = await getUserByUsername(data.username);
-    if (usernameExists) {
-        throw new Error(`Username @${data.username} is already taken.`);
-    }
-
-    const nameForAvatar = data.name.split(' ').join('+');
-    await userRef.set({
-        name: data.name,
-        username: data.username.toLowerCase(),
-        email: data.email,
-        avatar: `https://ui-avatars.com/api/?name=${nameForAvatar}&background=random`,
-        bio: "Welcome to Vibespace!",
-        followers: [],
-        following: [],
-        savedPosts: [],
-        isPrivate: false,
-        showActivityStatus: true,
-    });
-}
-
 export async function toggleBookmark(userId: string, postId: string): Promise<boolean> {
     const userRef = adminDb.collection('users').doc(userId);
     try {
@@ -96,4 +67,3 @@ export async function toggleBookmark(userId: string, postId: string): Promise<bo
         throw new Error("Failed to toggle bookmark status.");
     }
 }
-

@@ -12,19 +12,6 @@ import {
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import type { User as AppUser } from "@/lib/types";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { createUserProfile, getUserById } from "@/services/userService.server";
-
-
-async function getUserProfileClient(userId: string): Promise<AppUser | null> {
-    const userDocRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userDocRef);
-    if (userDoc.exists()) {
-      return { id: userDoc.id, ...userDoc.data() } as AppUser;
-    }
-    return null;
-}
 
 export const AuthContext = createContext<{
   user: FirebaseUser | null;
@@ -63,6 +50,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const guestStatus = sessionStorage.getItem('isGuest');
       if (guestStatus === 'true' && !firebaseUser) {
         setIsGuestState(true);
+        setProfileLoading(false);
       } else {
         setIsGuestState(false);
       }
@@ -77,17 +65,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setProfileLoading(true);
         sessionStorage.removeItem('isGuest');
         try {
-            let profile = await getUserById(user.uid);
-            if (!profile) {
-                const username = user.email?.split('@')[0].toLowerCase() || `user${Date.now()}`;
-                const newProfileData = {
-                    name: user.displayName || "New User",
-                    username: username,
-                    email: user.email!,
-                };
-                await createUserProfile(user.uid, newProfileData);
-                profile = await getUserById(user.uid);
+            const response = await fetch('/api/user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    userId: user.uid,
+                    displayName: user.displayName,
+                    email: user.email,
+                    photoURL: user.photoURL,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch user profile');
             }
+            const profile = await response.json();
             setUserProfile(profile);
         } catch (e) {
             console.error("Error fetching user profile", e);
@@ -97,11 +88,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       } else {
         setUserProfile(null);
-        setProfileLoading(false);
+        if (!isGuest) {
+            setProfileLoading(false);
+        }
       }
     }
     fetchProfile();
-  }, [user]);
+  }, [user, isGuest]);
   
   const setAsGuest = useCallback(() => {
     sessionStorage.setItem('isGuest', 'true');
