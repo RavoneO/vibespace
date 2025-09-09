@@ -34,6 +34,7 @@ import {
   Camera,
   Grid,
   Menu,
+  Play,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -74,6 +75,9 @@ export const Icons = {
   camera: Camera,
   grid: Grid,
   menu: Menu,
+  play: Play,
 };
 
 export type Icon = LucideIcon;
+
+    

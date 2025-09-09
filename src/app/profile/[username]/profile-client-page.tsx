@@ -102,7 +102,8 @@ export function ProfileClientPage({ username }: { username: string }) {
         setIsVibeLoading(true);
         try {
             const userPosts = await getPostsByUserId(fetchedUser.id);
-            const captions = userPosts.map(p => p.caption);
+            setPostCount(userPosts.length);
+            const captions = userPosts.map(p => p.caption).filter(Boolean);
             const { vibe } = await generateVibe({ captions });
             setVibe(vibe);
         } catch (e) {
@@ -277,7 +278,7 @@ export function ProfileClientPage({ username }: { username: string }) {
           </div>
           <div className="mt-4">
               <h2 className="text-lg font-semibold">{user.name}</h2>
-              <p className="text-sm text-muted-foreground">{user.bio}</p>
+              {user.bio && <p className="text-sm text-muted-foreground">{user.bio}</p>}
               {isVibeLoading ? (
                   <Skeleton className="h-5 w-48 mt-2" />
               ) : vibe && (
@@ -349,3 +350,5 @@ export function ProfileClientPage({ username }: { username: string }) {
     </AppLayout>
   );
 }
+
+    

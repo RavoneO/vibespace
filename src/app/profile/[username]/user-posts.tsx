@@ -22,15 +22,22 @@ export function PostGridSkeleton() {
 
 export function UserPosts({ userId, setPostCount }: { userId: string, setPostCount: (count: number) => void }) {
     const [userPosts, setUserPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
     
     useEffect(() => {
         async function fetchUserPosts() {
+            setLoading(true);
             const fetchedPosts = await getPostsByUserId(userId);
             setUserPosts(fetchedPosts);
             setPostCount(fetchedPosts.length);
+            setLoading(false);
         }
         fetchUserPosts();
     }, [userId, setPostCount]);
+
+    if (loading) {
+        return <PostGridSkeleton />
+    }
 
     const imagePosts = userPosts.filter(p => p.type === 'image');
     const videoPosts = userPosts.filter(p => p.type === 'video');
@@ -71,13 +78,13 @@ export function UserPosts({ userId, setPostCount }: { userId: string, setPostCou
                     {videoPosts.length > 0 ? (
                     <div className="grid grid-cols-3 gap-0.5">
                         {videoPosts.map((post) => (
-                        <div key={post.id} className="relative aspect-[9/16] w-full overflow-hidden group">
+                        <div key={post.id} className="relative aspect-square w-full overflow-hidden group">
                             <video
                             src={post.contentUrl}
                             className="object-cover w-full h-full transition-all duration-300"
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <Icons.reels className="h-10 w-10 text-white" />
+                                <Icons.play className="h-10 w-10 text-white" />
                             </div>
                             <div className="absolute bottom-2 left-2 text-white flex items-center gap-2 text-xs font-bold bg-black/30 rounded-full px-2 py-1">
                                 <div className="flex items-center gap-1">
@@ -100,3 +107,5 @@ export function UserPosts({ userId, setPostCount }: { userId: string, setPostCou
         </>
     );
 }
+
+    
