@@ -1,13 +1,10 @@
+// next.config.mjs
 
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    // This is the essential fix for stubborn CJS/ESM issues.
+    serverComponentsExternalPackages: ['firebase-admin'],
   },
   images: {
     unoptimized: true,
@@ -29,7 +26,13 @@ const nextConfig: NextConfig = {
         hostname: 'ui-avatars.com',
         port: '',
         pathname: '/api/**',
-      }
+      },
+       {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   async redirects() {

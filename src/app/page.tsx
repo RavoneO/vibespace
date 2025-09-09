@@ -1,65 +1,25 @@
+import admin from 'firebase-admin';
 
-"use client";
+// IMPORTANT: Ensure the FIREBASE_SERVICE_ACCOUNT_KEY is set in your environment.
+// For local development, you can create a .env.local file.
+// For production, this should be a secure environment variable.
 
-import Link from "next/link";
-import { Icons } from "@/components/icons";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-
-export default function WelcomePage() {
-  const { user, loading, setAsGuest } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && user) {
-      router.replace("/feed");
+export default async function HomePage() {
+  let message = "Firebase Admin SDK failed to initialize.";
+  try {
+    // The initialization is now handled in the imported module (src/lib/firebase-admin.ts)
+    // We just need to check if it was successful by verifying the number of initialized apps.
+    if (admin.apps.length > 0) {
+        message = "Firebase Admin SDK initialized successfully!";
+        console.log("✅ Firebase Admin SDK seems to be working.");
+    } else {
+        // This case might occur if the service account key is missing or invalid.
+        console.error("🔥 Firebase Admin SDK was imported but no apps are initialized.");
     }
-  }, [loading, user, router]);
-
-  const handleGuest = () => {
-    setAsGuest();
-    router.push('/feed');
+  } catch (error) {
+    console.error("🔥 Firebase Admin SDK initialization error:", error);
+    message = `Firebase Admin SDK initialization error: ${(error as Error).message}`;
   }
 
-  if (loading || user) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background">
-            <div className="flex flex-col items-center space-y-6">
-                <div className="p-4 rounded-full bg-primary/10">
-                   <Icons.sparkles className="h-12 w-12 text-primary animate-pulse" />
-                </div>
-                <h1 className="text-2xl font-bold">Vibespace</h1>
-                <p className="text-muted-foreground">Loading your experience...</p>
-                <Icons.spinner className="h-6 w-6 animate-spin text-primary" />
-            </div>
-        </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
-        <div className="flex flex-col items-center space-y-6 max-w-sm">
-            <div className="p-4 rounded-full bg-primary/10">
-                <Icons.sparkles className="h-16 w-16 text-primary" />
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">
-              Welcome to Vibespace
-            </h1>
-            <p className="text-muted-foreground">
-              Join the community to share your vibes, connect with friends, and discover new content.
-            </p>
-            <div className="w-full space-y-4 pt-4">
-                <Button size="lg" className="w-full" asChild>
-                    <Link href="/login">Sign in with Google</Link>
-                </Button>
-                 <Button size="lg" variant="secondary" className="w-full" onClick={handleGuest}>
-                    Continue as Guest
-                </Button>
-            </div>
-        </div>
-    </div>
-  );
+  return <h1>{message}</h1>;
 }
