@@ -4,8 +4,8 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { User } from '@/lib/types';
-import { createActivity } from './activityService';
-import { getPostById } from './postService';
+import { createActivity } from './activityService.server';
+import { getPostById } from './postService.server';
 
 
 export async function getUserById(userId: string): Promise<User | null> {

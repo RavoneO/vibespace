@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { Post, PostTag, User, Comment } from '@/lib/types';
 import { getUserById } from './userService.server';
-import { createActivity } from './activityService';
+import { createActivity } from './activityService.server';
 
 const userCache = new Map<string, User>();
 

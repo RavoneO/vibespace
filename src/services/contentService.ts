@@ -2,7 +2,7 @@
 'use server';
 
 import { getUserByUsername } from './userService.server';
-import { createActivity } from './activityService';
+import { createActivity } from './activityService.server';
 
 export async function processMentions(text: string, actorId: string, postId: string) {
     const mentionRegex = /@(\\w+)/g;
