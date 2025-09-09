@@ -4,22 +4,27 @@
 import Link from "next/link";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { useSession, signIn } from "next-auth/react";
+import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WelcomePage() {
-  const { data: session, status } = useSession();
+  const { user, loading, setAsGuest } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (!loading && user) {
       router.replace("/feed");
     }
-  }, [status, router]);
+  }, [loading, user, router]);
 
-  if (status === "loading" || status === "authenticated") {
+  const handleGuest = () => {
+    setAsGuest();
+    router.push('/feed');
+  }
+
+  if (loading || user) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background">
             <div className="flex flex-col items-center space-y-6">
@@ -47,11 +52,11 @@ export default function WelcomePage() {
               Join the community to share your vibes, connect with friends, and discover new content.
             </p>
             <div className="w-full space-y-4 pt-4">
-                <Button size="lg" className="w-full" onClick={() => signIn("google")}>
-                    Sign in with Google
+                <Button size="lg" className="w-full" asChild>
+                    <Link href="/login">Sign in with Google</Link>
                 </Button>
-                 <Button asChild size="lg" variant="secondary" className="w-full">
-                    <Link href="/feed">Continue as Guest</Link>
+                 <Button size="lg" variant="secondary" className="w-full" onClick={handleGuest}>
+                    Continue as Guest
                 </Button>
             </div>
         </div>

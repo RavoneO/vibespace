@@ -1,12 +1,13 @@
 
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import AppLayout from "@/components/app-layout";
 import { ActivityFeed } from "./activity-feed";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getActivity, markAllActivitiesAsRead } from "@/services/activityService.server";
+import { authOptions } from '@/lib/firebase'; // This will be replaced by a real auth solution
+import { headers } from 'next/headers';
+import { redirect } from "next/navigation";
+
 
 function ActivitySkeleton() {
     return (
@@ -25,17 +26,20 @@ function ActivitySkeleton() {
 }
 
 export default async function ActivityPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session || !session.user?.email) {
-    redirect('/api/auth/signin?callbackUrl=/activity');
-  }
+    const headersList = headers();
+    const userHeader = headersList.get('x-user-id');
+    
+    if (!userHeader) {
+      // This is a simplified check. In a real app, you'd have a proper auth check.
+      // For now, we allow guests to see the page but the feed will show a login prompt.
+    }
   
-  // Note: Assuming user ID is the email for this implementation
-  const userId = session.user.email;
+    const userId = userHeader || '';
   
-  await markAllActivitiesAsRead(userId);
-  const activities = await getActivity(userId);
+    if (userId) {
+        await markAllActivitiesAsRead(userId);
+    }
+    const activities = userId ? await getActivity(userId) : [];
 
   return (
     <AppLayout>

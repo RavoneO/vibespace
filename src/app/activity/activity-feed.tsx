@@ -3,12 +3,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSession, signIn } from "next-auth/react";
 import type { Activity } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNowStrict } from 'date-fns';
+import { useAuth } from "@/hooks/use-auth";
+import { useRouter } from "next/navigation";
 
 function ActivityItem({ activity }: { activity: Activity }) {
     const { actor, type, targetPost, timestamp } = activity;
@@ -63,20 +64,37 @@ function ActivityItem({ activity }: { activity: Activity }) {
 }
 
 export function ActivityFeed({ initialActivities }: { initialActivities: Activity[] }) {
-    const { status } = useSession();
+    const { user, loading, isGuest } = useAuth();
+    const router = useRouter();
     
-    if (status === 'unauthenticated') {
+    if (loading) {
+        return (
+             <div className="p-4 space-y-4">
+                {[...Array(8)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4 p-2">
+                        <div className="h-10 w-10 rounded-full bg-muted" />
+                        <div className="flex-1 space-y-2">
+                            <div className="h-4 w-3/4 bg-muted" />
+                        </div>
+                        <div className="h-10 w-10 bg-muted" />
+                    </div>
+                ))}
+            </div>
+        )
+    }
+
+    if (!user || isGuest) {
       return (
           <div className="text-center text-muted-foreground py-24 px-4">
             <Icons.notifications className="mx-auto h-12 w-12" />
             <p className="mt-4 font-semibold">Activity is for users only</p>
             <p className="text-sm">Sign up or log in to see your notifications.</p>
-            <Button onClick={() => signIn('google')} className="mt-4">
+            <Button onClick={() => router.push('/login')} className="mt-4">
                 Sign In
             </Button>
           </div>
       )
-  }
+    }
 
   if (initialActivities.length === 0) {
        return (

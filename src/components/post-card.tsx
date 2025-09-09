@@ -5,7 +5,6 @@ import type { Post as PostType, User } from "@/lib/types";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSession, signIn } from "next-auth/react";
 import {
   Card,
   CardContent,
@@ -52,14 +51,15 @@ import { Badge } from "./ui/badge";
 import { Textarea } from "./ui/textarea";
 import { CaptionWithLinks } from "./caption-with-links";
 import { useAuth } from "@/hooks/use-auth";
+import { useRouter } from "next/navigation";
 
 interface PostCardProps {
   post: PostType;
 }
 
 const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
-  const { data: session, status } = useSession();
   const { userProfile, isGuest } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
 
   const [post, setPost] = useState(initialPost);
@@ -101,11 +101,11 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
   const showLoginToast = useCallback(() => {
     toast({
         title: "Please sign in to interact",
-        description: "Sign in with Google to like, comment, and more.",
+        description: "Sign in to like, comment, and more.",
         variant: "destructive",
-        action: <Button onClick={() => signIn('google')}>Sign In</Button>
+        action: <Button onClick={() => router.push('/login')}>Sign In</Button>
     });
-  }, [toast]);
+  }, [toast, router]);
 
   const handleLike = useCallback(async () => {
     if (isGuest || !userProfile || isProcessing) {

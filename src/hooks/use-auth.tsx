@@ -9,13 +9,14 @@ import {
   useEffect,
   useCallback,
 } from "react";
-import { useSession } from "next-auth/react";
+import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import type { User as AppUser } from "@/lib/types";
-import { getUserById } from "@/services/userService";
-import { User } from "firebase/auth";
+import { getUserById, createUserProfile } from "@/services/userService";
+
 
 export const AuthContext = createContext<{
-  user: User | null;
+  user: FirebaseUser | null;
   userProfile: AppUser | null;
   loading: boolean;
   isGuest: boolean;
@@ -35,38 +36,45 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const { data: session, status } = useSession();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
-  const [isGuest, setIsGuestState] = useState(true);
-
-  const loading = status === "loading";
+  const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuestState] = useState(false);
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (session?.user?.email) {
-        // Use email as the ID to fetch the full user profile from Firestore
-        const profile = await getUserById(session.user.email);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        let profile = await getUserById(firebaseUser.uid);
+        if (!profile) {
+          // If profile doesn't exist, create it.
+          const username = firebaseUser.email?.split('@')[0] || `user${Date.now()}`;
+          const newProfileData = {
+            name: firebaseUser.displayName || "New User",
+            username: username,
+            email: firebaseUser.email!,
+          };
+          await createUserProfile(firebaseUser.uid, newProfileData);
+          profile = await getUserById(firebaseUser.uid);
+        }
         setUserProfile(profile);
         setIsGuestState(false);
+        sessionStorage.removeItem('isGuest');
       } else {
+        const guestStatus = sessionStorage.getItem('isGuest');
+        if (guestStatus === 'true') {
+            setIsGuestState(true);
+        } else {
+            setIsGuestState(false);
+        }
+        setUser(null);
         setUserProfile(null);
       }
-    };
+      setLoading(false);
+    });
 
-    if (status === "authenticated") {
-      fetchUserProfile();
-    } else if (status === 'unauthenticated') {
-       const guestStatus = sessionStorage.getItem('isGuest');
-       if (guestStatus === 'true') {
-           setIsGuestState(true);
-       } else {
-           // If not explicitly a guest, and not logged in, we can treat as non-guest waiting for login
-           setIsGuestState(false);
-       }
-       setUserProfile(null);
-    }
-  }, [session, status]);
+    return () => unsubscribe();
+  }, []);
   
   const setAsGuest = useCallback(() => {
     sessionStorage.setItem('isGuest', 'true');
@@ -77,7 +85,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const value = {
     user,
     userProfile,
-    loading: loading || (status === 'authenticated' && !userProfile),
+    loading,
     isGuest,
     setAsGuest,
   };

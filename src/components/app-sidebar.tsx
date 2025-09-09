@@ -21,11 +21,11 @@ import { useRouter, usePathname } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { auth } from "@/lib/firebase";
+
 
 export function AppSidebar() {
-  const { data: session, status } = useSession();
-  const { userProfile, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading, isGuest } = useAuth();
   const { hasUnreadNotifications } = useNotifications();
   const router = useRouter();
   const pathname = usePathname();
@@ -40,9 +40,7 @@ export function AppSidebar() {
     { href: "/profile", icon: Icons.profile, label: "Profile" },
   ];
 
-  const handleLogout = () => signOut({ callbackUrl: '/' });
-
-  const loading = status === 'loading' || authLoading;
+  const handleLogout = () => auth.signOut().then(() => router.push('/'));
 
   return (
     <Sidebar>
@@ -89,7 +87,7 @@ export function AppSidebar() {
         </Link>
       </SidebarContent>
       <SidebarFooter className="p-2 border-t mt-auto">
-        { loading ? (
+        { authLoading ? (
             <div className="flex items-center gap-3 p-2">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className={cn("flex-1 space-y-1", sidebarState === 'collapsed' && 'hidden')}>
@@ -97,7 +95,7 @@ export function AppSidebar() {
                     <Skeleton className="h-3 w-16" />
                 </div>
             </div>
-        ) : session && userProfile ? (
+        ) : user && userProfile ? (
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 cursor-pointer w-full p-2 hover:bg-secondary rounded-md">
@@ -122,8 +120,8 @@ export function AppSidebar() {
         ) : (
             <div className={cn("text-center space-y-2", sidebarState === 'collapsed' && "hidden")}>
                 <p className="text-sm">Sign in to get the full experience.</p>
-                <Button size="sm" className="w-full" onClick={() => signIn('google')}>
-                    Sign In with Google
+                <Button size="sm" className="w-full" onClick={() => router.push('/login')}>
+                    Sign In
                 </Button>
             </div>
         )}

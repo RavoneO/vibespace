@@ -16,13 +16,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Post, User, Comment } from "@/lib/types";
 import { Icons } from "./icons";
 import { Separator } from "./ui/separator";
-import { useSession, signIn } from "next-auth/react";
+import { useAuth } from "@/hooks/use-auth";
 import { useState, useCallback, memo } from "react";
 import { addComment } from "@/services/postService";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { formatDistanceToNowStrict } from "date-fns";
 import { CaptionWithLinks } from "./caption-with-links";
+import { useRouter } from "next/navigation";
 
 
 interface CommentSheetProps {
@@ -64,18 +65,19 @@ const CommentItem = memo(({ comment }: { comment: Comment }) => {
 CommentItem.displayName = 'CommentItem';
 
 export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: CommentSheetProps) {
-  const { data: session, status } = useSession();
+  const { user, userProfile, isGuest } = useAuth();
+  const router = useRouter();
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (status !== 'authenticated') {
+    if (isGuest || !user || !userProfile) {
       toast({ 
         title: "Please log in to comment.", 
         variant: "destructive",
-        action: <Button onClick={() => signIn('google')}>Sign In</Button>
+        action: <Button onClick={() => router.push('/login')}>Sign In</Button>
       });
       return;
     }
@@ -84,7 +86,7 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
     setIsSubmitting(true);
     try {
       await addComment(post.id, {
-        userId: session.user.email!, // Assuming user ID is the email
+        userId: userProfile.id,
         text: commentText,
       });
       setCommentText("");
@@ -129,17 +131,17 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
         <SheetFooter className="mt-auto">
             <form className="flex w-full items-center gap-2" onSubmit={handleSubmit}>
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src={session?.user?.image || undefined} />
-                  <AvatarFallback>{status === 'authenticated' ? session?.user?.name?.charAt(0) : '?'}</AvatarFallback>
+                  <AvatarImage src={userProfile?.avatar || undefined} />
+                  <AvatarFallback>{userProfile ? userProfile.name?.charAt(0) : '?'}</AvatarFallback>
                 </Avatar>
                 <Input 
                   placeholder="Add a comment..." 
                   className="flex-1"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  disabled={isSubmitting || status !== 'authenticated'}
+                  disabled={isSubmitting || isGuest || !user}
                 />
-                <Button type="submit" size="icon" disabled={isSubmitting || status !== 'authenticated' || !commentText.trim()}>
+                <Button type="submit" size="icon" disabled={isSubmitting || isGuest || !user || !commentText.trim()}>
                     {isSubmitting ? <Icons.spinner className="h-4 w-4 animate-spin" /> : <Icons.send className="h-4 w-4" />}
                     <span className="sr-only">Post comment</span>
                 </Button>
