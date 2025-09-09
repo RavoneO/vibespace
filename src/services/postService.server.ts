@@ -4,8 +4,28 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { Post, PostTag, User, Comment } from '@/lib/types';
-import { getUserById } from './userService.server';
+import { getUserById, getUserByUsername } from './userService.server';
 import { createActivity } from './activityService.server';
+
+async function processMentions(text: string, actorId: string, postId: string) {
+    const mentionRegex = /@(\w+)/g;
+    const mentions = text.match(mentionRegex);
+    if (!mentions) return;
+
+    const mentionedUsernames = new Set(mentions.map(m => m.substring(1)));
+
+    for (const username of mentionedUsernames) {
+        const user = await getUserByUsername(username);
+        if (user && user.id !== actorId) {
+            await createActivity({
+                type: 'mention',
+                actorId: actorId,
+                notifiedUserId: user.id,
+                postId: postId
+            });
+        }
+    }
+};
 
 const userCache = new Map<string, User>();
 
@@ -75,6 +95,8 @@ export async function createPost(postData: {
         timestamp: FieldValue.serverTimestamp(),
         status: 'processing',
     });
+    
+    await processMentions(postData.caption, postData.userId, docRef.id);
 
     return docRef.id;
 }
@@ -82,6 +104,13 @@ export async function createPost(postData: {
 export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
     const postRef = adminDb.collection('posts').doc(postId);
     await postRef.update(data);
+
+    if (data.caption) {
+        const post = await getPostById(postId);
+        if (post) {
+            await processMentions(data.caption, post.user.id, postId);
+        }
+    }
 }
 
 export async function deletePost(postId: string) {
@@ -167,6 +196,7 @@ export async function addComment(postId: string, comment: { userId: string, text
               postId: postId,
           });
       }
+      await processMentions(comment.text, comment.userId, postId);
   }
 }
 
