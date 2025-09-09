@@ -5,6 +5,7 @@ import { db, storage } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { uploadFile } from './storageService';
+import { createActivity } from './activityService';
 
 export async function getUserById(userId: string): Promise<User | null> {
   try {
@@ -108,6 +109,12 @@ export async function toggleFollow(currentUserId: string, targetUserId: string):
                 transaction.update(currentUserRef, { following: arrayUnion(targetUserId) });
                 transaction.update(targetUserRef, { followers: arrayUnion(currentUserId) });
                 isFollowing = true;
+                
+                await createActivity({
+                    type: 'follow',
+                    actorId: currentUserId,
+                    notifiedUserId: targetUserId
+                });
             }
         });
         return isFollowing;
@@ -173,5 +180,3 @@ export async function updateUserProfile(userId: string, data: { name: string; bi
         throw new Error("Failed to update user profile.");
     }
 }
-
-    

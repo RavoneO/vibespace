@@ -33,6 +33,7 @@ export function AppSidebar() {
     { href: "/feed", icon: Icons.home, label: "Home" },
     { href: "/search", icon: Icons.search, label: "Search" },
     { href: "/reels", icon: Icons.reels, label: "Reels" },
+    { href: "/activity", icon: Icons.like, label: "Activity" },
     { href: "/messages", icon: Icons.messages, label: "Messages" },
     { href: "/profile", icon: Icons.profile, label: "Profile" },
   ];

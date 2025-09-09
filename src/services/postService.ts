@@ -6,6 +6,7 @@ import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arr
 import { ref, deleteObject } from 'firebase/storage';
 import type { Post, Comment, User } from '@/lib/types';
 import { getUserById } from './userService';
+import { createActivity } from './activityService';
 
 // Function to get a user by ID, with fallback to mock data
 async function getFullUser(userId: string) {
@@ -181,6 +182,19 @@ export async function addComment(postId: string, commentData: { userId: string, 
         await updateDoc(postRef, {
             comments: arrayUnion(newComment)
         });
+
+        // Create activity notification
+        const postDoc = await getDoc(postRef);
+        const postData = postDoc.data() as Post;
+        if (postData.userId !== commentData.userId) {
+            await createActivity({
+                type: 'comment',
+                actorId: commentData.userId,
+                notifiedUserId: postData.userId,
+                postId: postId
+            });
+        }
+
     } catch (error) {
         console.error("Error adding comment:", error);
         throw new Error("Failed to add comment.");
@@ -211,6 +225,15 @@ export async function toggleLike(postId: string, userId: string) {
                 likes: increment(1),
                 likedBy: arrayUnion(userId)
             });
+            // Create activity notification only when liking
+            if(postData.userId !== userId) {
+                 await createActivity({
+                    type: 'like',
+                    actorId: userId,
+                    notifiedUserId: postData.userId,
+                    postId: postId
+                });
+            }
         }
 
     } catch (error) {

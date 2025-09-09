@@ -63,3 +63,11 @@ export type Conversation = {
     lastMessage: Message | null;
     timestamp: Timestamp | Date;
 }
+
+export type Activity = {
+    id: string;
+    type: 'like' | 'comment' | 'follow';
+    actor: User; // The user who performed the action
+    targetPost?: { id: string; contentUrl: string; type: 'image' | 'video' };
+    timestamp: Timestamp;
+};

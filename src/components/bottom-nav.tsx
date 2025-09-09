@@ -12,7 +12,7 @@ const navItems = [
   { href: "/feed", icon: Icons.home, label: "Home" },
   { href: "/search", icon: Icons.search, label: "Discover" },
   { href: "/create", icon: Icons.plus, label: "Create", isCentral: true },
-  { href: "/reels", icon: Icons.reels, label: "Activity" },
+  { href: "/activity", icon: Icons.like, label: "Activity" },
   { href: "/profile", icon: Icons.profile, label: "Profile" },
 ];
 
