@@ -15,6 +15,8 @@ import type { User } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getPosts } from "@/services/postService";
+import type { Post } from "@/lib/types";
 
 function UserSearchResult({ user, currentUserId, onFollowToggle }: { user: User, currentUserId: string | null, onFollowToggle: (userId: string, isFollowing: boolean) => void }) {
     const { toast } = useToast();
@@ -84,7 +86,7 @@ function UserResultsSkeleton() {
 function PostResultsSkeleton() {
     return (
          <div className="grid grid-cols-3 gap-1">
-            {[...Array(6)].map((_, i) => (
+            {[...Array(9)].map((_, i) => (
                 <div key={i} className="relative aspect-square w-full overflow-hidden">
                     <Skeleton className="w-full h-full" />
                 </div>
@@ -93,25 +95,55 @@ function PostResultsSkeleton() {
     )
 }
 
-export function SearchClient() {
+function ExploreGrid({ posts }: { posts: Post[] }) {
+    if (posts.length === 0) return <PostResultsSkeleton />;
+    return (
+        <div className="grid grid-cols-3 gap-1">
+            {posts.map((post) => (
+                <Link href="#" key={post.id}>
+                    <div className="relative aspect-square w-full overflow-hidden group rounded-md">
+                    <Image
+                        src={post.contentUrl}
+                        alt={post.caption}
+                        fill
+                        className="object-cover transition-all duration-300 group-hover:opacity-80"
+                    />
+                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                        <Icons.like className="h-5 w-5 fill-white" />
+                    </div>
+                    </div>
+                </Link>
+            ))}
+         </div>
+    )
+}
+
+export function ExploreClient() {
   const { user: authUser } = useAuth();
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebounce(query, 500);
   const [userResults, setUserResults] = useState<User[]>([]);
   const [postResults, setPostResults] = useState<SemanticSearchOutput['results']>([]);
-  const [isUserLoading, setIsUserLoading] = useState(false);
-  const [isPostLoading, setIsPostLoading] = useState(false);
+  const [explorePosts, setExplorePosts] = useState<Post[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isTransitioning, startTransition] = useTransition();
 
-  const isLoading = isUserLoading || isPostLoading || isTransitioning;
+  const isLoading = isSearching || isTransitioning;
+
+  // Fetch initial posts for explore view
+  useEffect(() => {
+    async function fetchInitialPosts() {
+        const posts = await getPosts();
+        setExplorePosts(posts);
+    }
+    fetchInitialPosts();
+  }, []);
 
   useEffect(() => {
     const performSearch = async () => {
       if (debouncedQuery) {
+        setIsSearching(true);
         startTransition(async () => {
-            setIsUserLoading(true);
-            setIsPostLoading(true);
-            
             const userPromise = searchUsers(debouncedQuery);
             const postPromise = semanticSearch({ query: debouncedQuery });
             
@@ -120,12 +152,12 @@ export function SearchClient() {
             setUserResults(users);
             setPostResults(posts.results || []);
 
-            setIsUserLoading(false);
-            setIsPostLoading(false);
+            setIsSearching(false);
         });
       } else {
         setUserResults([]);
         setPostResults([]);
+        setIsSearching(false);
       }
     };
     performSearch();
@@ -147,6 +179,8 @@ export function SearchClient() {
     }));
   };
 
+  const showSearchResults = debouncedQuery && !isLoading;
+
   return (
     <div>
       <div className="relative">
@@ -162,21 +196,10 @@ export function SearchClient() {
       </div>
 
       <div className="mt-6 space-y-8">
-        {isLoading && !userResults.length && !postResults.length ? (
-            <>
-                <UserResultsSkeleton />
-                <PostResultsSkeleton />
-            </>
-        ) : !debouncedQuery ? (
-           <div className="text-center text-muted-foreground py-10">
-            <Icons.search className="mx-auto h-12 w-12" />
-            <p className="mt-4 font-semibold">Find posts and people</p>
-            <p className="text-sm">Search for anything, and let our AI find the best results for you.</p>
-          </div>
-        ) : (
-            <>
+        {showSearchResults ? (
+             <>
             {/* User Results */}
-            {isUserLoading ? <UserResultsSkeleton /> : userResults.length > 0 && (
+            {userResults.length > 0 && (
                 <div className="space-y-4">
                     <h2 className="text-lg font-bold">Users</h2>
                     <div className="flex flex-col gap-2">
@@ -193,7 +216,7 @@ export function SearchClient() {
             )}
             
             {/* Post Results */}
-            {isPostLoading ? <PostResultsSkeleton /> : postResults.length > 0 && (
+            {postResults.length > 0 && (
                 <div className="space-y-4">
                      <h2 className="text-lg font-bold">Posts</h2>
                      <div className="grid grid-cols-3 gap-1">
@@ -216,14 +239,17 @@ export function SearchClient() {
                 </div>
             )}
 
-            {!isUserLoading && !isPostLoading && userResults.length === 0 && postResults.length === 0 && debouncedQuery && (
+            {userResults.length === 0 && postResults.length === 0 && (
                  <div className="text-center text-muted-foreground py-10">
                     <p>No results found for "{debouncedQuery}"</p>
                     <p className="text-sm">Try searching for something else.</p>
                 </div>
             )}
-
             </>
+        ) : !debouncedQuery ? (
+            <ExploreGrid posts={explorePosts} />
+        ) : (
+           <PostResultsSkeleton />
         )}
       </div>
     </div>
