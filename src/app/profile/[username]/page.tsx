@@ -1,7 +1,8 @@
+
 import { notFound } from "next/navigation";
 import { getUserByUsername } from "@/services/userService.server";
 import { getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/postService.server";
-import { generateVibe } from "@/ai/flows/ai-profile-vibe";
+import { generateVibe } from "@/services/userService";
 import { ProfileClientPage } from "./profile-client-page";
 import type { Post } from "@/lib/types";
 
@@ -21,7 +22,7 @@ export default async function UserProfilePage({ params }: { params: { username: 
   
   // 2. Generate the user's "vibe" based on their posts
   const vibePromise = postsPromise.then(posts => 
-    generateVibe({ captions: posts.map(p => p.caption).filter(Boolean) })
+    generateVibe(posts.map(p => p.caption).filter(Boolean))
   );
 
   // 3. Fetch saved and liked posts

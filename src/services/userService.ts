@@ -5,6 +5,8 @@ import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { createActivity } from './activityService';
+import { uploadFile } from './storageService';
+import { generateVibe as generateVibeServer } from '@/ai/flows/ai-profile-vibe';
 
 export async function getUserById(userId: string): Promise<User | null> {
   if (!userId) return null;
@@ -152,14 +154,19 @@ export async function updateUserSettings(userId: string, settings: Partial<Pick<
 export async function updateUserProfile(userId: string, data: { name: string; bio: string; avatarFile?: File }) {
     const userRef = doc(db, 'users', userId);
     
-    // Logic to handle avatar upload should be done here if a file is provided.
-    // For simplicity, we're assuming the text fields are updated.
-    // If avatarFile exists, it should be uploaded to a storage service and the URL updated.
-
     const updateData: { name: string; bio: string; avatar?: string } = {
         name: data.name,
         bio: data.bio,
     };
     
+    if (data.avatarFile) {
+        const avatarUrl = await uploadFile(data.avatarFile, `avatars/${userId}_${data.avatarFile.name}`);
+        updateData.avatar = avatarUrl;
+    }
+
     await updateDoc(userRef, updateData);
+}
+
+export async function generateVibe(captions: string[]) {
+    return generateVibeServer({ captions });
 }

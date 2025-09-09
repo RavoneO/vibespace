@@ -9,9 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useDebounce } from "use-debounce";
 
-import { suggestHashtags } from "@/ai/flows/ai-suggested-hashtags";
-import { generateCaption } from "@/ai/flows/ai-generated-caption";
-import { detectObjectsInImage } from "@/ai/flows/ai-object-detection";
+import { suggestHashtags, generateCaption, detectObjectsInImage } from "@/services/aiService";
 import type { DetectObjectsOutput } from "@/ai/flows/ai-object-detection";
 import { createPost, updatePost } from "@/services/postService";
 import { uploadFile } from "@/services/storageService";

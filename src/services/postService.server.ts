@@ -4,6 +4,7 @@ import * as admin from 'firebase-admin';
 import type { Post, User, Comment, PostTag } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService.server';
 import { createActivity } from './activityService.server';
+import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
 
 const userCache = new Map<string, User>();
 async function getFullUser(userId: string): Promise<User> {
@@ -69,6 +70,11 @@ export async function createPost(postData: {
     tags?: PostTag[];
     collaboratorIds?: string[];
 }) {
+    const moderationResult = await analyzeContent({ text: postData.caption });
+    if (!moderationResult.isAllowed) {
+        throw new Error(moderationResult.reason || 'This content is not allowed.');
+    }
+
     const docRef = await adminDb.collection('posts').add({
         userId: postData.userId,
         type: postData.type,
@@ -87,6 +93,12 @@ export async function createPost(postData: {
 }
 
 export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
+    if (data.caption) {
+        const moderationResult = await analyzeContent({ text: data.caption });
+        if (!moderationResult.isAllowed) {
+            throw new Error(moderationResult.reason || 'This content is not allowed.');
+        }
+    }
     const postRef = adminDb.collection('posts').doc(postId);
     await postRef.update(data);
 }
@@ -236,6 +248,10 @@ export async function processMentions(text: string, actorId: string, postId: str
 };
 
 export async function addComment(postId: string, commentData: { userId: string, text: string }) {
+    const moderationResult = await analyzeContent({ text: commentData.text });
+    if (!moderationResult.isAllowed) {
+        throw new Error(moderationResult.reason || 'This comment is not allowed.');
+    }
     const postRef = adminDb.collection('posts').doc(postId);
     
     const newComment = {
@@ -263,4 +279,61 @@ export async function addComment(postId: string, commentData: { userId: string, 
 
     // Handle mentions
     await processMentions(commentData.text, commentData.userId, postId);
+}
+
+export async function deletePost(postId: string) {
+    const postRef = adminDb.collection('posts').doc(postId);
+    const postDoc = await postRef.get();
+    if (!postDoc.exists) {
+        throw new Error("Post not found");
+    }
+
+    // You might want to delete associated content from storage here as well
+    // For example:
+    // const postData = postDoc.data();
+    // if (postData.contentUrl) {
+    //     const storageRef = adminStorage.refFromURL(postData.contentUrl);
+    //     await storageRef.delete();
+    // }
+
+    await postRef.delete();
+}
+
+export async function toggleLike(postId: string, userId: string) {
+    const postRef = adminDb.collection('posts').doc(postId);
+    
+    const postDoc = await postRef.get();
+    if (!postDoc.exists) {
+        throw new Error("Post not found");
+    }
+
+    const postData = postDoc.data()!;
+    const likedBy = postData.likedBy || [];
+    let isLiked;
+
+    if (likedBy.includes(userId)) {
+        // Unlike
+        await postRef.update({
+            likedBy: admin.firestore.FieldValue.arrayRemove(userId),
+            likes: admin.firestore.FieldValue.increment(-1)
+        });
+        isLiked = false;
+    } else {
+        // Like
+        await postRef.update({
+            likedBy: admin.firestore.FieldValue.arrayUnion(userId),
+            likes: admin.firestore.FieldValue.increment(1)
+        });
+        isLiked = true;
+
+        if (postData.userId !== userId) {
+             await createActivity({
+                type: 'like',
+                actorId: userId,
+                notifiedUserId: postData.userId,
+                postId: postId
+            });
+        }
+    }
+    return isLiked;
 }
