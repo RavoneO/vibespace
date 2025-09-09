@@ -10,22 +10,22 @@ import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WelcomePage() {
-  const { user, loading, setAsGuest } = useAuth();
+  const { user, loading, setAsGuest, showSplashAd } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // If the auth state is resolved and a user exists, redirect them to the feed.
     if (!loading && user) {
       router.replace("/feed");
+    } else if (!loading && !user) {
+        showSplashAd();
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, showSplashAd]);
 
   const handleGuestAccess = () => {
     setAsGuest(true);
     router.push("/feed");
   };
 
-  // While loading, or if the user is logged in (and about to be redirected), show a loading skeleton.
   if (loading || (!loading && user)) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background">

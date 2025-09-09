@@ -79,3 +79,11 @@ export type Activity = {
     targetPost?: { id: string; contentUrl: string; type: 'image' | 'video' };
     timestamp: Timestamp;
 };
+
+export interface Ad {
+    id: string;
+    headline: string;
+    description: string;
+    imageUrl: string;
+    keywords: string[];
+}

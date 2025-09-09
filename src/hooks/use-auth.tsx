@@ -11,8 +11,10 @@ import {
 import { onAuthStateChanged, User as FirebaseAuthUser } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { usePathname, useRouter } from "next/navigation";
-import { User } from "@/lib/types";
+import { User, Ad } from "@/lib/types";
 import { getUserById } from "@/services/userService";
+import { getSplashAd } from "@/services/adService";
+import { SplashAd } from "@/components/splash-ad";
 
 export const AuthContext = createContext<{
   user: FirebaseAuthUser | null;
@@ -20,12 +22,14 @@ export const AuthContext = createContext<{
   loading: boolean;
   isGuest: boolean;
   setAsGuest: (isGuest: boolean) => void;
+  showSplashAd: () => void;
 }>({
   user: null,
   userProfile: null,
   loading: true,
   isGuest: false,
   setAsGuest: () => {},
+  showSplashAd: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -42,6 +46,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+  const [splashAd, setSplashAd] = useState<Ad | null>(null);
+  const [isSplashAdOpen, setIsSplashAdOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -72,13 +78,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
     setIsGuest(isGuest);
   }
+  
+  const showSplashAd = () => {
+    const ad = getSplashAd();
+    if (ad && sessionStorage.getItem("splashAdShown") !== "true") {
+      setSplashAd(ad);
+      setIsSplashAdOpen(true);
+      sessionStorage.setItem("splashAdShown", "true");
+    }
+  };
+
+  const closeSplashAd = () => {
+    setIsSplashAdOpen(false);
+  };
 
   useEffect(() => {
     if (loading) return;
 
     const pathIsProtected = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
 
-    // If user is not logged in, not a guest, and trying to access a protected page, redirect to home
     if (!user && !isGuest && pathIsProtected) {
       router.replace("/");
       return;
@@ -92,7 +110,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loading,
     isGuest,
     setAsGuest,
+    showSplashAd,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+      <AuthContext.Provider value={value}>
+        {children}
+        {splashAd && <SplashAd ad={splashAd} isOpen={isSplashAdOpen} onClose={closeSplashAd} />}
+      </AuthContext.Provider>
+  );
 };
