@@ -22,6 +22,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -35,13 +43,14 @@ import { cn } from "@/lib/utils";
 import { CommentSheet } from "./comment-sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { getPostById, deletePost } from "@/services/postService";
-import { toggleLike } from "@/services/postService";
+import { toggleLike, updatePost } from "@/services/postService";
 import { toggleBookmark, getUserById } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "./ui/aspect-ratio";
 import { formatDistanceToNow } from "date-fns";
 import { Skeleton } from "./ui/skeleton";
 import { Badge } from "./ui/badge";
+import { Textarea } from "./ui/textarea";
 
 interface PostCardProps {
   post: PostType;
@@ -58,6 +67,9 @@ export function PostCard({ post: initialPost }: PostCardProps) {
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editedCaption, setEditedCaption] = useState(post.caption);
+  const [isSaving, setIsSaving] = useState(false);
 
   const likeButtonRef = useRef<HTMLButtonElement>(null);
   
@@ -196,6 +208,22 @@ export function PostCard({ post: initialPost }: PostCardProps) {
         setIsDeleting(false);
     }
   };
+  
+  const handleEditSave = async () => {
+      if (!isOwner) return;
+      setIsSaving(true);
+      try {
+          await updatePost(post.id, { caption: editedCaption });
+          setPost(prev => ({...prev, caption: editedCaption}));
+          toast({ title: "Post updated successfully" });
+          setIsEditDialogOpen(false);
+      } catch (error) {
+          console.error("Error updating post:", error);
+          toast({ title: "Failed to update post", variant: "destructive" });
+      } finally {
+          setIsSaving(false);
+      }
+  };
 
   const getTimestamp = (timestamp: any) => {
       if (isProcessing) return "Publishing...";
@@ -230,6 +258,17 @@ export function PostCard({ post: initialPost }: PostCardProps) {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
+                    {isOwner && (
+                        <>
+                         <DropdownMenuItem onSelect={() => {
+                            setEditedCaption(post.caption);
+                            setIsEditDialogOpen(true);
+                         }}>
+                            <Icons.edit className="mr-2 h-4 w-4" />
+                            Edit
+                         </DropdownMenuItem>
+                        </>
+                    )}
                     <DropdownMenuItem onSelect={() => console.log('Report')}>
                         Report
                     </DropdownMenuItem>
@@ -341,6 +380,30 @@ export function PostCard({ post: initialPost }: PostCardProps) {
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Edit Post</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+                <Textarea 
+                    value={editedCaption}
+                    onChange={(e) => setEditedCaption(e.target.value)}
+                    className="min-h-[150px]"
+                />
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary">Cancel</Button>
+                </DialogClose>
+                <Button type="button" onClick={handleEditSave} disabled={isSaving}>
+                    {isSaving && <Icons.spinner className="animate-spin mr-2" />}
+                    Save Changes
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {!isProcessing && (
         <CommentSheet 

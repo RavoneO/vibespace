@@ -35,6 +35,7 @@ import {
   Grid,
   Menu,
   Play,
+  Edit,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -67,6 +68,7 @@ export const Icons = {
   sharingAndReuse: Repeat,
   yourActivity: History,
   editProfile: UserCircle,
+  edit: Edit,
   messages: MessageSquare,
   messagesAndStoryReplies: MessageSquare,
   plus: Plus,
