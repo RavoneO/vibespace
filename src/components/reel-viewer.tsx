@@ -58,13 +58,13 @@ export function ReelViewer({
   
   React.useEffect(() => {
       setIsPaused(false);
-      videoRef.current?.play();
+      videoRef.current?.play().catch(e => console.error("Autoplay was prevented.", e));
   }, [currentIndex]);
 
 
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center animate-fade-in">
-      <div className="relative w-full h-full max-w-md mx-auto aspect-[9/16]">
+      <div className="relative w-full h-full max-w-md mx-auto aspect-[9/16] overflow-hidden">
         
         {/* Close Button */}
         <button
@@ -95,9 +95,13 @@ export function ReelViewer({
                     onClick={togglePlayPause}
                 />
                  {isPaused && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 1.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    >
                         <Icons.reels className="w-16 h-16 text-white/50" />
-                    </div>
+                    </motion.div>
                 )}
             </motion.div>
         </AnimatePresence>
