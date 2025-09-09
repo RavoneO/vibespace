@@ -11,12 +11,12 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const AnalyzeContentInputSchema = z.object({
+const AnalyzeContentInputSchema = z.object({
   text: z.string().describe('The text content to be analyzed.'),
 });
 export type AnalyzeContentInput = z.infer<typeof AnalyzeContentInputSchema>;
 
-export const AnalyzeContentOutputSchema = z.object({
+const AnalyzeContentOutputSchema = z.object({
   isAllowed: z.boolean().describe('Whether the content is allowed or not.'),
   reason: z
     .string()

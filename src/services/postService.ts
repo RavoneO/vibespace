@@ -7,6 +7,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import type { Post, Comment, User, PostTag } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService';
 import { createActivity } from './activityService';
+import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
 
 // Function to get a user by ID, with fallback to mock data
 async function getFullUser(userId: string) {
@@ -176,6 +177,11 @@ export async function createPost(postData: {
     collaboratorIds?: string[];
 }) {
     try {
+        const moderationResult = await analyzeContent({ text: postData.caption });
+        if (!moderationResult.isAllowed) {
+            throw new Error(moderationResult.reason || "This content is not allowed.");
+        }
+
         const docRef = await addDoc(collection(db, 'posts'), {
             userId: postData.userId,
             type: postData.type,
@@ -221,6 +227,13 @@ const processMentions = async (text: string, actorId: string, postId: string) =>
 
 export async function updatePost(postId: string, data: Partial<Post>) {
     try {
+        if (data.caption) {
+            const moderationResult = await analyzeContent({ text: data.caption });
+            if (!moderationResult.isAllowed) {
+                throw new Error(moderationResult.reason || "This caption is not allowed.");
+            }
+        }
+
         const postRef = doc(db, 'posts', postId);
         await updateDoc(postRef, data as any);
 
@@ -242,6 +255,11 @@ export async function updatePost(postId: string, data: Partial<Post>) {
 
 export async function addComment(postId: string, commentData: { userId: string, text: string }) {
     try {
+        const moderationResult = await analyzeContent({ text: commentData.text });
+        if (!moderationResult.isAllowed) {
+            throw new Error(moderationResult.reason || "This comment is not allowed.");
+        }
+
         const postRef = doc(db, 'posts', postId);
         const newComment = {
             id: doc(collection(db, 'random_ids')).id, // Generate a unique ID for the comment
