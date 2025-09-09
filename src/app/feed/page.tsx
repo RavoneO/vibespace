@@ -10,6 +10,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AdCard } from "@/app/feed/ad-card";
 import { Suspense } from "react";
+import { getAvailableAds } from "@/services/adService";
+import { selectAd } from "@/ai/flows/ai-ad-selector";
+import type { Ad } from "@/services/adService";
 
 function FeedSkeleton() {
   return (
@@ -40,6 +43,27 @@ export default async function FeedPage() {
   
   const [stories, posts] = await Promise.all([storiesData, postsData]);
 
+  // Inject ads into the feed on the server
+  const postsWithAds: (any)[] = [];
+  const availableAds = getAvailableAds();
+
+  for(let i = 0; i < posts.length; i++) {
+    postsWithAds.push(posts[i]);
+    const adIndex = i + 1;
+    if(adIndex % 4 === 0 && availableAds.length > 0) {
+      const recentCaptions = posts.slice(Math.max(0, i - 3), i).map(p => p.caption);
+      try {
+        const ad = await selectAd({ availableAds, recentCaptions });
+        postsWithAds.push({ type: 'ad', ad });
+      } catch (e) {
+        // AI might fail, pick a random ad
+        const ad = availableAds[Math.floor(Math.random() * availableAds.length)];
+        postsWithAds.push({ type: 'ad', ad });
+      }
+    }
+  }
+
+
   return (
     <AppLayout>
       <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
@@ -60,7 +84,7 @@ export default async function FeedPage() {
           </Suspense>
 
           <Suspense fallback={<FeedSkeleton />}>
-            {posts.length === 0 ? (
+            {postsWithAds.length === 0 ? (
               <div className="text-center text-muted-foreground py-24 px-4">
                   <Icons.home className="mx-auto h-12 w-12" />
                   <p className="mt-4 font-semibold">Welcome to your feed!</p>
@@ -71,19 +95,11 @@ export default async function FeedPage() {
               </div>
             ) : (
               <div className="space-y-1">
-                  {posts.map((post, index) => {
-                    const adIndex = index + 1;
-                    const showAd = adIndex % 4 === 0;
-                    
-                    // Get captions from the last 3 posts for context
-                    const recentCaptions = posts.slice(Math.max(0, index - 3), index).map(p => p.caption);
-
-                    return (
-                      <div key={post.id}>
-                        <PostCard post={post} />
-                        {showAd && <AdCard recentCaptions={recentCaptions} />}
-                      </div>
-                    )
+                  {postsWithAds.map((item, index) => {
+                    if (item.type === 'ad') {
+                      return <AdCard key={`ad-${index}`} ad={item.ad} />;
+                    }
+                    return <PostCard key={item.id} post={item} />
                   })}
                 </div>
             )}
