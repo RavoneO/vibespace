@@ -2,7 +2,6 @@
 'use client';
 
 import { db } from '@/lib/firebase';
-import { adminDb } from '@/lib/firebase-admin';
 import { 
     collection, 
     doc, 
@@ -19,10 +18,11 @@ import {
     orderBy, 
     setDoc 
 } from 'firebase/firestore';
-import { FieldValue } from 'firebase-admin/firestore';
 import type { User, Post } from '@/lib/types';
 import { uploadFile } from './storageService';
 import { createActivity } from './activityService';
+import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 
 export async function getUserById(userId: string): Promise<User | null> {

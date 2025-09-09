@@ -10,7 +10,6 @@ import * as z from "zod";
 import { useDebounce } from "use-debounce";
 import { useAuth } from "@/hooks/use-auth";
 
-import type { DetectObjectsOutput } from "@/ai/flows/ai-object-detection";
 import { createPost, updatePost } from "@/services/postService";
 import { uploadFile } from "@/services/storageService";
 import { searchUsers } from "@/services/userService";
@@ -43,21 +42,6 @@ const formSchema = z.object({
   file: z.any().refine((file) => file, "Please upload an image or video."),
 });
 
-async function callAiApi(action: string, payload: any) {
-    const response = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, payload }),
-    });
-
-    if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'AI API request failed');
-    }
-
-    return response.json();
-}
-
 function GuestPrompt() {
     const router = useRouter();
     return (
@@ -84,15 +68,9 @@ export function CreatePostForm() {
   const [preview, setPreview] = useState<string | null>(null);
   const [mediaDataUri, setMediaDataUri] = useState<string | null>(null);
   const [fileType, setFileType] = useState<'image' | 'video' | null>(null);
-  const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>([]);
-  const [suggestedCaptions, setSuggestedCaptions] = useState<string[]>([]);
-  const [isSuggesting, setIsSuggesting] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // New states for object detection and tagging
-  const [detectedObjects, setDetectedObjects] = useState<DetectObjectsOutput['objects'] | []>([]);
-  const [isDetecting, setIsDetecting] = useState(false);
+  // New states for tagging
   const [tags, setTags] = useState<PostTag[]>([]);
   const [activeTaggingBox, setActiveTaggingBox] = useState<{box: number[], label: string} | null>(null);
   const [tagInput, setTagInput] = useState("");
@@ -114,32 +92,6 @@ export function CreatePostForm() {
     },
   });
 
-  const resetAiFeatures = useCallback(() => {
-    setSuggestedHashtags([]);
-    setSuggestedCaptions([]);
-    setDetectedObjects([]);
-    setTags([]);
-    setIsDetecting(false);
-  }, []);
-
-  const handleDetectObjects = useCallback(async (dataUri: string) => {
-    setIsDetecting(true);
-    setDetectedObjects([]);
-    try {
-        const result = await callAiApi('detect-objects', { mediaDataUri: dataUri });
-        setDetectedObjects(result.objects);
-    } catch (error) {
-        console.error("Error detecting objects:", error);
-        toast({
-            title: "Object Detection Failed",
-            description: "Could not analyze the image at this time.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsDetecting(false);
-    }
-  }, [toast]);
-
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -147,21 +99,15 @@ export function CreatePostForm() {
       const currentFileType = file.type.startsWith('image') ? 'image' : 'video';
       setFileType(currentFileType);
       
-      resetAiFeatures();
-
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
         setPreview(result);
         setMediaDataUri(result);
-
-        if (currentFileType === 'image') {
-          handleDetectObjects(result);
-        }
       };
       reader.readAsDataURL(file);
     }
-  }, [form, resetAiFeatures, handleDetectObjects]);
+  }, [form]);
 
   const handleSaveTag = () => {
     if (!tagInput.trim() || !activeTaggingBox) return;
@@ -176,76 +122,6 @@ export function CreatePostForm() {
     setTagInput("");
     setActiveTaggingBox(null);
   };
-
-
-  const handleSuggestHashtags = async () => {
-    if (!mediaDataUri) {
-        toast({
-            title: "No media selected",
-            description: "Please upload an image or video to get hashtag suggestions.",
-            variant: "destructive",
-        });
-        return;
-    }
-
-    setIsSuggesting(true);
-    setSuggestedHashtags([]);
-
-    try {
-        const result = await callAiApi('suggest-hashtags', {
-            mediaDataUri: mediaDataUri,
-            description: form.getValues("caption"),
-        });
-        setSuggestedHashtags(result.hashtags);
-    } catch (error) {
-        console.error("Error suggesting hashtags:", error);
-        toast({
-            title: "AI Suggestion Failed",
-            description: "Could not get hashtag suggestions at this time. Please try again.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsSuggesting(false);
-    }
-  };
-
-  const handleGenerateCaptions = async () => {
-    if (!mediaDataUri) {
-      toast({
-        title: 'No media selected',
-        description: 'Please upload an image to get caption suggestions.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-    setSuggestedCaptions([]);
-    try {
-      const result = await callAiApi('generate-caption', {
-        mediaDataUri: mediaDataUri,
-      });
-      setSuggestedCaptions(result.captions);
-    } catch (error) {
-      console.error('Error generating captions:', error);
-      toast({
-        title: 'AI Generation Failed',
-        description: 'Could not get caption suggestions at this time. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const addHashtagToCaption = (hashtag: string) => {
-    const currentCaption = form.getValues("caption");
-    form.setValue("caption", `${currentCaption} ${hashtag}`.trim());
-  }
-
-  const useSuggestedCaption = (caption: string) => {
-    form.setValue("caption", caption);
-  }
 
   // Collaborator search logic
   useEffect(() => {
@@ -297,7 +173,7 @@ export function CreatePostForm() {
     const backgroundUpload = async () => {
         try {
             const file = values.file as File;
-            const hashtags = values.caption.match(/#\w+/g) || [];
+            const hashtags = values.caption.match(/#\\w+/g) || [];
     
             const postId = await createPost({
                 userId: userProfile.id,
@@ -349,55 +225,6 @@ export function CreatePostForm() {
                         fill
                         className="object-contain rounded-md"
                     />
-                    {isDetecting && (
-                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md">
-                            <div className="text-white text-center">
-                                <Icons.sparkles className="mx-auto h-8 w-8 animate-spin" />
-                                <p>Finding objects...</p>
-                            </div>
-                        </div>
-                    )}
-                    {detectedObjects.map(({ box, label }, index) => {
-                         const tagged = tags.find(t => t.box.toString() === box.toString());
-                         return(
-                            <Popover key={index} onOpenChange={(open) => {
-                                if (!open) {
-                                    setActiveTaggingBox(null);
-                                    setTagInput("");
-                                }
-                             }}>
-                                <PopoverTrigger asChild>
-                                    <button
-                                        type="button"
-                                        className={cn(
-                                            "absolute border-2 hover:border-blue-400 focus:border-blue-400 focus:outline-none transition-all",
-                                            tagged ? "border-blue-500 bg-blue-500/30" : "border-dashed border-white/80 hover:bg-white/20",
-                                        )}
-                                        style={{
-                                            left: `${box[0] * 100}%`,
-                                            top: `${box[1] * 100}%`,
-                                            width: `${(box[2] - box[0]) * 100}%`,
-                                            height: `${(box[3] - box[1]) * 100}%`,
-                                        }}
-                                        onClick={() => setActiveTaggingBox({box, label})}
-                                    >
-                                        <span className="absolute -top-6 left-0 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded-full capitalize">{tagged ? tagged.text : label}</span>
-                                    </button>
-                                </PopoverTrigger>
-                                <PopoverContent>
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-medium">Tag "{label}"</p>
-                                        <Input 
-                                            placeholder="Add a tag..."
-                                            value={tagInput}
-                                            onChange={(e) => setTagInput(e.target.value)}
-                                        />
-                                        <Button onClick={handleSaveTag} size="sm" className="w-full">Save Tag</Button>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                         )
-                    })}
                     </>
                 ) : (
                     <AspectRatio ratio={9 / 16} className="bg-muted rounded-md overflow-hidden w-full max-w-sm mx-auto">
@@ -440,36 +267,6 @@ export function CreatePostForm() {
               <FormItem>
                 <div className="flex justify-between items-center">
                   <FormLabel>Caption</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                       <Button type="button" size="sm" variant="ghost" disabled={isGenerating || !mediaDataUri || isSubmitting}>
-                         {isGenerating ? <Icons.spinner className="animate-spin" /> : <Icons.sparkles className="text-accent" />}
-                          Generate with AI
-                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                      {suggestedCaptions.length > 0 ? (
-                        <div className="space-y-2">
-                           <p className="font-medium text-sm">AI Suggestions</p>
-                           {suggestedCaptions.map((caption, i) => (
-                               <div key={i}>
-                                   <button type="button" onClick={() => useSuggestedCaption(caption)} className="text-left text-sm p-2 rounded-md hover:bg-muted w-full">
-                                       {caption}
-                                   </button>
-                                   {i < suggestedCaptions.length -1 && <Separator />}
-                               </div>
-                           ))}
-                        </div>
-                      ) : (
-                         <div className="text-center p-4">
-                            <p className="text-sm mb-4">Click below to generate caption ideas for your image.</p>
-                            <Button type="button" onClick={handleGenerateCaptions} disabled={isGenerating}>
-                                {isGenerating ? <Icons.spinner className="animate-spin" /> : "Generate"}
-                            </Button>
-                         </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
                 </div>
                 <FormControl>
                   <Textarea
@@ -551,29 +348,6 @@ export function CreatePostForm() {
                     </Popover>
                 )}
             </div>
-          </div>
-
-          <div>
-             <Button type="button" variant="outline" onClick={handleSuggestHashtags} disabled={isSuggesting || !mediaDataUri || isSubmitting}>
-                {isSuggesting ? (
-                    <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <Icons.sparkles className="mr-2 h-4 w-4 text-accent" />
-                )}
-                Suggest Hashtags with AI
-            </Button>
-            {suggestedHashtags.length > 0 && (
-                <div className="mt-4">
-                    <p className="text-sm font-medium mb-2">AI Hashtag Suggestions:</p>
-                    <div className="flex flex-wrap gap-2">
-                        {suggestedHashtags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="cursor-pointer hover:bg-accent/20" onClick={() => addHashtagToCaption(tag)}>
-                                {tag}
-                            </Badge>
-                        ))}
-                    </div>
-                </div>
-            )}
           </div>
 
           <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isSubmitting}>

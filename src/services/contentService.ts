@@ -1,16 +1,11 @@
 
 'use server';
 
-import { analyzeContent as analyzeContentFlow } from '@/ai/flows/ai-content-analyzer';
 import { getUserByUsername } from './userService.server';
 import { createActivity } from './activityService';
 
-export async function analyzeContent(input: { text: string }) {
-    return await analyzeContentFlow(input);
-}
-
 export async function processMentions(text: string, actorId: string, postId: string) {
-    const mentionRegex = /@(\w+)/g;
+    const mentionRegex = /@(\\w+)/g;
     const mentions = text.match(mentionRegex);
     if (!mentions) return;
 

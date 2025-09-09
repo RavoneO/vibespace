@@ -10,7 +10,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { searchUsers, toggleFollow } from "@/services/userService";
-import type { SemanticSearchOutput } from "@/ai/flows/ai-semantic-search";
 import type { User, Post } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -109,27 +108,11 @@ function ExploreGrid({ posts }: { posts: Post[] }) {
     )
 }
 
-async function searchPosts(query: string): Promise<SemanticSearchOutput> {
-    const response = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'semantic-search', payload: { query } }),
-    });
-
-    if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'AI API request failed');
-    }
-
-    return response.json();
-}
-
 export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Post[] }) {
   const { userProfile } = useAuth();
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebounce(query, 500);
   const [userResults, setUserResults] = useState<User[]>([]);
-  const [postResults, setPostResults] = useState<SemanticSearchOutput['results']>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isTransitioning, startTransition] = useTransition();
 
@@ -141,14 +124,8 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
         setIsSearching(true);
         startTransition(async () => {
           try {
-            const userPromise = searchUsers(debouncedQuery);
-            const postPromise = searchPosts(debouncedQuery);
-            
-            const [users, searchResult] = await Promise.all([userPromise, postPromise]);
-            
+            const users = await searchUsers(debouncedQuery);
             setUserResults(users);
-            setPostResults(searchResult.results || []);
-
           } catch (error) {
              console.error("Search failed", error);
           } finally {
@@ -157,7 +134,6 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
         });
       } else {
         setUserResults([]);
-        setPostResults([]);
       }
     };
     performSearch();
@@ -187,7 +163,7 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
         <Icons.search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Search for posts, users..."
+          placeholder="Search for users..."
           className="w-full pl-10 pr-10"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -198,11 +174,7 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
       <div className="mt-6">
         {showSearchResults ? (
              <div className="space-y-8">
-                {isLoading && (
-                    <>
-                        <PostResultsSkeleton />
-                    </>
-                )}
+                {isLoading && <Skeleton className="h-20 w-full" />}
                 {!isLoading && userResults.length > 0 && (
                     <div className="space-y-4">
                         <h2 className="text-lg font-bold">Users</h2>
@@ -217,31 +189,8 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
                         </div>
                     </div>
                 )}
-                
-                {!isLoading && postResults.length > 0 && (
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-bold">Posts</h2>
-                        <div className="grid grid-cols-3 gap-1">
-                            {postResults.map((post) => (
-                                <Link href="#" key={post.id}>
-                                    <div className="relative aspect-square w-full overflow-hidden group">
-                                    <Image
-                                        src={post.contentUrl}
-                                        alt={post.caption}
-                                        fill
-                                        className="object-cover transition-all duration-300 group-hover:opacity-80"
-                                    />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                        <Icons.like className="h-5 w-5 fill-white" />
-                                    </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
-                {!isLoading && userResults.length === 0 && postResults.length === 0 && (
+                {!isLoading && userResults.length === 0 && (
                     <div className="text-center text-muted-foreground py-10">
                         <p>No results found for "{debouncedQuery}"</p>
                         <p className="text-sm">Try searching for something else.</p>

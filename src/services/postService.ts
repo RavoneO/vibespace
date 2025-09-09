@@ -6,7 +6,6 @@ import { FieldValue } from 'firebase-admin/firestore';
 import type { Post, PostTag, User, Comment } from '@/lib/types';
 import { getUserById } from './userService.server';
 import { createActivity } from './activityService';
-import { analyzeContent, processMentions } from './contentService';
 
 const userCache = new Map<string, User>();
 
@@ -62,11 +61,6 @@ export async function createPost(postData: {
     tags?: PostTag[];
     collaboratorIds?: string[];
 }) {
-    const moderationResult = await analyzeContent({ text: postData.caption });
-    if (!moderationResult.isAllowed) {
-        throw new Error(moderationResult.reason || 'This content is not allowed.');
-    }
-
     const docRef = await adminDb.collection('posts').add({
         userId: postData.userId,
         type: postData.type,
@@ -81,29 +75,13 @@ export async function createPost(postData: {
         timestamp: FieldValue.serverTimestamp(),
         status: 'processing',
     });
-    
-    // Process mentions after post is created
-    await processMentions(postData.caption, postData.userId, docRef.id);
 
     return docRef.id;
 }
 
 export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
-    if (data.caption) {
-        const moderationResult = await analyzeContent({ text: data.caption });
-        if (!moderationResult.isAllowed) {
-            throw new Error(moderationResult.reason || 'This content is not allowed.');
-        }
-    }
     const postRef = adminDb.collection('posts').doc(postId);
     await postRef.update(data);
-    
-    if (data.caption && data.status === 'published') {
-        const post = await getPostById(postId);
-        if (post) {
-            await processMentions(data.caption, post.user.id, postId);
-        }
-    }
 }
 
 export async function deletePost(postId: string) {
@@ -216,11 +194,6 @@ export async function toggleLike(postId: string, userId: string): Promise<boolea
 
 export async function addComment(postId: string, comment: { userId: string, text: string }) {
   const postRef = adminDb.collection('posts').doc(postId);
-
-  const moderationResult = await analyzeContent({ text: comment.text });
-  if (!moderationResult.isAllowed) {
-      throw new Error(moderationResult.reason || 'This content is not allowed.');
-  }
   
   const newComment = {
     ...comment,
@@ -235,7 +208,6 @@ export async function addComment(postId: string, comment: { userId: string, text
   // Handle Mentions & Notifications
   const post = await getPostById(postId);
   if (post) {
-      await processMentions(comment.text, comment.userId, postId);
       if (post.user.id !== comment.userId) {
           await createActivity({
               type: 'comment',

@@ -25,21 +25,6 @@ interface ProfileClientPageProps {
   initialLikedPosts: Post[];
 }
 
-async function callAiApi(action: string, payload: any) {
-    const response = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, payload }),
-    });
-
-    if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'AI API request failed');
-    }
-
-    return response.json();
-}
-
 function ProfilePageSkeleton() {
   return (
       <AppLayout>
@@ -96,26 +81,9 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
 
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
-  const [vibe, setVibe] = useState<string | null>(null);
+  const [vibe, setVibe] = useState<string | null>("Just joined the vibe! Ready to share. ✨");
   
   const isCurrentUserProfile = userProfile?.id === user.id;
-
-  useEffect(() => {
-    async function generateVibe() {
-      if (initialPosts.length > 0) {
-        try {
-          const result = await callAiApi('generate-vibe', {
-            captions: initialPosts.map(p => p.caption).filter(Boolean)
-          });
-          setVibe(result.vibe);
-        } catch (error) {
-          console.error("Error generating vibe:", error);
-          setVibe("Adventurous Spirit ✨"); // Fallback vibe
-        }
-      }
-    }
-    generateVibe();
-  }, [initialPosts]);
 
   const showLoginToast = useCallback(() => {
     toast({

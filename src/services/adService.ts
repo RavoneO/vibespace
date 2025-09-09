@@ -1,6 +1,5 @@
 
 'use server'
-import { selectAd as selectAdFlow } from '@/ai/flows/ai-ad-selector';
 
 export interface Ad {
     id: string;
@@ -80,11 +79,6 @@ export async function getSplashAd(): Promise<Ad | null> {
 }
 
 export async function selectAd(availableAds: Ad[], recentCaptions: string[]): Promise<Ad> {
-    try {
-        const ad = await selectAdFlow({ availableAds, recentCaptions });
-        return ad;
-    } catch (e) {
-        console.error("AI ad selection failed, falling back to random.", e);
-        return availableAds[Math.floor(Math.random() * availableAds.length)];
-    }
+    // Fallback to random ad since AI is removed
+    return availableAds[Math.floor(Math.random() * availableAds.length)];
 }
