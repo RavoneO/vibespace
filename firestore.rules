@@ -2,45 +2,56 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
 
-    // Users: Can read all, create for self, update for self
+    // Helper function to check if a user is the owner of a document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Users: Anyone can read profiles, but only owners can write.
     match /users/{userId} {
       allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if false; // Users should not be able to delete their own accounts directly
+      allow create: if isAuthenticated();
+      allow update: if isOwner(userId);
+      allow delete: if false; // Disallow deleting user profiles
     }
 
-    // Posts: Can read all, create if authenticated, update/delete for self or collaborator
+    // Posts: Publicly readable, but writing is restricted.
     match /posts/{postId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && (
-          request.auth.uid == resource.data.userId ||
-          (resource.data.collaboratorIds != null && request.auth.uid in resource.data.collaboratorIds)
-      );
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated();
+      allow update: if (isAuthenticated() && isOwner(resource.data.userId)) || 
+                     (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy', 'comments']));
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
     }
 
-    // Stories: Can read all, create/update/delete for self
+    // Stories: Publicly readable for a certain duration, but writing is restricted to owners.
     match /stories/{storyId} {
-      allow read: if true;
-      allow create, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow read: if resource.data.timestamp > request.time - duration.time(24, 0, 0, 0);
+        allow create: if isAuthenticated();
+        allow update, delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    // Activity: Only the notified user can read their activity.
+    match /activity/{activityId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.notifiedUserId);
+      allow create: if isAuthenticated(); // Backend logic handles validation
     }
     
-    // Conversations and Messages: Only members can read/write
+    // Conversations and Messages
     match /conversations/{conversationId} {
-        allow read, create, update: if request.auth != null && request.auth.uid in resource.data.userIds;
-
-        match /messages/{messageId} {
-            allow read, create: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds;
-        }
-    }
-
-    // Activity: Can only read own, create is handled by backend logic (implicitly allowed if other actions are)
-     match /activity/{activityId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.notifiedUserId;
-      allow create: if request.auth != null; // Let backend logic handle who can create what
+      allow read, write: if isAuthenticated() && request.auth.uid in resource.data.userIds;
+      
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow read, create: if isAuthenticated() && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
+        allow update, delete: if false; // Disallow editing/deleting messages
+      }
     }
   }
 }
