@@ -1,5 +1,6 @@
 
 'use server';
+import 'server-only';
 /**
  * @fileOverview An AI agent that analyzes content for safety and moderation.
  *

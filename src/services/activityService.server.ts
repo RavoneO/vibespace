@@ -1,3 +1,5 @@
+
+import 'server-only';
 import { firestore as adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import type { Activity, Post } from '@/lib/types';

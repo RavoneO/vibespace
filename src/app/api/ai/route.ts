@@ -1,4 +1,5 @@
 
+import 'server-only';
 import {NextResponse} from 'next/server';
 import {generateCaption} from '@/ai/flows/ai-generated-caption';
 import {suggestHashtags} from '@/ai/flows/ai-suggested-hashtags';

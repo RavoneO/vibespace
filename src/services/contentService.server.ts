@@ -1,5 +1,6 @@
 
 'use server';
+import 'server-only';
 
 import { analyzeContent as analyzeContentFlow } from '@/ai/flows/ai-content-analyzer';
 import { getUserByUsername } from './userService.server';

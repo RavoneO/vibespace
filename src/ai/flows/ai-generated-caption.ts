@@ -1,5 +1,6 @@
 
 'use server';
+import 'server-only';
 /**
  * @fileOverview An AI agent that generates post captions based on an image.
  *

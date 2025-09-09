@@ -1,4 +1,6 @@
+
 'use server';
+import 'server-only';
 /**
  * @fileOverview An AI agent that performs semantic search on posts.
  *

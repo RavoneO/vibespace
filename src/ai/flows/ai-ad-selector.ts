@@ -1,5 +1,6 @@
 
 'use server';
+import 'server-only';
 /**
  * @fileOverview An AI agent that selects the most relevant ad for a user.
  *

@@ -1,5 +1,6 @@
 
 'use server';
+import 'server-only';
 
 import { firestore as adminDb } from '@/lib/firebase-admin';
 import type { User } from '@/lib/types';

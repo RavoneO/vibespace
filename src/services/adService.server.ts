@@ -1,5 +1,6 @@
 
 'use server';
+import 'server-only';
 
 import { selectAd as selectAdFlow } from '@/ai/flows/ai-ad-selector';
 import type { Ad } from './adService';

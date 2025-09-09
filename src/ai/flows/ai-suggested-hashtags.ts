@@ -1,5 +1,6 @@
 
 'use server';
+import 'server-only';
 /**
  * @fileOverview An AI agent that suggests relevant hashtags for user posts.
  *

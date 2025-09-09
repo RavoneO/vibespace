@@ -1,5 +1,6 @@
 
 'use server';
+import 'server-only';
 /**
  * @fileOverview An AI agent that detects objects in an image.
  *

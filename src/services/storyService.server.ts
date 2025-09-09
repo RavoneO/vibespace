@@ -1,3 +1,5 @@
+
+import 'server-only';
 import { firestore as adminDb } from '@/lib/firebase-admin';
 import type { Story } from '@/lib/types';
 import { getUserById } from './userService.server';
