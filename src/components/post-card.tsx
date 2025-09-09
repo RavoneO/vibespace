@@ -41,8 +41,6 @@ import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { CommentSheet } from "./comment-sheet";
-import { getPostById } from "@/services/postService.server";
-import { toggleBookmark, toggleLike } from "@/services/userService.server";
 import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "./ui/aspect-ratio";
 import { formatDistanceToNow } from "date-fns";
@@ -51,6 +49,8 @@ import { Textarea } from "./ui/textarea";
 import { CaptionWithLinks } from "./caption-with-links";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
+import { getPostById } from "@/services/postService.server";
+
 
 interface PostCardProps {
   post: PostType;
@@ -89,23 +89,6 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
     }
   }, [userProfile, post]);
 
-  const refreshPost = useCallback(async () => {
-    if (isProcessing) return;
-    // This is now a server function, so we can't call it directly.
-    // Instead of a full refresh, we'll rely on optimistic updates
-    // or pass down a refresh function from a server component parent if needed.
-    // For now, we'll just update the state locally where possible.
-    try {
-        const updatedPost = await getPostById(post.id);
-        if (updatedPost) {
-            setPost(updatedPost);
-        }
-    } catch(e){
-        // This will fail on the client, but we can ignore it
-        // as the optimistic updates handle the UI.
-    }
-  }, [post.id, isProcessing]);
-
   const showLoginToast = useCallback(() => {
     toast({
         title: "Please sign in to interact",
@@ -120,53 +103,70 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
       if (isGuest) showLoginToast();
       return;
     }
-
+  
+    const originalIsLiked = isLiked;
+    const newIsLiked = !originalIsLiked;
+    const newLikeCount = newIsLiked ? likeCount + 1 : likeCount - 1;
+  
+    setIsLiked(newIsLiked);
+    setLikeCount(newLikeCount);
+  
+    if (newIsLiked) {
+      likeButtonRef.current?.classList.add('animate-like');
+      setTimeout(() => {
+        likeButtonRef.current?.classList.remove('animate-like');
+      }, 400);
+    }
+  
     try {
-      const newIsLiked = !isLiked;
-      const newLikeCount = newIsLiked ? likeCount + 1 : likeCount - 1;
-      
-      setIsLiked(newIsLiked);
-      setLikeCount(newLikeCount);
-      
-      if (newIsLiked) {
-        likeButtonRef.current?.classList.add('animate-like');
-        setTimeout(() => {
-          likeButtonRef.current?.classList.remove('animate-like');
-        }, 400);
+      const response = await fetch(`/api/posts/${post.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'like', userId: userProfile.id })
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to toggle like');
       }
-      
-      await toggleLike(post.id, userProfile.id);
-
     } catch (error) {
       console.error("Error liking post:", error);
-       setIsLiked(!isLiked);
-       setLikeCount(likeCount);
-       toast({
+      setIsLiked(originalIsLiked);
+      setLikeCount(likeCount);
+      toast({
         title: "Something went wrong.",
         description: "Could not update like status. Please try again.",
         variant: "destructive",
       });
     }
-  }, [isLiked, likeCount, isGuest, isProcessing, post.id, userProfile, showLoginToast, toast]);
-
+  }, [isLiked, likeCount, isGuest, isProcessing, post.id, userProfile, showLoginToast, toast, likeCount]);
+  
   const handleBookmark = useCallback(async () => {
-      if (isGuest || !userProfile || isProcessing) {
-          if (isGuest) showLoginToast();
-          return;
-      }
-      const newIsBookmarked = !isBookmarked;
-      setIsBookmarked(newIsBookmarked);
+    if (isGuest || !userProfile || isProcessing) {
+        if (isGuest) showLoginToast();
+        return;
+    }
+    const originalIsBookmarked = isBookmarked;
+    setIsBookmarked(!originalIsBookmarked);
 
-      try {
-          await toggleBookmark(userProfile.id, post.id);
-          toast({
-              title: newIsBookmarked ? "Post saved!" : "Post unsaved",
-          });
-      } catch (error) {
-          setIsBookmarked(!newIsBookmarked); // Revert on error
-          console.error("Error bookmarking post:", error);
-          toast({ title: "Something went wrong.", variant: "destructive" });
-      }
+    try {
+        const response = await fetch(`/api/posts/${post.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'bookmark', userId: userProfile.id })
+        });
+        if (!response.ok) throw new Error('Failed to toggle bookmark');
+        
+        const { isBookmarked: newIsBookmarked } = await response.json();
+        setIsBookmarked(newIsBookmarked); // Sync with server state
+
+        toast({
+            title: newIsBookmarked ? "Post saved!" : "Post unsaved",
+        });
+    } catch (error) {
+        setIsBookmarked(originalIsBookmarked); // Revert on error
+        console.error("Error bookmarking post:", error);
+        toast({ title: "Something went wrong.", variant: "destructive" });
+    }
   }, [isBookmarked, isGuest, isProcessing, post.id, userProfile, showLoginToast, toast]);
 
   const handleShare = useCallback(async () => {
@@ -200,7 +200,11 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
 
     setIsDeleting(true);
     try {
-        const response = await fetch(`/api/posts/${post.id}`, { method: 'DELETE' });
+        const response = await fetch(`/api/posts/${post.id}`, { 
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userProfile?.id })
+        });
         if (!response.ok) throw new Error('Failed to delete post');
         toast({ title: "Post deleted successfully" });
         setIsDeleteDialogOpen(false);
@@ -211,7 +215,7 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
     } finally {
         setIsDeleting(false);
     }
-  }, [isOwner, post.id, toast]);
+  }, [isOwner, post.id, userProfile?.id, toast]);
   
   const handleEditSave = useCallback(async () => {
       if (!isOwner) return;
@@ -248,8 +252,6 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
           comments: [...prev.comments, newComment as any]
       }));
 
-      // In a real app, you might want a more robust refresh mechanism
-      // but for now, this provides a good user experience.
       const updatedPost = await getPostById(post.id);
       if (updatedPost) {
           setPost(updatedPost);

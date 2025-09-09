@@ -20,7 +20,6 @@ import {
 } from 'firebase/firestore';
 import type { User, Post } from '@/lib/types';
 import { uploadFile } from './storageService';
-import { createActivity } from './activityService.server';
 
 
 export async function getUserById(userId: string): Promise<User | null> {
@@ -56,53 +55,6 @@ export async function searchUsers(searchText: string): Promise<User[]> {
     } catch (error) {
         console.error("Error searching users:", error);
         return [];
-    }
-}
-
-
-export async function toggleFollow(currentUserId: string, targetUserId: string): Promise<boolean> {
-    if (currentUserId === targetUserId) {
-        throw new Error("You cannot follow yourself.");
-    }
-
-    const currentUserRef = doc(db, 'users', currentUserId);
-    const targetUserRef = doc(db, 'users', targetUserId);
-
-    try {
-        let isFollowing = false;
-        await runTransaction(db, async (transaction) => {
-            const currentUserDoc = await transaction.get(currentUserRef);
-            
-            if (!currentUserDoc.exists()) {
-                throw new Error("Current user does not exist!");
-            }
-
-            const currentUserData = currentUserDoc.data();
-            if (!currentUserData) throw new Error("Current user data not found");
-            
-            const following = currentUserData.following || [];
-            
-            if (following.includes(targetUserId)) {
-                // Unfollow
-                transaction.update(currentUserRef, { following: arrayRemove(targetUserId) });
-                transaction.update(targetUserRef, { followers: arrayRemove(currentUserId) });
-                isFollowing = false;
-            } else {
-                // Follow
-                transaction.update(currentUserRef, { following: arrayUnion(targetUserId) });
-                transaction.update(targetUserRef, { followers: arrayUnion(currentUserId) });
-                isFollowing = true;
-            }
-        });
-
-        if (isFollowing) {
-           await createActivity({ type: 'follow', actorId: currentUserId, notifiedUserId: targetUserId });
-        }
-
-        return isFollowing;
-    } catch (error) {
-        console.error("Error toggling follow:", error);
-        throw new Error("Failed to toggle follow status.");
     }
 }
 

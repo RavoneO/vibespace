@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { searchUsers, toggleFollow } from "@/services/userService";
+import { searchUsers } from "@/services/userService";
 import type { User, Post } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -35,9 +35,19 @@ function UserSearchResult({ user, onFollowToggle }: { user: User, onFollowToggle
         }
         setIsLoading(true);
         try {
-            const result = await toggleFollow(currentUserId, user.id);
-            setIsFollowing(result);
-            onFollowToggle(user.id, result);
+            const response = await fetch(`/api/users/${user.id}/follow`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentUserId })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to toggle follow');
+            }
+
+            const { isFollowing: newIsFollowing } = await response.json();
+            setIsFollowing(newIsFollowing);
+            onFollowToggle(user.id, newIsFollowing);
         } catch (error) {
             toast({ title: "Something went wrong.", variant: "destructive" });
         } finally {

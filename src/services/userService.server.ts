@@ -40,33 +40,33 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 }
 
 export async function toggleBookmark(userId: string, postId: string): Promise<boolean> {
-    const userRef = adminDb.collection('users').doc(userId);
-    try {
-        let isBookmarked = false;
-        await adminDb.runTransaction(async (transaction) => {
-            const userDoc = await transaction.get(userRef);
-            if (!userDoc.exists) {
-                throw new Error("User not found");
-            }
-            const data = userDoc.data();
-            if (!data) throw new Error("User data not found");
+  const userRef = adminDb.collection('users').doc(userId);
+  try {
+      let isBookmarked = false;
+      await adminDb.runTransaction(async (transaction) => {
+          const userDoc = await transaction.get(userRef);
+          if (!userDoc.exists) {
+              throw new Error("User not found");
+          }
+          const data = userDoc.data();
+          if (!data) throw new Error("User data not found");
 
-            const savedPosts = data.savedPosts || [];
-            if (savedPosts.includes(postId)) {
-                // Un-bookmark
-                transaction.update(userRef, { savedPosts: FieldValue.arrayRemove(postId) });
-                isBookmarked = false;
-            } else {
-                // Bookmark
-                transaction.update(userRef, { savedPosts: FieldValue.arrayUnion(postId) });
-                isBookmarked = true;
-            }
-        });
-        return isBookmarked;
-    } catch (error) {
-        console.error("Error toggling bookmark:", error);
-        throw new Error("Failed to toggle bookmark status.");
-    }
+          const savedPosts = data.savedPosts || [];
+          if (savedPosts.includes(postId)) {
+              // Un-bookmark
+              transaction.update(userRef, { savedPosts: FieldValue.arrayRemove(postId) });
+              isBookmarked = false;
+          } else {
+              // Bookmark
+              transaction.update(userRef, { savedPosts: FieldValue.arrayUnion(postId) });
+              isBookmarked = true;
+          }
+      });
+      return isBookmarked;
+  } catch (error) {
+      console.error("Error toggling bookmark:", error);
+      throw new Error("Failed to toggle bookmark status.");
+  }
 }
 
 export async function toggleLike(postId: string, userId: string): Promise<boolean> {
@@ -101,7 +101,6 @@ export async function toggleLike(postId: string, userId: string): Promise<boolea
     }
   });
 
-  // Create activity notification outside the transaction
   if (isLiked) {
       const post = await getPostById(postId);
       if (post && post.user.id !== userId) {
@@ -115,4 +114,46 @@ export async function toggleLike(postId: string, userId: string): Promise<boolea
   }
 
   return isLiked;
+}
+
+
+export async function toggleFollow(currentUserId: string, targetUserId: string): Promise<boolean> {
+    if (currentUserId === targetUserId) {
+        throw new Error("You cannot follow yourself.");
+    }
+
+    const currentUserRef = adminDb.collection('users').doc(currentUserId);
+    const targetUserRef = adminDb.collection('users').doc(targetUserId);
+
+    let isFollowing = false;
+    await adminDb.runTransaction(async (transaction) => {
+        const currentUserDoc = await transaction.get(currentUserRef);
+        
+        if (!currentUserDoc.exists()) {
+            throw new Error("Current user does not exist!");
+        }
+
+        const currentUserData = currentUserDoc.data();
+        if (!currentUserData) throw new Error("Current user data not found");
+        
+        const following = currentUserData.following || [];
+        
+        if (following.includes(targetUserId)) {
+            // Unfollow
+            transaction.update(currentUserRef, { following: FieldValue.arrayRemove(targetUserId) });
+            transaction.update(targetUserRef, { followers: FieldValue.arrayRemove(currentUserId) });
+            isFollowing = false;
+        } else {
+            // Follow
+            transaction.update(currentUserRef, { following: FieldValue.arrayUnion(targetUserId) });
+            transaction.update(targetUserRef, { followers: FieldValue.arrayUnion(currentUserId) });
+            isFollowing = true;
+        }
+    });
+
+    if (isFollowing) {
+       await createActivity({ type: 'follow', actorId: currentUserId, notifiedUserId: targetUserId });
+    }
+
+    return isFollowing;
 }

@@ -50,7 +50,7 @@ async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): 
 
     const collaborators = data.collaboratorIds ? await Promise.all(data.collaboratorIds.map(getFullUser)) : [];
     
-    const comments = data.comments ? await Promise.all(data.comments.map(async (comment: any) => {
+    const commentsWithUsers = data.comments ? await Promise.all(data.comments.map(async (comment: any) => {
         const commentUser = await getFullUser(comment.userId);
         return commentUser ? { ...comment, user: commentUser } : null;
     })) : [];
@@ -66,7 +66,7 @@ async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): 
         tags: data.tags || [],
         likes: data.likes || 0,
         likedBy: data.likedBy || [],
-        comments: comments.filter(Boolean),
+        comments: commentsWithUsers.filter(Boolean),
         timestamp: data.timestamp,
         status: data.status,
         dataAiHint: data.dataAiHint,
@@ -172,7 +172,7 @@ export async function getPostById(postId: string): Promise<Post | null> {
 }
 
 
-export async function addComment(postId: string, comment: { userId: string, text: string }) {
+export async function addComment(postId: string, comment: { userId: string, text: string }): Promise<Comment> {
   const postRef = adminDb.collection('posts').doc(postId);
   
   const newComment = {
@@ -185,7 +185,6 @@ export async function addComment(postId: string, comment: { userId: string, text
     comments: FieldValue.arrayUnion(newComment)
   });
   
-  // Handle Mentions & Notifications
   const post = await getPostById(postId);
   if (post) {
       if (post.user.id !== comment.userId) {
@@ -198,6 +197,11 @@ export async function addComment(postId: string, comment: { userId: string, text
       }
       await processMentions(comment.text, comment.userId, postId);
   }
+
+  const user = await getUserById(comment.userId);
+  if(!user) throw new Error("Comment user not found");
+
+  return { ...newComment, user };
 }
 
 export async function getPostsByHashtag(tag: string): Promise<Post[]> {
