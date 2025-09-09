@@ -40,11 +40,12 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
     try {
         const userRef = doc(db, 'users', userId);
+        const nameForAvatar = data.name.split(' ').join('+');
         await setDoc(userRef, {
             name: data.name,
             username: data.username,
             email: data.email,
-            avatar: `https://picsum.photos/seed/${userId}/100/100`, // Generates a consistent random avatar
+            avatar: `https://ui-avatars.com/api/?name=${nameForAvatar}&background=random`,
             bio: "Welcome to Vibespace!",
             followers: [],
             following: [],
