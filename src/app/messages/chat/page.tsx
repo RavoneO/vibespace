@@ -5,11 +5,12 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useCollection, useDocumentData } from 'react-firebase-hooks/firestore';
 import { useAuth } from '@/hooks/use-auth';
-import { getMessagesQuery, sendMessage } from '@/services/messageService';
+import { getMessagesQuery } from '@/services/messageService';
+import { sendMessage } from '@/services/messageService.server';
 import { doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Message, User, Conversation } from '@/lib/types';
-import { getUserById } from '@/services/userService';
+import { getUserById } from '@/services/userService.server';
 
 import AppLayout from '@/components/app-layout';
 import Link from 'next/link';

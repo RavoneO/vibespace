@@ -3,7 +3,7 @@ import AppLayout from "@/components/app-layout";
 import { PostCard } from "@/components/post-card";
 import { Stories } from "@/components/stories";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getStories } from "@/services/storyService";
+import { getStories } from "@/services/storyService.server";
 import { getPosts } from "@/services/postService.server";
 import { Icons } from "@/components/icons";
 import Link from "next/link";

@@ -63,10 +63,6 @@ export default function ReelsPage() {
         });
     }, []);
 
-    if (loading) {
-        return <ReelsSkeleton />;
-    }
-
     return (
         <AppLayout>
           <header className="flex items-center justify-between p-4 border-b">
@@ -82,7 +78,7 @@ export default function ReelsPage() {
           </header>
           <main className="flex-1 overflow-y-auto">
             <Suspense fallback={<ReelsSkeleton />}>
-                {reels.length > 0 ? (
+                {loading ? <ReelsSkeleton /> : reels.length > 0 ? (
                     <ReelsPageClient initialReels={reels} />
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center px-4">

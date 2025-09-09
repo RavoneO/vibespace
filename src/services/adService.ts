@@ -1,6 +1,10 @@
 
 'use server'
 
+import { z } from 'zod';
+import { ai } from '@/ai/genkit';
+import { streamText } from 'ai';
+
 export interface Ad {
     id: string;
     headline: string;
@@ -78,7 +82,47 @@ export async function getSplashAd(): Promise<Ad | null> {
     return isSplashAdActive ? splashAd : null;
 }
 
+const AdSelectionResponseSchema = z.object({
+  adId: z.string().describe('The ID of the most suitable ad from the provided inventory. This ID must be one of the IDs from the available ads list.'),
+  reason: z.string().describe('A brief explanation for why this ad was chosen.'),
+});
+
+const adSelectionPrompt = ai.definePrompt({
+    name: 'adSelectionPrompt',
+    input: { schema: z.object({ ads: z.array(z.any()), captions: z.array(z.string()) }) },
+    output: { schema: AdSelectionResponseSchema },
+    prompt: `You are an expert ad targeting system. Your task is to select the most relevant ad for a user based on the captions of their recent posts.
+
+    Analyze the user's recent post captions to understand their interests. Then, review the available ad inventory and choose the single best ad that aligns with those interests.
+
+    **Available Ad Inventory:**
+    \`\`\`json
+    {{{json ads}}}
+    \`\`\`
+
+    **User's Recent Post Captions:**
+    - "{{#each captions}}{{{this}}}{{/each}}"
+
+    Based on this information, select the best ad and provide a brief reason for your choice.
+    `,
+});
+
 export async function selectAd(availableAds: Ad[], recentCaptions: string[]): Promise<Ad> {
-    // Fallback to random ad since AI is removed
+    if (!availableAds.length) {
+        throw new Error('No ads available to select from.');
+    }
+    try {
+        const { output } = await adSelectionPrompt({ ads: availableAds, captions: recentCaptions });
+        
+        if (output) {
+            const selectedAd = availableAds.find(ad => ad.id === output.adId);
+            return selectedAd || availableAds[Math.floor(Math.random() * availableAds.length)];
+        }
+        
+    } catch (error) {
+        console.error("AI ad selection failed, falling back to random selection:", error);
+    }
+    
+    // Fallback to random ad if AI fails or doesn't provide a valid response
     return availableAds[Math.floor(Math.random() * availableAds.length)];
 }

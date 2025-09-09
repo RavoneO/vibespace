@@ -9,12 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useState, useCallback, Suspense } from "react";
-import { toggleFollow } from "@/services/userService";
 import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { findOrCreateConversation } from "@/services/messageService";
+import { findOrCreateConversation } from "@/services/messageService.server";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UserPosts, PostGridSkeleton } from "./user-posts";
 
@@ -23,6 +22,21 @@ interface ProfileClientPageProps {
   initialPosts: Post[];
   initialSavedPosts: Post[];
   initialLikedPosts: Post[];
+}
+
+async function callAiApi(action: string, payload: any) {
+    const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, payload }),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'AI API request failed');
+    }
+
+    return response.json();
 }
 
 function ProfilePageSkeleton() {
@@ -81,9 +95,26 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
 
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
-  const [vibe, setVibe] = useState<string | null>("Just joined the vibe! Ready to share. ✨");
+  const [vibe, setVibe] = useState<string | null>(null);
   
   const isCurrentUserProfile = userProfile?.id === user.id;
+
+  useEffect(() => {
+    async function generateVibe() {
+      if (initialPosts.length > 0) {
+        try {
+          const result = await callAiApi('generate-vibe', {
+            captions: initialPosts.map(p => p.caption).filter(Boolean)
+          });
+          setVibe(result.vibe);
+        } catch (error) {
+          console.error("Error generating vibe:", error);
+          setVibe("Adventurous Spirit ✨"); // Fallback vibe
+        }
+      }
+    }
+    generateVibe();
+  }, [initialPosts]);
 
   const showLoginToast = useCallback(() => {
     toast({
@@ -118,7 +149,19 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
     }));
 
     try {
-        await toggleFollow(userProfile.id, user.id);
+      const response = await fetch(`/api/users/${user.id}/follow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId: userProfile.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle follow');
+      }
+
+      const { isFollowing: newIsFollowing } = await response.json();
+      setIsFollowing(newIsFollowing);
+
     } catch (error) {
         setIsFollowing(originalIsFollowing);
         setFollowCount(prev => ({
