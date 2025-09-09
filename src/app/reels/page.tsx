@@ -1,11 +1,11 @@
 
+
 import AppLayout from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { getReels } from "@/services/postService.server";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ReelGrid } from "./reel-grid";
 import { ReelsClient } from "./reels-client";
 
 function ReelsSkeleton() {

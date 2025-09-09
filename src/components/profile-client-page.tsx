@@ -9,12 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useState, useCallback, Suspense } from "react";
-import { toggleFollow } from "@/services/userService";
+import { findOrCreateConversation } from "@/services/messageService.server";
 import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { findOrCreateConversation } from "@/services/messageService";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UserPosts, PostGridSkeleton } from "./user-posts";
 
@@ -150,7 +149,19 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
     }));
 
     try {
-        await toggleFollow(userProfile.id, user.id);
+      const response = await fetch(`/api/users/${user.id}/follow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId: userProfile.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle follow');
+      }
+
+      const { isFollowing: newIsFollowing } = await response.json();
+      setIsFollowing(newIsFollowing);
+
     } catch (error) {
         setIsFollowing(originalIsFollowing);
         setFollowCount(prev => ({
