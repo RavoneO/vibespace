@@ -5,7 +5,7 @@ import { selectAd as selectAdFlow } from '@/ai/flows/ai-ad-selector';
 import type { Ad } from './adService';
 import { getAvailableAds as getAvailableAdsClient } from './adService';
 
-export function getAvailableAds(): Ad[] {
+export async function getAvailableAds(): Promise<Ad[]> {
     return getAvailableAdsClient();
 }
 

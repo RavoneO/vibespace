@@ -21,9 +21,23 @@ import { UserPosts, PostGridSkeleton } from "./user-posts";
 interface ProfileClientPageProps {
   user: User;
   initialPosts: Post[];
-  initialVibe: string;
   initialSavedPosts: Post[];
   initialLikedPosts: Post[];
+}
+
+async function callAiApi(action: string, payload: any) {
+    const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, payload }),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'AI API request failed');
+    }
+
+    return response.json();
 }
 
 function ProfilePageSkeleton() {
@@ -68,7 +82,7 @@ function ProfilePageSkeleton() {
   )
 }
 
-export function ProfileClientPage({ user, initialPosts, initialVibe, initialSavedPosts, initialLikedPosts }: ProfileClientPageProps) {
+export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initialLikedPosts }: ProfileClientPageProps) {
   const { data: session, status } = useSession();
   const authUser = session?.user;
   const authLoading = status === 'loading';
@@ -85,8 +99,26 @@ export function ProfileClientPage({ user, initialPosts, initialVibe, initialSave
 
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
+  const [vibe, setVibe] = useState<string | null>(null);
   
   const isCurrentUserProfile = authUser?.email === user.email;
+
+  useEffect(() => {
+    async function generateVibe() {
+      if (initialPosts.length > 0) {
+        try {
+          const result = await callAiApi('generate-vibe', {
+            captions: initialPosts.map(p => p.caption).filter(Boolean)
+          });
+          setVibe(result.vibe);
+        } catch (error) {
+          console.error("Error generating vibe:", error);
+          setVibe("Adventurous Spirit ✨"); // Fallback vibe
+        }
+      }
+    }
+    generateVibe();
+  }, [initialPosts]);
 
   const showLoginToast = useCallback(() => {
     toast({
@@ -216,10 +248,10 @@ export function ProfileClientPage({ user, initialPosts, initialVibe, initialSave
           <div className="mt-4">
               <h2 className="text-lg font-semibold">{user.name}</h2>
               {user.bio && <p className="text-sm text-muted-foreground">{user.bio}</p>}
-              {initialVibe ? (
+              {vibe ? (
                   <div className="mt-2 flex items-center gap-2 text-sm text-accent-foreground bg-accent/20 rounded-full px-3 py-1 w-fit">
                     <Icons.sparkles className="h-4 w-4 text-accent" />
-                    <p className="font-medium">{initialVibe}</p>
+                    <p className="font-medium">{vibe}</p>
                   </div>
               ) : (
                   <Skeleton className="h-5 w-48 mt-2" />

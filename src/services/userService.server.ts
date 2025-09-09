@@ -97,8 +97,3 @@ export async function updateUserProfile(userId: string, data: { name: string; bi
 
     await userRef.update(updateData);
 }
-
-export async function generateVibe(captions: string[]): Promise<string> {
-    const result = await generateVibeFlow({ captions });
-    return result.vibe;
-}

@@ -3,7 +3,8 @@ import {NextResponse} from 'next/server';
 import {generateCaption} from '@/ai/flows/ai-generated-caption';
 import {suggestHashtags} from '@/ai/flows/ai-suggested-hashtags';
 import {detectObjectsInImage} from '@/ai/flows/ai-object-detection';
-import { semanticSearch } from '@/ai/flows/ai-semantic-search';
+import {semanticSearch} from '@/ai/flows/ai-semantic-search';
+import {generateVibe} from '@/ai/flows/ai-profile-vibe';
 
 // This handler will delegate to the appropriate AI flow based on the 'action' parameter.
 export async function POST(request: Request) {
@@ -24,6 +25,9 @@ export async function POST(request: Request) {
       case 'semantic-search':
         const searchOutput = await semanticSearch(payload);
         return NextResponse.json(searchOutput);
+      case 'generate-vibe':
+        const vibeOutput = await generateVibe(payload);
+        return NextResponse.json(vibeOutput);
       default:
         return NextResponse.json(
           {error: 'Invalid action'},
