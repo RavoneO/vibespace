@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { findOrCreateConversation } from "@/services/messageService";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UserPosts, PostGridSkeleton } from "./user-posts";
+import { generateVibe } from "@/ai/flows/ai-profile-vibe";
 
 function ProfilePageSkeleton() {
   return (
@@ -79,6 +80,8 @@ export function ProfileClientPage({ username }: { username: string }) {
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   const [userNotFound, setUserNotFound] = useState(false);
+  const [vibe, setVibe] = useState<string | null>(null);
+  const [isVibeLoading, setIsVibeLoading] = useState(false);
 
   const showLoginToast = useCallback(() => {
     toast({
@@ -95,9 +98,19 @@ export function ProfileClientPage({ username }: { username: string }) {
 
       if (fetchedUser) {
         setUser(fetchedUser);
-        // We will fetch posts separately now, but we can get the count from the user object if we stored it
-        // For now, let's assume we don't have it and will get it from the posts query.
-        // This is a placeholder, the actual count will come from the UserPosts component.
+
+        setIsVibeLoading(true);
+        try {
+            const userPosts = await getPostsByUserId(fetchedUser.id);
+            const captions = userPosts.map(p => p.caption);
+            const { vibe } = await generateVibe({ captions });
+            setVibe(vibe);
+        } catch (e) {
+            console.error("Failed to generate vibe", e);
+            setVibe("Error loading vibe...");
+        } finally {
+            setIsVibeLoading(false);
+        }
         
         if (fetchedUser.savedPosts && fetchedUser.savedPosts.length > 0) {
             const fetchedSavedPosts = await getSavedPosts(fetchedUser.savedPosts);
@@ -265,6 +278,14 @@ export function ProfileClientPage({ username }: { username: string }) {
           <div className="mt-4">
               <h2 className="text-lg font-semibold">{user.name}</h2>
               <p className="text-sm text-muted-foreground">{user.bio}</p>
+              {isVibeLoading ? (
+                  <Skeleton className="h-5 w-48 mt-2" />
+              ) : vibe && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-accent-foreground bg-accent/20 rounded-full px-3 py-1 w-fit">
+                    <Icons.sparkles className="h-4 w-4 text-accent" />
+                    <p className="font-medium">{vibe}</p>
+                  </div>
+              )}
           </div>
           <div className="mt-4 flex gap-2">
             {isCurrentUserProfile ? (
@@ -328,5 +349,3 @@ export function ProfileClientPage({ username }: { username: string }) {
     </AppLayout>
   );
 }
-
-    
