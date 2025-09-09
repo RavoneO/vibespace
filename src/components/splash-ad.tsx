@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -12,7 +13,7 @@ import {
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import type { Ad } from "@/services/adService";
+import type { Ad } from "@/services/adService.server";
 
 interface SplashAdProps {
   ad: Ad;

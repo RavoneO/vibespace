@@ -138,7 +138,7 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
         variant: "destructive",
       });
     }
-  }, [isLiked, likeCount, isGuest, isProcessing, post.id, userProfile, showLoginToast, toast, likeCount]);
+  }, [isLiked, likeCount, isGuest, isProcessing, post.id, userProfile, showLoginToast, toast]);
   
   const handleBookmark = useCallback(async () => {
     if (isGuest || !userProfile || isProcessing) {

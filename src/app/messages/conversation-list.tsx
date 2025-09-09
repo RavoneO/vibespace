@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { getConversations } from "@/services/messageService.server";
 import type { Conversation } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -74,38 +73,18 @@ function ConversationItem({ convo, authUserId }: { convo: Conversation, authUser
     )
 }
 
-export function ConversationList() {
-  const { user: authUser } = useAuth();
+export function ConversationList({ initialConversations }: { initialConversations: Conversation[] }) {
+  const { user: authUser, isGuest } = useAuth();
   const router = useRouter();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
+  const [filteredConversations, setFilteredConversations] = useState<Conversation[]>(initialConversations);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    async function fetchConversations() {
-      if (!authUser) {
-        if (!useAuth().isGuest) return; // Wait for auth state to resolve
-      }
-      try {
-        setLoading(true);
-        if (authUser) {
-            const convos = await getConversations(authUser.uid);
-            setConversations(convos);
-            setFilteredConversations(convos);
-        } else {
-            // Handle guest state
-            setConversations([]);
-            setFilteredConversations([]);
-        }
-      } catch (error) {
-        console.error("Failed to fetch conversations", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchConversations();
-  }, [authUser, useAuth().isGuest]);
+    setConversations(initialConversations);
+    setFilteredConversations(initialConversations);
+  }, [initialConversations]);
 
   useEffect(() => {
     const results = conversations.filter(convo => {
@@ -123,7 +102,7 @@ export function ConversationList() {
     return <ConversationListSkeleton />;
   }
   
-  if (useAuth().isGuest) {
+  if (isGuest) {
       return (
           <div className="text-center text-muted-foreground py-24 px-4">
             <Icons.messages className="mx-auto h-12 w-12" />

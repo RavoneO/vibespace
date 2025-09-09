@@ -10,8 +10,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AdCard } from "@/components/ad-card";
 import { Suspense } from "react";
-import { getAvailableAds, selectAd } from "@/services/adService";
-import type { Ad } from "@/services/adService";
+import { getAvailableAds, selectAd } from "@/services/adService.server";
+import type { Ad } from "@/services/adService.server";
 
 function FeedSkeleton() {
   return (

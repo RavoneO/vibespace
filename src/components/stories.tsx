@@ -14,7 +14,6 @@ import { createStory, updateStory } from "@/services/storyService.server";
 import { uploadFile } from "@/services/storageService";
 import Link from "next/link";
 import { Button } from "./ui/button";
-import { getUserById } from "@/services/userService.server";
 import { cn } from "@/lib/utils";
 
 interface StoriesProps {
