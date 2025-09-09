@@ -8,7 +8,7 @@ import { getUserById } from './userService';
 import { getPostById } from './postService';
 
 interface CreateActivityParams {
-    type: 'like' | 'comment' | 'follow';
+    type: 'like' | 'comment' | 'follow' | 'mention';
     actorId: string;
     notifiedUserId: string;
     postId?: string;

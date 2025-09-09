@@ -5,7 +5,7 @@ import { db, storage } from '@/lib/firebase';
 import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, limit, deleteDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import type { Post, Comment, User, PostTag } from '@/lib/types';
-import { getUserById } from './userService';
+import { getUserById, getUserByUsername } from './userService';
 import { createActivity } from './activityService';
 
 // Function to get a user by ID, with fallback to mock data
@@ -197,10 +197,42 @@ export async function createPost(postData: {
     }
 }
 
+// Helper to find mentions and create notifications
+const processMentions = async (text: string, actorId: string, postId: string) => {
+    const mentionRegex = /@(\w+)/g;
+    const mentions = text.match(mentionRegex);
+    if (!mentions) return;
+
+    // Use a Set to avoid duplicate notifications for the same user
+    const mentionedUsernames = new Set(mentions.map(m => m.substring(1)));
+
+    for (const username of mentionedUsernames) {
+        const user = await getUserByUsername(username);
+        if (user && user.id !== actorId) {
+            await createActivity({
+                type: 'mention',
+                actorId: actorId,
+                notifiedUserId: user.id,
+                postId: postId
+            });
+        }
+    }
+};
+
 export async function updatePost(postId: string, data: Partial<Post>) {
     try {
         const postRef = doc(db, 'posts', postId);
         await updateDoc(postRef, data as any);
+
+        // If caption is updated or post is newly published, process mentions
+        if (data.caption || data.status === 'published') {
+            const postDoc = await getDoc(postRef);
+            const postData = postDoc.data();
+            if (postData) {
+                await processMentions(postData.caption, postData.userId, postId);
+            }
+        }
+
     } catch (error) {
         console.error("Error updating post:", error);
         throw new Error("Failed to update post.");
@@ -220,17 +252,22 @@ export async function addComment(postId: string, commentData: { userId: string, 
             comments: arrayUnion(newComment)
         });
 
-        // Create activity notification
         const postDoc = await getDoc(postRef);
-        const postData = await processPostDoc(postDoc);
-        if (postData.user.id !== commentData.userId) {
+        const postData = postDoc.data();
+        if(!postData) return;
+
+        // Create activity notification for the comment itself
+        if (postData.userId !== commentData.userId) {
             await createActivity({
                 type: 'comment',
                 actorId: commentData.userId,
-                notifiedUserId: postData.user.id,
+                notifiedUserId: postData.userId,
                 postId: postId
             });
         }
+        
+        // Process mentions in the comment
+        await processMentions(commentData.text, commentData.userId, postId);
 
     } catch (error) {
         console.error("Error adding comment:", error);

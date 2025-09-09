@@ -45,6 +45,9 @@ function ActivityItem({ activity }: { activity: Activity }) {
         case "follow":
             message = "started following you.";
             break;
+        case "mention":
+            message = "mentioned you in a post.";
+            break;
         default:
             return null;
     }

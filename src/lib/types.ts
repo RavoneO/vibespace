@@ -73,8 +73,8 @@ export type Conversation = {
 }
 
 export type Activity = {
-    id: string;
-    type: 'like' | 'comment' | 'follow';
+    id:string;
+    type: 'like' | 'comment' | 'follow' | 'mention';
     actor: User; // The user who performed the action
     targetPost?: { id: string; contentUrl: string; type: 'image' | 'video' };
     timestamp: Timestamp;
