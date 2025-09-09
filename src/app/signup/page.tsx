@@ -59,6 +59,11 @@ export default function SignupPage() {
           email: values.email,
       });
 
+      toast({
+        title: "Welcome to Vibespace!",
+        description: "Your account has been created successfully.",
+      });
+
       router.replace('/feed'); // Explicitly redirect on success
     } catch (error: any) {
         let description = "An unexpected error occurred. Please try again.";
