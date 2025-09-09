@@ -12,14 +12,16 @@ import { Button } from "@/components/ui/button";
 import { searchUsers, toggleFollow } from "@/services/userService";
 import type { SemanticSearchOutput } from "@/ai/flows/ai-semantic-search";
 import type { User, Post } from "@/lib/types";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
 
-function UserSearchResult({ user, currentUserId, onFollowToggle }: { user: User, currentUserId: string | null, onFollowToggle: (userId: string, isFollowing: boolean) => void }) {
+function UserSearchResult({ user, onFollowToggle }: { user: User, onFollowToggle: (userId: string, isFollowing: boolean) => void }) {
     const { toast } = useToast();
-    const { data: session } = useSession();
-    const isGuest = !session;
+    const router = useRouter();
+    const { userProfile, isGuest } = useAuth();
+    const currentUserId = userProfile?.id
     const [isFollowing, setIsFollowing] = useState(user.followers?.includes(currentUserId || '') || false);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -28,7 +30,7 @@ function UserSearchResult({ user, currentUserId, onFollowToggle }: { user: User,
             toast({ 
                 title: "Please log in to follow users.", 
                 variant: "destructive",
-                action: <Link href="/signup"><Button>Sign Up</Button></Link>
+                action: <Button onClick={() => router.push('/login')}>Log In</Button>
             });
             return;
         }
@@ -123,8 +125,7 @@ async function searchPosts(query: string): Promise<SemanticSearchOutput> {
 }
 
 export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Post[] }) {
-  const { data: session } = useSession();
-  const authUser = session?.user;
+  const { userProfile } = useAuth();
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebounce(query, 500);
   const [userResults, setUserResults] = useState<User[]>([]);
@@ -164,13 +165,13 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
   
   const handleFollowToggle = (userId: string, isFollowing: boolean) => {
     setUserResults(prevResults => prevResults.map(user => {
-        if (user.id === userId && authUser) {
+        if (user.id === userId && userProfile) {
             const currentFollowers = user.followers || [];
             let newFollowers;
             if (isFollowing) {
-                newFollowers = [...currentFollowers, authUser.email!];
+                newFollowers = [...currentFollowers, userProfile.id];
             } else {
-                newFollowers = currentFollowers.filter(id => id !== authUser.email);
+                newFollowers = currentFollowers.filter(id => id !== userProfile!.id);
             }
             return { ...user, followers: newFollowers };
         }
@@ -210,7 +211,6 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
                             <UserSearchResult 
                                 key={user.id} 
                                 user={user} 
-                                currentUserId={authUser?.email || null}
                                 onFollowToggle={handleFollowToggle} 
                             />
                             ))}

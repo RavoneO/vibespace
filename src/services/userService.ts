@@ -1,11 +1,26 @@
 
-'use server';
+'use client';
 
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
-import type { User } from '@/lib/types';
+import { 
+    collection, 
+    doc, 
+    getDoc, 
+    getDocs, 
+    query, 
+    where, 
+    updateDoc, 
+    arrayUnion, 
+    arrayRemove, 
+    runTransaction, 
+    startAt, 
+    endAt, 
+    orderBy, 
+    setDoc 
+} from 'firebase/firestore';
+import type { User, Post } from '@/lib/types';
 import { uploadFile } from './storageService';
-
+import { createActivity } from './activityService';
 
 export async function getUserById(userId: string): Promise<User | null> {
   if (!userId) return null;
@@ -61,10 +76,22 @@ export async function searchUsers(searchText: string): Promise<User[]> {
 
 export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
     const userRef = doc(db, 'users', userId);
+    
+    const existingUser = await getDoc(userRef);
+    if(existingUser.exists()) {
+        console.log(`Profile for user ${userId} already exists.`);
+        return;
+    }
+
+    const usernameExists = await getUserByUsername(data.username);
+    if (usernameExists) {
+        throw new Error(`Username @${data.username} is already taken.`);
+    }
+
     const nameForAvatar = data.name.split(' ').join('+');
     await setDoc(userRef, {
         name: data.name,
-        username: data.username.toLowerCase(), // Store username in lowercase for case-insensitive queries
+        username: data.username.toLowerCase(),
         email: data.email,
         avatar: `https://ui-avatars.com/api/?name=${nameForAvatar}&background=random`,
         bio: "Welcome to Vibespace!",
@@ -75,6 +102,78 @@ export async function createUserProfile(userId: string, data: { name: string; us
         showActivityStatus: true,
     });
 }
+
+export async function getPostsByUserId(userId: string): Promise<Post[]> {
+  try {
+    const postsCollection = collection(db, 'posts');
+    const q = query(postsCollection,
+        where('status', '==', 'published'),
+        where('userId', '==', userId),
+        orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+
+    const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        const user = await getUserById(data.userId); // This is safe now
+        return {
+            id: doc.id,
+            ...data,
+            user,
+        } as Post;
+    }));
+
+    return posts.filter(p => p.user);
+  } catch (error) {
+    console.error("Error fetching posts by user ID:", error);
+    return [];
+  }
+}
+
+export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
+    try {
+      const postsCollection = collection(db, 'posts');
+      const q = query(postsCollection,
+          where('likedBy', 'array-contains', userId),
+          where('status', '==', 'published'),
+          orderBy('timestamp', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        const user = await getUserById(data.userId);
+        return {
+            id: doc.id,
+            ...data,
+            user,
+        } as Post;
+    }));
+      return posts.filter(p => p.user);
+    } catch (error) {
+      console.error("Error fetching liked posts by user ID:", error);
+      return [];
+    }
+  }
+  
+export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
+    if (!postIds || postIds.length === 0) {
+        return [];
+    }
+    try {
+        const postPromises = postIds.map(async id => {
+            const postRef = doc(db, 'posts', id);
+            const postDoc = await getDoc(postRef);
+            if (!postDoc.exists() || postDoc.data().status !== 'published') return null;
+            const data = postDoc.data();
+            const user = await getUserById(data.userId);
+            return user ? { id: doc.id, ...data, user } as Post : null;
+        });
+        const posts = await Promise.all(postPromises);
+        return posts.filter((p): p is Post => p !== null);
+    } catch (error) {
+        console.error("Error fetching saved posts:", error);
+        return [];
+    }
+}
+
 
 export async function toggleFollow(currentUserId: string, targetUserId: string): Promise<boolean> {
     if (currentUserId === targetUserId) {
@@ -108,9 +207,11 @@ export async function toggleFollow(currentUserId: string, targetUserId: string):
                 isFollowing = true;
             }
         });
-        // This part needs to be a server action if createActivity is server-only.
-        // For now, let's assume a separate mechanism handles notifications or we create a dedicated server action for it.
-        // await createActivity({ type: 'follow', actorId: currentUserId, notifiedUserId: targetUserId });
+
+        if (isFollowing) {
+           await createActivity({ type: 'follow', actorId: currentUserId, notifiedUserId: targetUserId });
+        }
+
         return isFollowing;
     } catch (error) {
         console.error("Error toggling follow:", error);

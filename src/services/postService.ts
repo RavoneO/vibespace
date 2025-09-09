@@ -10,7 +10,7 @@ import {
     updateDoc, 
     getDocs, 
     query, 
-    where, 
+    where,     
     orderBy, 
     limit,
     getDoc,
@@ -19,61 +19,51 @@ import {
     runTransaction,
     deleteDoc
 } from 'firebase/firestore';
-import type { Post, PostTag, User } from '@/lib/types';
+import type { Post, PostTag, User, Comment } from '@/lib/types';
 import { getUserById } from './userService';
 import { createActivity } from './activityService';
 import { analyzeContent, processMentions } from './contentService';
 
 const userCache = new Map<string, User>();
-async function getFullUser(userId: string): Promise<User> {
+
+async function getFullUser(userId: string): Promise<User | null> {
     if (userCache.has(userId)) {
         return userCache.get(userId)!;
     }
     const user = await getUserById(userId);
-    if (!user) {
-        // Handle case where user might be deleted but their content remains.
-        const deletedUser: User = { id: userId, name: "Deleted User", username: "deleteduser", email: "", avatar: "", bio: "", followers: [], following: [], savedPosts: [] };
-        userCache.set(userId, deletedUser);
-        return deletedUser;
+    if (user) {
+        userCache.set(userId, user);
     }
-    userCache.set(userId, user);
     return user;
 }
 
 
-async function processPostDoc(doc: any): Promise<Post> {
-    const data = doc.data();
-    if (!data) throw new Error(`Post data not found for doc ${doc.id}`);
+async function processPostDoc(docSnapshot: any): Promise<Post | null> {
+    const data = docSnapshot.data();
+    if (!data) return null;
 
-    const userIdsToFetch = new Set<string>([data.userId]);
-    if (data.collaboratorIds) {
-        data.collaboratorIds.forEach((id: string) => userIdsToFetch.add(id));
-    }
-    const commentsData = Array.isArray(data.comments) ? data.comments : [];
-    commentsData.forEach(c => userIdsToFetch.add(c.userId));
+    const user = await getFullUser(data.userId);
+    if (!user) return null;
 
-    await Promise.all(Array.from(userIdsToFetch).map(id => getFullUser(id)));
-
-    const user = userCache.get(data.userId)!;
-    const collaborators = data.collaboratorIds?.map((id: string) => userCache.get(id)!) || [];
+    const collaborators = data.collaboratorIds ? await Promise.all(data.collaboratorIds.map(getFullUser)) : [];
     
-    const comments = commentsData.map((comment: any) => ({
-        ...comment,
-        user: userCache.get(comment.userId)!,
-    })).filter(c => c.user); // Filter out comments from users that couldn't be fetched
+    const comments = data.comments ? await Promise.all(data.comments.map(async (comment: any) => {
+        const commentUser = await getFullUser(comment.userId);
+        return commentUser ? { ...comment, user: commentUser } : null;
+    })) : [];
 
     return {
-        id: doc.id,
+        id: docSnapshot.id,
         user,
-        collaborators,
+        collaborators: collaborators.filter(Boolean) as User[],
         type: data.type,
         contentUrl: data.contentUrl,
         caption: data.caption,
-        hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
-        tags: Array.isArray(data.tags) ? data.tags : [],
+        hashtags: data.hashtags || [],
+        tags: data.tags || [],
         likes: data.likes || 0,
-        likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
-        comments,
+        likedBy: data.likedBy || [],
+        comments: comments.filter(Boolean),
         timestamp: data.timestamp,
         status: data.status,
         dataAiHint: data.dataAiHint,
@@ -107,6 +97,10 @@ export async function createPost(postData: {
         timestamp: serverTimestamp(),
         status: 'processing',
     });
+    
+    // Process mentions after post is created
+    await processMentions(postData.caption, postData.userId, docRef.id);
+
     return docRef.id;
 }
 
@@ -119,6 +113,18 @@ export async function updatePost(postId: string, data: Partial<{ caption: string
     }
     const postRef = doc(db, 'posts', postId);
     await updateDoc(postRef, data);
+    
+    if (data.caption && data.status === 'published') {
+        const post = await getPostById(postId);
+        if (post) {
+            await processMentions(data.caption, post.user.id, postId);
+        }
+    }
+}
+
+export async function deletePost(postId: string) {
+    const postRef = doc(db, 'posts', postId);
+    await deleteDoc(postRef);
 }
 
 
@@ -131,11 +137,9 @@ export async function getPosts(): Promise<Post[]> {
         limit(50));
     
     const querySnapshot = await getDocs(q);
-    
     userCache.clear();
-    const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-    
-    return posts;
+    const posts = await Promise.all(querySnapshot.docs.map(processPostDoc));
+    return posts.filter((p): p is Post => p !== null);
   } catch (error) {
     console.error("Error fetching posts:", error);
     return [];
@@ -153,9 +157,8 @@ export async function getReels(): Promise<Post[]> {
     const querySnapshot = await getDocs(q);
     
     userCache.clear();
-    const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-    
-    return posts;
+    const posts = await Promise.all(querySnapshot.docs.map(processPostDoc));
+    return posts.filter((p): p is Post => p !== null);
   } catch (error) {
     console.error("Error fetching reels:", error);
     return [];
@@ -178,149 +181,83 @@ export async function getPostById(postId: string): Promise<Post | null> {
 }
 
 
-export async function getPostsByUserId(userId: string): Promise<Post[]> {
-  try {
-    const postsCollection = collection(db, 'posts');
-    const q = query(postsCollection,
-        where('status', '==', 'published'),
-        where('userId', '==', userId),
-        orderBy('timestamp', 'desc'));
-    const querySnapshot = await getDocs(q);
+export async function toggleLike(postId: string, userId: string): Promise<boolean> {
+  const postRef = doc(db, 'posts', postId);
 
-    userCache.clear();
-    const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-
-    return posts;
-  } catch (error) {
-    console.error("Error fetching posts by user ID:", error);
-    return [];
-  }
-}
-
-export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
-    try {
-      const postsCollection = collection(db, 'posts');
-      const q = query(postsCollection,
-          where('likedBy', 'array-contains', userId),
-          where('status', '==', 'published'),
-          orderBy('timestamp', 'desc'));
-      const querySnapshot = await getDocs(q);
-      userCache.clear();
-      const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-      return posts;
-    } catch (error) {
-      console.error("Error fetching liked posts by user ID:", error);
-      return [];
+  let isLiked = false;
+  
+  await runTransaction(db, async (transaction) => {
+    const postDoc = await transaction.get(postRef);
+    if (!postDoc.exists()) {
+      throw new Error("Post does not exist!");
     }
-  }
-
-export async function getPostsByHashtag(hashtag: string): Promise<Post[]> {
-    try {
-        const postsCollection = collection(db, 'posts');
-        const q = query(postsCollection,
-            where('hashtags', 'array-contains', `#${hashtag}`),
-            where('status', '==', 'published'),
-            orderBy('timestamp', 'desc'));
-        const querySnapshot = await getDocs(q);
-        userCache.clear();
-        const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-        return posts;
-    } catch (error) {
-        console.error("Error fetching posts by hashtag:", error);
-        return [];
-    }
-}
-
-export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
-    if (!postIds || postIds.length === 0) {
-        return [];
-    }
-    try {
-        const postPromises = postIds.map(id => getPostById(id));
-        const posts = await Promise.all(postPromises);
-        return posts.filter((p): p is Post => p !== null && p.status === 'published');
-    } catch (error) {
-        console.error("Error fetching saved posts:", error);
-        return [];
-    }
-}
-
-export async function addComment(postId: string, commentData: { userId: string, text: string }) {
-    const moderationResult = await analyzeContent({ text: commentData.text });
-    if (!moderationResult.isAllowed) {
-        throw new Error(moderationResult.reason || 'This comment is not allowed.');
-    }
-    const postRef = doc(db, 'posts', postId);
     
-    const newComment = {
-        id: doc(collection(db, 'posts')).id, // Generate a unique ID for the comment
-        ...commentData,
-        timestamp: serverTimestamp()
-    };
-    await updateDoc(postRef, {
-        comments: arrayUnion(newComment)
-    });
-
-    const postDoc = await getDoc(postRef);
     const postData = postDoc.data();
-    if(!postData) return;
-
-    // Create activity notification for the comment itself
-    if (postData.userId !== commentData.userId) {
-        await createActivity({
-            type: 'comment',
-            actorId: commentData.userId,
-            notifiedUserId: postData.userId,
-            postId: postId
-        });
-    }
-
-    // Handle mentions
-    await processMentions(commentData.text, commentData.userId, postId);
-}
-
-export async function deletePost(postId: string) {
-    const postRef = doc(db, 'posts', postId);
-    await deleteDoc(postRef);
-}
-
-export async function toggleLike(postId: string, userId: string) {
-    const postRef = doc(db, 'posts', postId);
+    const likedBy: string[] = postData.likedBy || [];
     
-    return runTransaction(db, async (transaction) => {
-        const postDoc = await transaction.get(postRef);
-        if (!postDoc.exists()) {
-            throw new Error("Post not found");
-        }
+    if (likedBy.includes(userId)) {
+      // Unlike
+      transaction.update(postRef, { 
+        likedBy: arrayRemove(userId),
+        likes: (postData.likes || 1) - 1,
+      });
+      isLiked = false;
+    } else {
+      // Like
+      transaction.update(postRef, { 
+        likedBy: arrayUnion(userId),
+        likes: (postData.likes || 0) + 1,
+      });
+      isLiked = true;
+    }
+  });
 
-        const postData = postDoc.data()!;
-        const likedBy = postData.likedBy || [];
-        let isLiked;
+  // Create activity notification outside the transaction
+  if (isLiked) {
+      const post = await getPostById(postId);
+      if (post && post.user.id !== userId) {
+        await createActivity({
+            type: 'like',
+            actorId: userId,
+            notifiedUserId: post.user.id,
+            postId: postId,
+        });
+      }
+  }
 
-        if (likedBy.includes(userId)) {
-            // Unlike
-            transaction.update(postRef, {
-                likedBy: arrayRemove(userId),
-                likes: (postData.likes || 0) - 1
-            });
-            isLiked = false;
-        } else {
-            // Like
-            transaction.update(postRef, {
-                likedBy: arrayUnion(userId),
-                likes: (postData.likes || 0) + 1
-            });
-            isLiked = true;
+  return isLiked;
+}
 
-            if (postData.userId !== userId) {
-                await createActivity({
-                    type: 'like',
-                    actorId: userId,
-                    notifiedUserId: postData.userId,
-                    postId: postId
-                });
-            }
-        }
-        return isLiked;
-    });
+
+export async function addComment(postId: string, comment: { userId: string, text: string }) {
+  const postRef = doc(db, 'posts', postId);
+
+  const moderationResult = await analyzeContent({ text: comment.text });
+  if (!moderationResult.isAllowed) {
+      throw new Error(moderationResult.reason || 'This content is not allowed.');
+  }
+  
+  const newComment = {
+    ...comment,
+    timestamp: new Date(),
+    id: doc(collection(db, 'tmp')).id // Generate a unique ID for the comment
+  };
+
+  await updateDoc(postRef, {
+    comments: arrayUnion(newComment)
+  });
+  
+  // Handle Mentions & Notifications
+  const post = await getPostById(postId);
+  if (post) {
+      await processMentions(comment.text, comment.userId, postId);
+      if (post.user.id !== comment.userId) {
+          await createActivity({
+              type: 'comment',
+              actorId: comment.userId,
+              notifiedUserId: post.user.id,
+              postId: postId,
+          });
+      }
+  }
 }
