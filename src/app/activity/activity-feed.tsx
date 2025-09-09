@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
-import { getActivity } from "@/services/activityService";
+import { getActivity, markAllActivitiesAsRead } from "@/services/activityService";
 import type { Activity } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,6 +94,8 @@ export function ActivityFeed() {
             }
             try {
                 setLoading(true);
+                // Mark notifications as read when the user visits the feed
+                await markAllActivitiesAsRead(authUser.uid);
                 const activityData = await getActivity(authUser.uid);
                 setActivities(activityData);
             } catch (error) {

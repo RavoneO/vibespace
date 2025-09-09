@@ -2,7 +2,7 @@
 "use client";
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, limit, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, limit, writeBatch, doc } from 'firebase/firestore';
 import type { Activity } from '@/lib/types';
 import { getUserById } from './userService';
 import { getPostById } from './postService';
@@ -46,7 +46,7 @@ export async function getActivity(userId: string): Promise<Activity[]> {
 
         const querySnapshot = await getDocs(q);
         
-        const activities: Activity[] = await Promise.all(
+        const activities: Activity[] = (await Promise.all(
             querySnapshot.docs.map(async (doc) => {
                 const data = doc.data();
                 const actor = await getUserById(data.actorId);
@@ -76,13 +76,40 @@ export async function getActivity(userId: string): Promise<Activity[]> {
                     timestamp: data.timestamp,
                 } as Activity;
             })
-        );
+        )).filter((activity): activity is Activity => activity !== null); // Filter out nulls right away
         
-        // Filter out any null values that resulted from missing actors/posts
-        return activities.filter((activity): activity is Activity => activity !== null);
+        return activities;
 
     } catch (error) {
         console.error("Error fetching activity:", error);
         return [];
     }
 }
+
+
+export async function markAllActivitiesAsRead(userId: string) {
+    const activityCollection = collection(db, 'activity');
+    const q = query(
+        activityCollection,
+        where('notifiedUserId', '==', userId),
+        where('read', '==', false)
+    );
+
+    try {
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+            return;
+        }
+        
+        const batch = writeBatch(db);
+        querySnapshot.forEach(docSnapshot => {
+            batch.update(doc(db, 'activity', docSnapshot.id), { read: true });
+        });
+        
+        await batch.commit();
+
+    } catch (error) {
+        console.error("Error marking activities as read:", error);
+    }
+}
+
