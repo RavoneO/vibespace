@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "./ui/aspect-ratio";
 import { formatDistanceToNow } from "date-fns";
 import { Skeleton } from "./ui/skeleton";
+import { Badge } from "./ui/badge";
 
 interface PostCardProps {
   post: PostType;
@@ -244,8 +245,8 @@ export function PostCard({ post: initialPost }: PostCardProps) {
             </DropdownMenu>
         </CardHeader>
         <CardContent className="px-4 py-0">
-          <div className="text-sm text-foreground/90 mb-4">
-            <span>{post.caption}</span>
+          <div className="text-sm text-foreground/90 mb-4 space-y-2">
+            <p>{post.caption}</p>
             <div className="flex flex-wrap gap-x-2">
                 {post.hashtags.map((tag) => (
                     <Link href={`/tags/${tag.slice(1)}`} key={tag}>
@@ -255,6 +256,15 @@ export function PostCard({ post: initialPost }: PostCardProps) {
                     </Link>
                 ))}
             </div>
+            {post.tags && post.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                    {post.tags.map((tag, index) => (
+                        <Badge key={index} variant="secondary">
+                           <span className="capitalize font-normal">{tag.label}:</span>&nbsp;<span className="font-semibold">{tag.text}</span>
+                        </Badge>
+                    ))}
+                </div>
+            )}
           </div>
           <div className="relative w-full overflow-hidden rounded-lg">
              {isProcessing ? (
