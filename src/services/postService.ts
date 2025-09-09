@@ -236,3 +236,75 @@ export async function getPostsByHashtag(tag: string): Promise<Post[]> {
     return [];
   }
 }
+
+export async function getPostsByUserId(userId: string): Promise<Post[]> {
+  try {
+    const postsCollection = adminDb.collection('posts');
+    const q = postsCollection
+        .where('status', '==', 'published')
+        .where('userId', '==', userId)
+        .orderBy('timestamp', 'desc');
+    const querySnapshot = await q.get();
+
+    const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        const user = await getUserById(data.userId); 
+        return {
+            id: doc.id,
+            ...data,
+            user,
+        } as Post;
+    }));
+
+    return posts.filter(p => p.user);
+  } catch (error) {
+    console.error("Error fetching posts by user ID:", error);
+    return [];
+  }
+}
+
+export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
+    try {
+      const postsCollection = adminDb.collection('posts');
+      const q = postsCollection
+          .where('likedBy', 'array-contains', userId)
+          .where('status', '==', 'published')
+          .orderBy('timestamp', 'desc');
+      const querySnapshot = await q.get();
+      const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        const user = await getUserById(data.userId);
+        return {
+            id: doc.id,
+            ...data,
+            user,
+        } as Post;
+    }));
+      return posts.filter(p => p.user);
+    } catch (error) {
+      console.error("Error fetching liked posts by user ID:", error);
+      return [];
+    }
+  }
+  
+export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
+    if (!postIds || postIds.length === 0) {
+        return [];
+    }
+    try {
+        const postPromises = postIds.map(async id => {
+            const postRef = adminDb.collection('posts').doc(id);
+            const postDoc = await postRef.get();
+            if (!postDoc.exists || postDoc.data()?.status !== 'published') return null;
+            const data = postDoc.data();
+            if(!data) return null;
+            const user = await getUserById(data.userId);
+            return user ? { id: postDoc.id, ...data, user } as Post : null;
+        });
+        const posts = await Promise.all(postPromises);
+        return posts.filter((p): p is Post => p !== null);
+    } catch (error) {
+        console.error("Error fetching saved posts:", error);
+        return [];
+    }
+}
