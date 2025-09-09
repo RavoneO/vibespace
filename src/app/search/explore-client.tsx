@@ -15,7 +15,6 @@ import type { User, Post } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPosts } from "@/services/postService";
 
 function UserSearchResult({ user, currentUserId, onFollowToggle }: { user: User, currentUserId: string | null, onFollowToggle: (userId: string, isFollowing: boolean) => void }) {
     const { toast } = useToast();
@@ -107,27 +106,16 @@ function ExploreGrid({ posts }: { posts: Post[] }) {
     )
 }
 
-export function ExploreClient() {
+export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Post[] }) {
   const { user: authUser } = useAuth();
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebounce(query, 500);
   const [userResults, setUserResults] = useState<User[]>([]);
   const [postResults, setPostResults] = useState<SemanticSearchOutput['results']>([]);
-  const [explorePosts, setExplorePosts] = useState<Post[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isTransitioning, startTransition] = useTransition();
 
   const isLoading = isSearching || isTransitioning;
-
-  // Fetch initial posts for explore view
-  useEffect(() => {
-    async function fetchInitialPosts() {
-        const posts = await getPosts();
-        // Shuffle posts for a more dynamic explore feed
-        setExplorePosts(posts.sort(() => 0.5 - Math.random()));
-    }
-    fetchInitialPosts();
-  }, []);
 
   useEffect(() => {
     const performSearch = async () => {
@@ -241,7 +229,7 @@ export function ExploreClient() {
                 )}
             </div>
         ) : (
-            <ExploreGrid posts={explorePosts} />
+            <ExploreGrid posts={initialExplorePosts} />
         )}
       </div>
     </div>

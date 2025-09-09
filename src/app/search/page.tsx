@@ -3,6 +3,8 @@ import AppLayout from "@/components/app-layout";
 import { ExploreClient } from "./explore-client";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getPosts } from "@/services/postService";
+import type { Post } from "@/lib/types";
 
 function ExplorePageSkeleton() {
   return (
@@ -22,7 +24,13 @@ function ExplorePageSkeleton() {
   )
 }
 
-export default function SearchPage() {
+// This is now a Server Component
+export default async function SearchPage() {
+  // Fetch initial explore posts on the server
+  const posts = await getPosts();
+  // Shuffle posts for a more dynamic explore feed
+  const explorePosts = posts.sort(() => 0.5 - Math.random());
+
   return (
     <AppLayout>
       <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
@@ -31,11 +39,10 @@ export default function SearchPage() {
             Explore
           </h1>
           <Suspense fallback={<ExplorePageSkeleton />}>
-            <ExploreClient />
+            <ExploreClient initialExplorePosts={explorePosts} />
           </Suspense>
         </div>
       </main>
     </AppLayout>
   );
 }
-

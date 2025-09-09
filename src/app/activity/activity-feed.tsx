@@ -1,33 +1,14 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
-import { getActivity, markAllActivitiesAsRead } from "@/services/activityService";
 import type { Activity } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNowStrict } from 'date-fns';
-
-function ActivitySkeleton() {
-    return (
-        <div className="p-4 space-y-4">
-            {[...Array(8)].map((_, i) => (
-                <div key={i} className="flex items-center gap-4 p-2">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-3/4" />
-                    </div>
-                    <Skeleton className="h-10 w-10" />
-                </div>
-            ))}
-        </div>
-    );
-}
 
 function ActivityItem({ activity }: { activity: Activity }) {
     const { actor, type, targetPost, timestamp } = activity;
@@ -81,33 +62,8 @@ function ActivityItem({ activity }: { activity: Activity }) {
     )
 }
 
-export function ActivityFeed() {
-    const { user: authUser, isGuest } = useAuth();
-    const [activities, setActivities] = useState<Activity[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        async function fetchActivity() {
-            if (isGuest || !authUser) {
-                 setLoading(false);
-                return;
-            }
-            try {
-                setLoading(true);
-                // Mark notifications as read when the user visits the feed
-                await markAllActivitiesAsRead(authUser.uid);
-                const activityData = await getActivity(authUser.uid);
-                setActivities(activityData);
-            } catch (error) {
-                console.error("Failed to fetch activity", error);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchActivity();
-    }, [authUser, isGuest]);
-
-    if(loading) return <ActivitySkeleton />;
+export function ActivityFeed({ initialActivities }: { initialActivities: Activity[] }) {
+    const { isGuest } = useAuth();
     
     if (isGuest) {
       return (
@@ -122,7 +78,7 @@ export function ActivityFeed() {
       )
   }
 
-  if (activities.length === 0) {
+  if (initialActivities.length === 0) {
        return (
           <div className="text-center text-muted-foreground py-24 px-4">
             <Icons.notifications className="mx-auto h-12 w-12" />
@@ -134,7 +90,7 @@ export function ActivityFeed() {
 
   return (
     <div className="divide-y">
-        {activities.map(activity => (
+        {initialActivities.map(activity => (
             <ActivityItem key={activity.id} activity={activity} />
         ))}
     </div>

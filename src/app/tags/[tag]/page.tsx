@@ -1,11 +1,6 @@
 
-"use client";
-
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
 import AppLayout from "@/components/app-layout";
 import { getPostsByHashtag } from "@/services/postService";
-import type { Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import { Icons } from "@/components/icons";
@@ -24,31 +19,9 @@ function TagPageSkeleton() {
     );
 }
 
-
-export default function TagPage() {
-    const params = useParams();
-    const tag = Array.isArray(params.tag) ? params.tag[0] : params.tag;
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        async function loadPosts() {
-            if (!tag) return;
-            try {
-                setLoading(true);
-                setError(null);
-                const postsData = await getPostsByHashtag(tag);
-                setPosts(postsData);
-            } catch (err) {
-                console.error(`Failed to load posts for tag #${tag}:`, err);
-                setError("Could not load posts for this tag.");
-            } finally {
-                setLoading(false);
-            }
-        }
-        loadPosts();
-    }, [tag]);
+export default async function TagPage({ params }: { params: { tag: string } }) {
+    const { tag } = params;
+    const posts = await getPostsByHashtag(tag);
 
     return (
         <AppLayout>
@@ -69,15 +42,7 @@ export default function TagPage() {
                     <div className="w-9"></div> {/* Spacer */}
                 </header>
 
-                {loading ? (
-                    <div className="p-4"><TagPageSkeleton /></div>
-                ) : error ? (
-                    <div className="text-center text-red-500 py-24 px-4">
-                        <Icons.close className="mx-auto h-12 w-12" />
-                        <p className="mt-4 font-semibold">Something went wrong</p>
-                        <p className="text-sm">{error}</p>
-                    </div>
-                ) : posts.length === 0 ? (
+                {posts.length === 0 ? (
                      <div className="text-center text-muted-foreground py-24">
                         <Icons.search className="mx-auto h-12 w-12" />
                         <p className="mt-4 font-semibold">No posts found</p>
