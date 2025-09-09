@@ -2,7 +2,7 @@
 "use client";
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, limit, writeBatch } from 'firebase/firestore';
 import type { Activity } from '@/lib/types';
 import { getUserById } from './userService';
 import { getPostById } from './postService';
