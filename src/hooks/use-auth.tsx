@@ -48,14 +48,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         let profile = await getUserById(firebaseUser.uid);
         if (!profile) {
           // If profile doesn't exist, create it.
-          const username = firebaseUser.email?.split('@')[0].toLowerCase() || `user${Date.now()}`;
-          const newProfileData = {
-            name: firebaseUser.displayName || "New User",
-            username: username,
-            email: firebaseUser.email!,
-          };
-          await createUserProfile(firebaseUser.uid, newProfileData);
-          profile = await getUserById(firebaseUser.uid);
+          try {
+            const username = firebaseUser.email?.split('@')[0].toLowerCase() || `user${Date.now()}`;
+            const newProfileData = {
+              name: firebaseUser.displayName || "New User",
+              username: username,
+              email: firebaseUser.email!,
+            };
+            await createUserProfile(firebaseUser.uid, newProfileData);
+            profile = await getUserById(firebaseUser.uid);
+          } catch (e) {
+            console.error("Failed to create user profile on-the-fly", e);
+            // Don't block login if profile creation fails, just log it
+          }
         }
         setUserProfile(profile);
         setIsGuestState(false);

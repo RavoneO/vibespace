@@ -1,25 +1,80 @@
-import admin from 'firebase-admin';
 
-// IMPORTANT: Ensure the FIREBASE_SERVICE_ACCOUNT_KEY is set in your environment.
-// For local development, you can create a .env.local file.
-// For production, this should be a secure environment variable.
+"use client";
 
-export default async function HomePage() {
-  let message = "Firebase Admin SDK failed to initialize.";
-  try {
-    // The initialization is now handled in the imported module (src/lib/firebase-admin.ts)
-    // We just need to check if it was successful by verifying the number of initialized apps.
-    if (admin.apps.length > 0) {
-        message = "Firebase Admin SDK initialized successfully!";
-        console.log("✅ Firebase Admin SDK seems to be working.");
-    } else {
-        // This case might occur if the service account key is missing or invalid.
-        console.error("🔥 Firebase Admin SDK was imported but no apps are initialized.");
-    }
-  } catch (error) {
-    console.error("🔥 Firebase Admin SDK initialization error:", error);
-    message = `Firebase Admin SDK initialization error: ${(error as Error).message}`;
-  }
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Icons } from "@/components/icons";
+import { useAuth } from "@/hooks/use-auth";
+import { SplashAd } from "@/components/splash-ad";
+import { getSplashAd } from "@/services/adService";
+import { useState, useEffect }from "react";
+import type { Ad } from "@/services/adService";
 
-  return <h1>{message}</h1>;
+
+export default function WelcomePage() {
+    const { user, loading, isGuest, setAsGuest } = useAuth();
+    const [isSplashAdOpen, setIsSplashAdOpen] = useState(false);
+    const [splashAd, setSplashAd] = useState<Ad | null>(null);
+
+    useEffect(() => {
+        const ad = getSplashAd();
+        if (ad) {
+            setSplashAd(ad);
+            const hasSeenAd = sessionStorage.getItem('hasSeenSplashAd');
+            if (!hasSeenAd) {
+                setIsSplashAdOpen(true);
+                sessionStorage.setItem('hasSeenSplashAd', 'true');
+            }
+        }
+    }, []);
+
+    const handleGuestLogin = () => {
+        setAsGuest();
+    };
+
+    return (
+        <>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
+            <div className="mb-8">
+                <div className="inline-block p-4 rounded-full bg-primary/10">
+                    <Icons.sparkles className="h-12 w-12 text-primary" />
+                </div>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground/90">
+                Welcome to Vibespace
+            </h1>
+            <p className="mt-4 max-w-xl text-lg text-muted-foreground">
+                The modern social content sharing app. Discover, create, and connect.
+                Share your vibe with the world.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                 {loading ? (
+                    <Button size="lg" disabled>
+                        <Icons.spinner className="animate-spin mr-2" />
+                        Loading...
+                    </Button>
+                ) : user ? (
+                    <Button asChild size="lg">
+                        <Link href="/feed">Go to Your Feed</Link>
+                    </Button>
+                ) : (
+                    <>
+                        <Button asChild size="lg">
+                            <Link href="/login">Login</Link>
+                        </Button>
+                        <Button asChild size="lg" variant="secondary">
+                            <Link href="/signup">Sign Up</Link>
+                        </Button>
+                    </>
+                )}
+            </div>
+            {!user && !loading && (
+                 <Button variant="link" className="mt-4" onClick={handleGuestLogin}>
+                    Continue as Guest
+                </Button>
+            )}
+        </div>
+        {splashAd && <SplashAd ad={splashAd} isOpen={isSplashAdOpen} onClose={() => setIsSplashAdOpen(false)} />}
+        </>
+    );
 }
