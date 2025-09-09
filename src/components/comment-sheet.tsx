@@ -16,12 +16,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Post, User, Comment } from "@/lib/types";
 import { Icons } from "./icons";
 import { Separator } from "./ui/separator";
-import { useAuth } from "@/hooks/use-auth";
-import { useState, useEffect, useCallback, memo } from "react";
+import { useSession, signIn } from "next-auth/react";
+import { useState, useCallback, memo } from "react";
 import { addComment } from "@/services/postService";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { getUserById } from "@/services/userService";
 import { formatDistanceToNowStrict } from "date-fns";
 import { CaptionWithLinks } from "./caption-with-links";
 
@@ -65,30 +64,18 @@ const CommentItem = memo(({ comment }: { comment: Comment }) => {
 CommentItem.displayName = 'CommentItem';
 
 export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: CommentSheetProps) {
-  const { user: authUser, isGuest } = useAuth();
+  const { data: session, status } = useSession();
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [commenterProfile, setCommenterProfile] = useState<User | null>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchCommenterProfile = async () => {
-        if (authUser && !isGuest) {
-            const profile = await getUserById(authUser.uid);
-            setCommenterProfile(profile);
-        }
-    }
-    fetchCommenterProfile();
-  }, [authUser, isGuest])
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authUser || isGuest) {
+    if (status !== 'authenticated') {
       toast({ 
         title: "Please log in to comment.", 
         variant: "destructive",
-        action: <Link href="/signup"><Button>Sign Up</Button></Link> 
+        action: <Button onClick={() => signIn('google')}>Sign In</Button>
       });
       return;
     }
@@ -97,7 +84,7 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
     setIsSubmitting(true);
     try {
       await addComment(post.id, {
-        userId: authUser.uid,
+        userId: session.user.email!, // Assuming user ID is the email
         text: commentText,
       });
       setCommentText("");
@@ -142,17 +129,17 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
         <SheetFooter className="mt-auto">
             <form className="flex w-full items-center gap-2" onSubmit={handleSubmit}>
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src={commenterProfile?.avatar} />
-                  <AvatarFallback>{isGuest ? 'G' : commenterProfile?.name?.charAt(0) || '?'}</AvatarFallback>
+                  <AvatarImage src={session?.user?.image || undefined} />
+                  <AvatarFallback>{status === 'authenticated' ? session?.user?.name?.charAt(0) : '?'}</AvatarFallback>
                 </Avatar>
                 <Input 
                   placeholder="Add a comment..." 
                   className="flex-1"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  disabled={isSubmitting || isGuest}
+                  disabled={isSubmitting || status !== 'authenticated'}
                 />
-                <Button type="submit" size="icon" disabled={isSubmitting || isGuest || !commentText.trim()}>
+                <Button type="submit" size="icon" disabled={isSubmitting || status !== 'authenticated' || !commentText.trim()}>
                     {isSubmitting ? <Icons.spinner className="h-4 w-4 animate-spin" /> : <Icons.send className="h-4 w-4" />}
                     <span className="sr-only">Post comment</span>
                 </Button>

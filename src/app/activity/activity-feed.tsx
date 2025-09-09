@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useAuth } from "@/hooks/use-auth";
+import { useSession, signIn } from "next-auth/react";
 import type { Activity } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icons } from "@/components/icons";
@@ -63,16 +63,16 @@ function ActivityItem({ activity }: { activity: Activity }) {
 }
 
 export function ActivityFeed({ initialActivities }: { initialActivities: Activity[] }) {
-    const { isGuest } = useAuth();
+    const { status } = useSession();
     
-    if (isGuest) {
+    if (status === 'unauthenticated') {
       return (
           <div className="text-center text-muted-foreground py-24 px-4">
             <Icons.notifications className="mx-auto h-12 w-12" />
             <p className="mt-4 font-semibold">Activity is for users only</p>
             <p className="text-sm">Sign up or log in to see your notifications.</p>
-            <Button asChild className="mt-4">
-                <Link href="/signup">Sign Up</Link>
+            <Button onClick={() => signIn('google')} className="mt-4">
+                Sign In
             </Button>
           </div>
       )

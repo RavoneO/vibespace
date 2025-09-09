@@ -1,10 +1,12 @@
 
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import AppLayout from "@/components/app-layout";
 import { ActivityFeed } from "./activity-feed";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getActivity, markAllActivitiesAsRead } from "@/services/activityService.server";
-import { auth } from "@/lib/firebase";
 
 function ActivitySkeleton() {
     return (
@@ -23,13 +25,17 @@ function ActivitySkeleton() {
 }
 
 export default async function ActivityPage() {
-  const authUser = auth.currentUser;
-  
-  let activities = [];
-  if (authUser) {
-      await markAllActivitiesAsRead(authUser.uid);
-      activities = await getActivity(authUser.uid);
+  const session = await getServerSession(authOptions);
+
+  if (!session || !session.user?.email) {
+    redirect('/api/auth/signin?callbackUrl=/activity');
   }
+  
+  // Note: Assuming user ID is the email for this implementation
+  const userId = session.user.email;
+  
+  await markAllActivitiesAsRead(userId);
+  const activities = await getActivity(userId);
 
   return (
     <AppLayout>

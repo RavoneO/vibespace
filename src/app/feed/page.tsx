@@ -1,4 +1,8 @@
 
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+
 import AppLayout from "@/components/app-layout";
 import { PostCard } from "@/components/post-card";
 import { Stories } from "@/components/stories";
@@ -37,6 +41,13 @@ function FeedSkeleton() {
 
 // This is now a Server Component
 export default async function FeedPage() {
+  const session = await getServerSession(authOptions);
+
+  // Protect the route
+  if (!session) {
+    redirect('/api/auth/signin?callbackUrl=/feed');
+  }
+  
   // Fetch data on the server
   const storiesData = getStories();
   const postsData = getPosts();

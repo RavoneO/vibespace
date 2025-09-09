@@ -7,11 +7,11 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 export function useNotifications() {
-  const { user, isGuest } = useAuth();
+  const { userProfile, isGuest } = useAuth();
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   useEffect(() => {
-    if (!user || isGuest) {
+    if (!userProfile || isGuest) {
         setHasUnreadNotifications(false);
         return;
     }
@@ -19,7 +19,7 @@ export function useNotifications() {
     const activityCollection = collection(db, 'activity');
     const q = query(
       activityCollection,
-      where('notifiedUserId', '==', user.uid),
+      where('notifiedUserId', '==', userProfile.id),
       where('read', '==', false)
     );
 
@@ -31,7 +31,9 @@ export function useNotifications() {
     });
 
     return () => unsubscribe();
-  }, [user, isGuest]);
+  }, [userProfile, isGuest]);
 
   return { hasUnreadNotifications };
 }
+
+    

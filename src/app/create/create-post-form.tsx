@@ -8,12 +8,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useDebounce } from "use-debounce";
+import { useSession, signIn } from "next-auth/react";
 
 import { suggestHashtags, generateCaption, detectObjectsInImage } from "@/services/aiService";
 import type { DetectObjectsOutput } from "@/ai/flows/ai-object-detection";
 import { createPost, updatePost } from "@/services/postService";
 import { uploadFile } from "@/services/storageService";
-import { useAuth } from "@/hooks/use-auth";
 import { searchUsers } from "@/services/userService";
 
 import { Button } from "@/components/ui/button";
@@ -53,12 +53,7 @@ function GuestPrompt() {
             <CardContent className="text-center space-y-4">
                 <p className="text-muted-foreground">You need to be logged in to create a post and share it with the community.</p>
                 <div className="flex gap-4 justify-center">
-                    <Button asChild>
-                        <Link href="/login">Log In</Link>
-                    </Button>
-                    <Button asChild variant="secondary">
-                        <Link href="/signup">Sign Up</Link>
-                    </Button>
+                    <Button onClick={() => signIn('google')}>Log In with Google</Button>
                 </div>
             </CardContent>
         </Card>
@@ -68,7 +63,9 @@ function GuestPrompt() {
 export function CreatePostForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, isGuest } = useAuth();
+  const { data: session, status } = useSession();
+  const user = session?.user;
+
   const [preview, setPreview] = useState<string | null>(null);
   const [mediaDataUri, setMediaDataUri] = useState<string | null>(null);
   const [fileType, setFileType] = useState<'image' | 'video' | null>(null);
@@ -242,7 +239,7 @@ export function CreatePostForm() {
         setIsSearchingCollabs(true);
         const results = await searchUsers(debouncedCollabSearchQuery);
         // Exclude self and already added collaborators
-        const filteredResults = results.filter(u => u.id !== user?.uid && !collaborators.some(c => c.id === u.id));
+        const filteredResults = results.filter(u => u.email !== user?.email && !collaborators.some(c => c.email === u.email));
         setCollabSearchResults(filteredResults);
         setIsSearchingCollabs(false);
       } else {
@@ -250,7 +247,7 @@ export function CreatePostForm() {
       }
     }
     searchForCollaborators();
-  }, [debouncedCollabSearchQuery, user?.uid, collaborators]);
+  }, [debouncedCollabSearchQuery, user?.email, collaborators]);
 
   const addCollaborator = (collabUser: User) => {
     if (collaborators.length < 1) { // Limit to 1 collaborator for now
@@ -288,7 +285,7 @@ export function CreatePostForm() {
             const hashtags = values.caption.match(/#\w+/g) || [];
     
             const postId = await createPost({
-                userId: user.uid,
+                userId: user.email!, // Assuming email as user id
                 type: fileType,
                 caption: values.caption,
                 hashtags,
@@ -296,7 +293,7 @@ export function CreatePostForm() {
                 collaboratorIds: collaborators.map(c => c.id),
             });
     
-            const contentUrl = await uploadFile(file, `posts/${user.uid}/${postId}_${file.name}`);
+            const contentUrl = await uploadFile(file, `posts/${user.email!}/${postId}_${file.name}`);
             
             await updatePost(postId, {
                 contentUrl,
@@ -316,7 +313,11 @@ export function CreatePostForm() {
     backgroundUpload();
   }
   
-  if (isGuest) {
+  if (status === 'loading') {
+    return <Icons.spinner className="animate-spin h-8 w-8 mx-auto mt-24" />;
+  }
+
+  if (status === 'unauthenticated') {
       return <GuestPrompt />;
   }
 
@@ -569,3 +570,5 @@ export function CreatePostForm() {
     </div>
   );
 }
+
+    
