@@ -3,11 +3,94 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write access to all documents
-    // for development purposes.
-    // WARNING: This is insecure for production.
-    match /{document=**} {
-      allow read, write: if true;
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Users Collection
+    match /users/{userId} {
+      // Anyone can read a user's profile
+      allow read: if true;
+      
+      // A user can only create their own profile document
+      allow create: if isOwner(userId);
+
+      // A user can only update their own profile document
+      allow update: if isOwner(userId);
+      
+      // Users should not be able to delete their accounts directly through the client
+      allow delete: if false;
+    }
+    
+    // Posts Collection
+    match /posts/{postId} {
+      // Anyone can read a published post
+      allow read: if resource.data.status == 'published';
+
+      // Authenticated users can create posts
+      allow create: if isAuthenticated();
+
+      // Only the owner can update the post, except for likes and comments
+      allow update: if isAuthenticated() && (
+                      // Owner can edit caption, tags etc.
+                      (isOwner(resource.data.userId) || resource.data.collaboratorIds.hasAny([request.auth.uid])) &&
+                      // Anyone can update likes and comments
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy', 'comments']))
+                    );
+                    
+      // Only the owner can delete the post
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+    
+    // Stories Collection
+    match /stories/{storyId} {
+        // Anyone can read a published story
+        allow read: if resource.data.status == 'published';
+        
+        // Authenticated users can create stories
+        allow create: if isAuthenticated();
+        
+        // Only owner can update (e.g. status)
+        allow update: if isAuthenticated() && isOwner(resource.data.userId);
+
+        // Only owner can delete
+        allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+    
+    // Conversations and Messages
+    match /conversations/{conversationId} {
+      // Allow read/write only if the user is part of the conversation
+      allow read, write: if isAuthenticated() && request.auth.uid in resource.data.userIds;
+
+      match /messages/{messageId} {
+        // Allow read only if user is part of the parent conversation
+        allow read: if isAuthenticated() && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
+        
+        // Allow create only if the user is the sender and is part of the conversation
+        allow create: if isAuthenticated() && 
+                        isOwner(request.resource.data.senderId) && 
+                        get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
+      }
+    }
+    
+    // Activity Feed
+    match /activity/{activityId} {
+        // A user can only read their own notifications
+        allow read: if isAuthenticated() && isOwner(resource.data.notifiedUserId);
+        
+        // Creating activity is handled by backend logic/secure functions, but we add a basic rule here
+        allow create: if isAuthenticated();
+        
+        // Only the user can "update" (e.g., mark as read) their own activity
+        allow update: if isAuthenticated() && isOwner(resource.data.notifiedUserId);
+        
+        allow delete: if false; // Don't allow client-side deletion
     }
   }
 }
