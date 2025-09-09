@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { useSession } from "next-auth/react";
 
 const navItems = [
   { href: "/feed", icon: Icons.home, label: "Home" },
@@ -20,22 +19,17 @@ const navItems = [
 export function BottomNav() {
   const pathname = usePathname();
   const { userProfile, isGuest } = useAuth();
-  const { data: session, status } = useSession();
-  
-  // Adjust profile link to point to the current user's profile
+
   const finalNavItems = navItems.map(item => {
-    if (item.href === "/profile") {
-      if (status === 'unauthenticated' && isGuest) return { ...item, href: "/feed" };
-      if (status === 'unauthenticated' && !isGuest) return { ...item, href: "/" };
-      if (userProfile) {
-        return { ...item, href: `/profile/${userProfile.username}` };
-      }
-      // Fallback if profile is somehow not loaded, though it should be.
-      return { ...item, href: "/feed" };
+    if (item.href === "/profile" && userProfile) {
+      return { ...item, href: `/profile/${userProfile.username}` };
     }
     return item;
   });
 
+  if (isGuest) {
+      return null;
+  }
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">

@@ -51,6 +51,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Badge } from "./ui/badge";
 import { Textarea } from "./ui/textarea";
 import { CaptionWithLinks } from "./caption-with-links";
+import { useAuth } from "@/hooks/use-auth";
 
 interface PostCardProps {
   post: PostType;
@@ -58,6 +59,7 @@ interface PostCardProps {
 
 const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
   const { data: session, status } = useSession();
+  const { userProfile, isGuest } = useAuth();
   const { toast } = useToast();
 
   const [post, setPost] = useState(initialPost);
@@ -74,18 +76,19 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
   const likeButtonRef = useRef<HTMLButtonElement>(null);
   
   const isProcessing = post.status === 'processing';
-  const isOwner = session?.user?.email === post.user.email || post.collaborators?.some(c => c.email === session?.user?.email);
+  const isOwner = userProfile?.id === post.user.id || post.collaborators?.some(c => c.id === userProfile?.id);
 
   useEffect(() => {
-    // Note: Can't get bookmark status without fetching the current user's full profile.
-    // This is a simplification. In a real app, you'd fetch the user profile in a layout or context.
-    if (session?.user?.email && Array.isArray(post.likedBy)) {
-      setIsLiked(post.likedBy.some(like => like === session.user!.email)); // Assuming likedBy stores emails for now
+    if (userProfile && Array.isArray(post.likedBy)) {
+      setIsLiked(post.likedBy.some(like => like === userProfile.id));
     } else {
       setIsLiked(false);
     }
     setLikeCount(post.likes);
-  }, [session, post]);
+    if(userProfile && userProfile.savedPosts) {
+      setIsBookmarked(userProfile.savedPosts.includes(post.id));
+    }
+  }, [userProfile, post]);
 
   const refreshPost = useCallback(async () => {
     if (isProcessing) return;
@@ -105,8 +108,8 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
   }, [toast]);
 
   const handleLike = useCallback(async () => {
-    if (status !== 'authenticated' || isProcessing) {
-      if (status !== 'authenticated') showLoginToast();
+    if (isGuest || !userProfile || isProcessing) {
+      if (isGuest) showLoginToast();
       return;
     }
 
@@ -125,7 +128,7 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
         }, 400);
       }
       
-      await toggleLike(post.id, session.user.email!);
+      await toggleLike(post.id, userProfile.id);
 
     } catch (error) {
       console.error("Error liking post:", error);
@@ -137,18 +140,18 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
         variant: "destructive",
       });
     }
-  }, [isLiked, likeCount, status, isProcessing, post.id, session, showLoginToast, toast]);
+  }, [isLiked, likeCount, isGuest, isProcessing, post.id, userProfile, showLoginToast, toast]);
 
   const handleBookmark = useCallback(async () => {
-      if (status !== 'authenticated' || isProcessing) {
-          if (status !== 'authenticated') showLoginToast();
+      if (isGuest || !userProfile || isProcessing) {
+          if (isGuest) showLoginToast();
           return;
       }
       const newIsBookmarked = !isBookmarked;
       setIsBookmarked(newIsBookmarked);
 
       try {
-          await toggleBookmark(session.user.email!, post.id);
+          await toggleBookmark(userProfile.id, post.id);
           toast({
               title: newIsBookmarked ? "Post saved!" : "Post unsaved",
           });
@@ -157,7 +160,7 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
           console.error("Error bookmarking post:", error);
           toast({ title: "Something went wrong.", variant: "destructive" });
       }
-  }, [isBookmarked, status, isProcessing, post.id, session, showLoginToast, toast]);
+  }, [isBookmarked, isGuest, isProcessing, post.id, userProfile, showLoginToast, toast]);
 
   const handleShare = useCallback(async () => {
     if (isProcessing) return;

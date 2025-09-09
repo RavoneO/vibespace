@@ -25,7 +25,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 
 export function AppSidebar() {
   const { data: session, status } = useSession();
-  const { userProfile, isGuest, setAsGuest, loading: authLoading } = useAuth();
+  const { userProfile, loading: authLoading } = useAuth();
   const { hasUnreadNotifications } = useNotifications();
   const router = useRouter();
   const pathname = usePathname();
@@ -57,8 +57,9 @@ export function AppSidebar() {
       <SidebarContent className="p-4">
         <SidebarMenu>
           {menuItems.map((item) => {
+             const finalHref = item.href === '/profile' && userProfile ? `/profile/${userProfile.username}` : item.href;
              const isActive = (item.href === "/feed" && pathname === item.href) || (item.href !== "/feed" && pathname.startsWith(item.href) && item.href !== "/profile") || (item.href === "/profile" && userProfile && pathname.startsWith(`/profile/${userProfile.username}`));
-             const finalHref = item.href === '/profile' ? (userProfile ? `/profile/${userProfile.username}` : (isGuest ? '/feed' : '/')) : item.href;
+             
              return (
                  <SidebarMenuItem key={item.label}>
                     <Link href={finalHref} className="w-full">
@@ -96,17 +97,17 @@ export function AppSidebar() {
                     <Skeleton className="h-3 w-16" />
                 </div>
             </div>
-        ) : session ? (
+        ) : session && userProfile ? (
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 cursor-pointer w-full p-2 hover:bg-secondary rounded-md">
                     <Avatar>
-                        <AvatarImage src={session.user?.image!} alt={session.user?.name!} />
-                        <AvatarFallback>{session.user?.name?.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
+                        <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className={cn("flex flex-col overflow-hidden flex-1", sidebarState === 'collapsed' && 'hidden')}>
-                        <span className="font-semibold truncate">{session.user?.name}</span>
-                        <span className="text-sm text-muted-foreground truncate">@{session.user?.email}</span>
+                        <span className="font-semibold truncate">{userProfile.name}</span>
+                        <span className="text-sm text-muted-foreground truncate">@{userProfile.username}</span>
                     </div>
                     <Icons.more className={cn("text-muted-foreground", sidebarState === 'collapsed' && 'hidden')} />
                 </div>
