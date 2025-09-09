@@ -2,7 +2,7 @@
 "use client";
 
 import type { Post as PostType, User } from "@/lib/types";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -57,7 +57,7 @@ interface PostCardProps {
   post: PostType;
 }
 
-export function PostCard({ post: initialPost }: PostCardProps) {
+const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
   const { user, isGuest } = useAuth();
   const { toast } = useToast();
 
@@ -105,16 +105,16 @@ export function PostCard({ post: initialPost }: PostCardProps) {
     }
   }, [post.id, isProcessing]);
 
-  const showLoginToast = () => {
+  const showLoginToast = useCallback(() => {
     toast({
         title: "Create an account to interact",
         description: "Sign up or log in to like, comment, and more.",
         variant: "destructive",
         action: <Link href="/signup"><Button>Sign Up</Button></Link>
     });
-  }
+  }, [toast]);
 
-  const handleLike = async () => {
+  const handleLike = useCallback(async () => {
     if (!user || isGuest || isProcessing) {
       if (!user || isGuest) showLoginToast();
       return;
@@ -147,9 +147,9 @@ export function PostCard({ post: initialPost }: PostCardProps) {
         variant: "destructive",
       });
     }
-  };
+  }, [isLiked, likeCount, user, isGuest, isProcessing, post.id, showLoginToast, toast]);
 
-  const handleBookmark = async () => {
+  const handleBookmark = useCallback(async () => {
       if (!user || isGuest || isProcessing) {
           if (!user || isGuest) showLoginToast();
           return;
@@ -167,9 +167,9 @@ export function PostCard({ post: initialPost }: PostCardProps) {
           console.error("Error bookmarking post:", error);
           toast({ title: "Something went wrong.", variant: "destructive" });
       }
-  };
+  }, [isBookmarked, user, isGuest, isProcessing, post.id, showLoginToast, toast]);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (isProcessing) return;
     if(navigator.share) {
         try {
@@ -187,14 +187,14 @@ export function PostCard({ post: initialPost }: PostCardProps) {
             description: "Your browser does not support the Web Share API."
         })
     }
-  };
+  }, [isProcessing, post.user.username, post.caption, toast]);
   
-  const handleCommentClick = () => {
+  const handleCommentClick = useCallback(() => {
       if (isProcessing) return;
       setIsCommentSheetOpen(true);
-  }
+  }, [isProcessing]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!isOwner) return;
 
     setIsDeleting(true);
@@ -209,9 +209,9 @@ export function PostCard({ post: initialPost }: PostCardProps) {
     } finally {
         setIsDeleting(false);
     }
-  };
+  }, [isOwner, post.id, toast]);
   
-  const handleEditSave = async () => {
+  const handleEditSave = useCallback(async () => {
       if (!isOwner) return;
       setIsSaving(true);
       try {
@@ -225,9 +225,9 @@ export function PostCard({ post: initialPost }: PostCardProps) {
       } finally {
           setIsSaving(false);
       }
-  };
+  }, [isOwner, post.id, editedCaption, toast]);
 
-  const getTimestamp = (timestamp: any) => {
+  const getTimestamp = useCallback((timestamp: any) => {
       if (isProcessing) return "Publishing...";
       if (!timestamp) return "";
       try {
@@ -236,7 +236,7 @@ export function PostCard({ post: initialPost }: PostCardProps) {
       } catch (e) {
           return "just now";
       }
-  }
+  }, [isProcessing]);
 
   return (
     <>
@@ -431,3 +431,5 @@ export function PostCard({ post: initialPost }: PostCardProps) {
     </>
   );
 }
+
+export const PostCard = memo(PostCardComponent);

@@ -20,20 +20,16 @@ export function PostGridSkeleton() {
   )
 }
 
-export function UserPosts({ userId, setPostCount }: { userId: string, setPostCount: (count: number) => void }) {
-    const [userPosts, setUserPosts] = useState<Post[]>([]);
-    const [loading, setLoading] = useState(true);
+export function UserPosts({ userId, setPostCount, initialPosts }: { userId: string, setPostCount: (count: number) => void, initialPosts: Post[] }) {
+    const [userPosts, setUserPosts] = useState<Post[]>(initialPosts);
+    const [loading, setLoading] = useState(false);
     
+    // We get initial posts, but we can also re-fetch or listen for updates.
+    // For this optimization, we'll just use the initial posts.
     useEffect(() => {
-        async function fetchUserPosts() {
-            setLoading(true);
-            const fetchedPosts = await getPostsByUserId(userId);
-            setUserPosts(fetchedPosts);
-            setPostCount(fetchedPosts.length);
-            setLoading(false);
-        }
-        fetchUserPosts();
-    }, [userId, setPostCount]);
+        setPostCount(initialPosts.length);
+        setUserPosts(initialPosts);
+    }, [userId, initialPosts, setPostCount]);
 
     if (loading) {
         return <PostGridSkeleton />

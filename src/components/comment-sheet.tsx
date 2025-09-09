@@ -17,7 +17,7 @@ import type { Post, User, Comment } from "@/lib/types";
 import { Icons } from "./icons";
 import { Separator } from "./ui/separator";
 import { useAuth } from "@/hooks/use-auth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { addComment } from "@/services/postService";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
@@ -32,6 +32,37 @@ interface CommentSheetProps {
   post: Post;
   onCommentPosted: () => void;
 }
+
+const CommentItem = memo(({ comment }: { comment: Comment }) => {
+    const getCommentTimestamp = useCallback((comment: Comment) => {
+        if (!comment.timestamp) return "";
+        try {
+            const date = (comment.timestamp as any).toDate ? (comment.timestamp as any).toDate() : new Date(comment.timestamp as string);
+            return formatDistanceToNowStrict(date, { addSuffix: true });
+        } catch (e) {
+            return "just now";
+        }
+    }, []);
+
+    return (
+        <div className="flex items-start gap-3">
+            <Avatar className="h-8 w-8">
+                <AvatarImage src={comment.user.avatar} />
+                <AvatarFallback>{comment.user.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="text-sm">
+                <p>
+                    <Link href={`/profile/${comment.user.username}`} className="font-semibold hover:underline">{comment.user.username}</Link>
+                    <span className="ml-2 text-muted-foreground">{getCommentTimestamp(comment)}</span>
+                </p>
+                <div className="text-foreground/90">
+                    <CaptionWithLinks text={comment.text} />
+                </div>
+            </div>
+        </div>
+    );
+});
+CommentItem.displayName = 'CommentItem';
 
 export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: CommentSheetProps) {
   const { user: authUser, isGuest } = useAuth();
@@ -83,16 +114,6 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
       setIsSubmitting(false);
     }
   };
-  
-  const getCommentTimestamp = (comment: Comment) => {
-    if (!comment.timestamp) return "";
-    try {
-        const date = (comment.timestamp as any).toDate ? (comment.timestamp as any).toDate() : new Date(comment.timestamp as string);
-        return formatDistanceToNowStrict(date, { addSuffix: true });
-    } catch (e) {
-        return "just now";
-    }
-  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -107,21 +128,7 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
         <ScrollArea className="flex-1 -mx-6">
           <div className="px-6 space-y-6 py-4">
             {post.comments.sort((a,b) => (b.timestamp as any)?.seconds - (a.timestamp as any)?.seconds).map((comment) => (
-              <div key={comment.id} className="flex items-start gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={comment.user.avatar} />
-                  <AvatarFallback>{comment.user.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="text-sm">
-                  <p>
-                    <Link href={`/profile/${comment.user.username}`} className="font-semibold hover:underline">{comment.user.username}</Link>
-                    <span className="ml-2 text-muted-foreground">{getCommentTimestamp(comment)}</span>
-                  </p>
-                  <div className="text-foreground/90">
-                    <CaptionWithLinks text={comment.text} />
-                  </div>
-                </div>
-              </div>
+              <CommentItem key={comment.id} comment={comment} />
             ))}
              {post.comments.length === 0 && (
                 <div className="text-center text-muted-foreground py-12">

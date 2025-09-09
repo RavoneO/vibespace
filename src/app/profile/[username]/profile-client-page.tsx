@@ -3,14 +3,14 @@
 import AppLayout from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { notFound, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useState, useCallback, Suspense } from "react";
-import { getUserByUsername, toggleFollow } from "@/services/userService";
-import { getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/postService";
+import { toggleFollow, getUserById } from "@/services/userService";
+import { getSavedPosts, getLikedPostsByUserId } from "@/services/postService";
 import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,7 +18,13 @@ import { useToast } from "@/hooks/use-toast";
 import { findOrCreateConversation } from "@/services/messageService";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UserPosts, PostGridSkeleton } from "./user-posts";
-import { generateVibe } from "@/ai/flows/ai-profile-vibe";
+
+interface ProfileClientPageProps {
+  user: User;
+  initialPosts: Post[];
+  initialPostCount: number;
+  initialVibe: string;
+}
 
 function ProfilePageSkeleton() {
   return (
@@ -62,27 +68,24 @@ function ProfilePageSkeleton() {
   )
 }
 
-
-export function ProfileClientPage({ username }: { username: string }) {
+export function ProfileClientPage({ user, initialPosts, initialPostCount, initialVibe }: ProfileClientPageProps) {
   const { user: authUser, loading: authLoading, isGuest } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-
-  const [user, setUser] = useState<User | null>(null);
-  const [postCount, setPostCount] = useState(0);
-  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
-  const [likedPosts, setLikedPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  const [postCount, setPostCount] = useState(initialPostCount);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followCount, setFollowCount] = useState({
-      followers: 0,
-      following: 0,
+      followers: user.followers?.length || 0,
+      following: user.following?.length || 0,
   });
+
+  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
+  const [likedPosts, setLikedPosts] = useState<Post[]>([]);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
-  const [userNotFound, setUserNotFound] = useState(false);
-  const [vibe, setVibe] = useState<string | null>(null);
-  const [isVibeLoading, setIsVibeLoading] = useState(false);
+  
+  const isCurrentUserProfile = authUser?.uid === user.id;
 
   const showLoginToast = useCallback(() => {
     toast({
@@ -92,72 +95,28 @@ export function ProfileClientPage({ username }: { username: string }) {
         action: <Link href="/signup"><Button>Sign Up</Button></Link>
     });
   }, [toast]);
-
-  const fetchUserData = useCallback(async () => {
-    try {
-      const fetchedUser = await getUserByUsername(username);
-
-      if (fetchedUser) {
-        setUser(fetchedUser);
-
-        setIsVibeLoading(true);
-        try {
-            const userPosts = await getPostsByUserId(fetchedUser.id);
-            setPostCount(userPosts.length);
-            if (fetchedUser.id === authUser?.uid) {
-                const fetchedLikedPosts = await getLikedPostsByUserId(fetchedUser.id);
-                setLikedPosts(fetchedLikedPosts);
-            }
-            const captions = userPosts.map(p => p.caption).filter(Boolean);
-            const { vibe } = await generateVibe({ captions });
-            setVibe(vibe);
-        } catch (e) {
-            console.error("Failed to generate vibe", e);
-            setVibe("Error loading vibe...");
-        } finally {
-            setIsVibeLoading(false);
-        }
-        
-        if (fetchedUser.savedPosts && fetchedUser.savedPosts.length > 0) {
-            const fetchedSavedPosts = await getSavedPosts(fetchedUser.savedPosts);
-            setSavedPosts(fetchedSavedPosts);
-        }
-
-        const followers = fetchedUser.followers?.length || 0;
-        const following = fetchedUser.following?.length || 0;
-        setFollowCount({ followers, following });
-        
-        if (authUser && !isGuest) {
-          setIsFollowing(fetchedUser.followers?.includes(authUser.uid) || false);
-        }
-        setUserNotFound(false);
-      } else {
-        setUserNotFound(true);
-      }
-    } catch (error) {
-        console.error("Failed to fetch user data:", error);
-        setUserNotFound(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [username, authUser, isGuest]);
-
-
-  useEffect(() => {
-    if (username) {
-        setLoading(true);
-        fetchUserData();
-    }
-  }, [username, fetchUserData]);
   
   useEffect(() => {
-      if(user && authUser && !isGuest) {
-          setIsFollowing(user.followers?.includes(authUser.uid) || false);
-      }
-      if(isGuest) {
-          setIsFollowing(false);
-      }
+    if(authUser && !isGuest) {
+      setIsFollowing(user.followers?.includes(authUser.uid) || false);
+    } else {
+      setIsFollowing(false);
+    }
   }, [user, authUser, isGuest]);
+
+  useEffect(() => {
+    async function fetchExtraData() {
+        if(isCurrentUserProfile) {
+             const [fetchedSavedPosts, fetchedLikedPosts] = await Promise.all([
+                user.savedPosts && user.savedPosts.length > 0 ? getSavedPosts(user.savedPosts) : Promise.resolve([]),
+                getLikedPostsByUserId(user.id)
+            ]);
+            setSavedPosts(fetchedSavedPosts);
+            setLikedPosts(fetchedLikedPosts);
+        }
+    }
+    fetchExtraData();
+  }, [isCurrentUserProfile, user.id, user.savedPosts])
 
 
   const handleFollowToggle = async () => {
@@ -165,7 +124,6 @@ export function ProfileClientPage({ username }: { username: string }) {
         showLoginToast();
         return;
     }
-    if (!user) return;
     
     setIsFollowLoading(true);
     const originalIsFollowing = isFollowing;
@@ -196,7 +154,6 @@ export function ProfileClientPage({ username }: { username: string }) {
       showLoginToast();
       return;
     }
-    if (!user) return;
     setIsMessageLoading(true);
     try {
         const conversationId = await findOrCreateConversation(authUser.uid, user.id);
@@ -212,24 +169,13 @@ export function ProfileClientPage({ username }: { username: string }) {
   const handleProfileAction = (action: "Block" | "Restrict" | "Report") => {
       toast({
           title: `${action} User`,
-          description: `You have successfully simulated ${action.toLowerCase()}ing @${user?.username}. In a real app, this would trigger a backend process.`
+          description: `You have successfully simulated ${action.toLowerCase()}ing @${user.username}. In a real app, this would trigger a backend process.`
       })
   }
 
-
-  if (loading) {
+  if (authLoading) {
     return <ProfilePageSkeleton />;
   }
-
-  if (userNotFound) {
-    notFound();
-  }
-
-  if (!user) {
-    return <ProfilePageSkeleton />;
-  }
-
-  const isCurrentUserProfile = authUser?.uid === user.id;
 
   const stats = [
     { label: "Posts", value: postCount },
@@ -275,7 +221,7 @@ export function ProfileClientPage({ username }: { username: string }) {
             <div className="flex-1 flex justify-around text-center">
               {stats.map((stat) => (
                 <div key={stat.label}>
-                  <p className="font-bold text-lg">{stat.label === 'Posts' ? postCount : stat.value}</p>
+                  <p className="font-bold text-lg">{stat.value}</p>
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
                 </div>
               ))}
@@ -284,13 +230,13 @@ export function ProfileClientPage({ username }: { username: string }) {
           <div className="mt-4">
               <h2 className="text-lg font-semibold">{user.name}</h2>
               {user.bio && <p className="text-sm text-muted-foreground">{user.bio}</p>}
-              {isVibeLoading ? (
-                  <Skeleton className="h-5 w-48 mt-2" />
-              ) : vibe && (
+              {initialVibe ? (
                   <div className="mt-2 flex items-center gap-2 text-sm text-accent-foreground bg-accent/20 rounded-full px-3 py-1 w-fit">
                     <Icons.sparkles className="h-4 w-4 text-accent" />
-                    <p className="font-medium">{vibe}</p>
+                    <p className="font-medium">{initialVibe}</p>
                   </div>
+              ) : (
+                  <Skeleton className="h-5 w-48 mt-2" />
               )}
           </div>
           <div className="mt-4 flex gap-2">
@@ -320,7 +266,7 @@ export function ProfileClientPage({ username }: { username: string }) {
               )}
             </TabsList>
             <Suspense fallback={<PostGridSkeleton />}>
-                <UserPosts userId={user.id} setPostCount={setPostCount} />
+                <UserPosts userId={user.id} setPostCount={setPostCount} initialPosts={initialPosts} />
             </Suspense>
             <TabsContent value="saved" className="mt-0">
                {isCurrentUserProfile ? (
@@ -383,5 +329,3 @@ export function ProfileClientPage({ username }: { username: string }) {
     </AppLayout>
   );
 }
-
-    
