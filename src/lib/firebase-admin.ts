@@ -1,8 +1,11 @@
-
 import * as admin from 'firebase-admin';
 
 if (!admin.apps.length) {
-  admin.initializeApp();
+  // Use applicationDefault to explicitly use the credentials provided by the App Hosting environment.
+  // This is the most robust way to initialize in a managed Google Cloud environment.
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+  });
 }
 
 const firestore = admin.firestore();
