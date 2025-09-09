@@ -1,12 +1,33 @@
 
+'use server';
+
 import * as admin from 'firebase-admin';
 
-if (!admin.apps.length) {
-  admin.initializeApp();
+let app: admin.app.App;
+
+function getFirebaseAdmin() {
+  if (!app) {
+    if (!admin.apps.length) {
+      app = admin.initializeApp();
+    } else {
+      app = admin.app();
+    }
+  }
+  return app;
 }
 
-const firestore = admin.firestore();
-const auth = admin.auth();
-const storage = admin.storage();
+export function getFirestore() {
+  return getFirebaseAdmin().firestore();
+}
 
-export { firestore, auth as adminAuth, storage as adminStorage };
+export function getAuth() {
+  return getFirebaseAdmin().auth();
+}
+
+export function getStorage() {
+  return getFirebaseAdmin().storage();
+}
+
+export const adminAuth = getAuth();
+export const firestore = getFirestore();
+export const adminStorage = getStorage();
