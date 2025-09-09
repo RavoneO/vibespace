@@ -36,6 +36,7 @@ import {
   Menu,
   Play,
   Edit,
+  HeartHandshake,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -46,6 +47,7 @@ export const Icons = {
   create: PlusSquare,
   search: Search,
   like: Heart,
+  liked: HeartHandshake,
   comment: MessageCircle,
   more: MoreHorizontal,
   send: Send,

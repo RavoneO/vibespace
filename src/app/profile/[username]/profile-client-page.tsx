@@ -10,7 +10,7 @@ import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { getUserByUsername, toggleFollow } from "@/services/userService";
-import { getPostsByUserId, getSavedPosts } from "@/services/postService";
+import { getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/postService";
 import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -71,6 +71,7 @@ export function ProfileClientPage({ username }: { username: string }) {
   const [user, setUser] = useState<User | null>(null);
   const [postCount, setPostCount] = useState(0);
   const [savedPosts, setSavedPosts] = useState<Post[]>([]);
+  const [likedPosts, setLikedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followCount, setFollowCount] = useState({
@@ -103,6 +104,10 @@ export function ProfileClientPage({ username }: { username: string }) {
         try {
             const userPosts = await getPostsByUserId(fetchedUser.id);
             setPostCount(userPosts.length);
+            if (fetchedUser.id === authUser?.uid) {
+                const fetchedLikedPosts = await getLikedPostsByUserId(fetchedUser.id);
+                setLikedPosts(fetchedLikedPosts);
+            }
             const captions = userPosts.map(p => p.caption).filter(Boolean);
             const { vibe } = await generateVibe({ captions });
             setVibe(vibe);
@@ -310,6 +315,9 @@ export function ProfileClientPage({ username }: { username: string }) {
               <TabsTrigger value="posts" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.grid className="h-5 w-5" /></TabsTrigger>
               <TabsTrigger value="reels" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.reels className="h-5 w-5" /></TabsTrigger>
               <TabsTrigger value="saved" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.bookmark className="h-5 w-5" /></TabsTrigger>
+              {isCurrentUserProfile && (
+                <TabsTrigger value="likes" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"><Icons.liked className="h-5 w-5" /></TabsTrigger>
+              )}
             </TabsList>
             <Suspense fallback={<PostGridSkeleton />}>
                 <UserPosts userId={user.id} setPostCount={setPostCount} />
@@ -344,6 +352,31 @@ export function ProfileClientPage({ username }: { username: string }) {
                 </div>
                )}
             </TabsContent>
+            {isCurrentUserProfile && (
+                <TabsContent value="likes" className="mt-0">
+                    {likedPosts.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-0.5">
+                            {likedPosts.map((post) => (
+                                <div key={post.id} className="relative aspect-square w-full overflow-hidden group">
+                                    <Image
+                                        src={post.contentUrl}
+                                        alt={post.caption}
+                                        fill
+                                        className="object-cover transition-all duration-300 group-hover:opacity-80"
+                                        data-ai-hint={post.dataAiHint}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center text-muted-foreground py-24">
+                            <Icons.liked className="mx-auto h-12 w-12" />
+                            <p className="mt-4 font-semibold">No liked posts yet</p>
+                            <p className="text-sm">Posts you like will appear here.</p>
+                        </div>
+                    )}
+                </TabsContent>
+            )}
           </Tabs>
         </div>
       </main>
