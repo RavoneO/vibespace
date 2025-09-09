@@ -1,17 +1,20 @@
 
+'use server';
+
 import { db, storage } from '@/lib/firebase';
 import { collection, doc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, deleteDoc, getDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import type { PostTag } from '@/lib/types';
 import { createActivity } from './activityService';
 import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
+import { addCommentServer } from './postService.server';
 
 export async function createPost(postData: {
     userId: string;
     type: 'image' | 'video';
     caption: string;
     hashtags: string[];
-    tags: PostTag[];
+    tags?: PostTag[];
     collaboratorIds?: string[];
 }) {
     try {
@@ -25,7 +28,7 @@ export async function createPost(postData: {
             type: postData.type,
             caption: postData.caption,
             hashtags: postData.hashtags,
-            tags: postData.tags,
+            tags: postData.tags || [],
             collaboratorIds: postData.collaboratorIds || [],
             contentUrl: '',
             likes: 0,
@@ -66,30 +69,8 @@ export async function addComment(postId: string, commentData: { userId: string, 
         if (!moderationResult.isAllowed) {
             throw new Error(moderationResult.reason || "This comment is not allowed.");
         }
-
-        const postRef = doc(db, 'posts', postId);
-        const newComment = {
-            id: doc(collection(db, 'random_ids')).id, // Generate a unique ID for the comment
-            ...commentData,
-            timestamp: serverTimestamp()
-        };
-        await updateDoc(postRef, {
-            comments: arrayUnion(newComment)
-        });
-
-        const postDoc = await getDoc(postRef);
-        const postData = postDoc.data();
-        if(!postData) return;
-
-        // Create activity notification for the comment itself
-        if (postData.userId !== commentData.userId) {
-            await createActivity({
-                type: 'comment',
-                actorId: commentData.userId,
-                notifiedUserId: postData.userId,
-                postId: postId
-            });
-        }
+        
+        await addCommentServer(postId, commentData);
         
     } catch (error) {
         console.error("Error adding comment:", error);

@@ -1,6 +1,9 @@
 
+'use server';
+
 import { firestore as adminDb } from '@/lib/firebase-admin';
-import type { Post, User } from '@/lib/types';
+import * as admin from 'firebase-admin';
+import type { Post, User, Comment } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService.server';
 import { createActivity } from './activityService.server';
 
@@ -11,25 +14,29 @@ async function getFullUser(userId: string): Promise<User> {
         return userCache.get(userId)!;
     }
     const user = await getUserById(userId);
-    const result = user || { id: userId, name: "Unknown User", username: "unknown", avatar: "", bio: "" };
-    userCache.set(userId, result);
-    return result;
+    if (!user) {
+        // Handle case where user might be deleted but their content remains.
+        const deletedUser: User = { id: userId, name: "Deleted User", username: "deleteduser", email: "", avatar: "", bio: "", followers: [], following: [], savedPosts: [] };
+        userCache.set(userId, deletedUser);
+        return deletedUser;
+    }
+    userCache.set(userId, user);
+    return user;
 }
 
 async function processPostDoc(doc: admin.firestore.DocumentSnapshot): Promise<Post> {
     const data = doc.data();
     if (!data) throw new Error(`Post data not found for doc ${doc.id}`);
 
-    const userPromises = [getFullUser(data.userId)];
+    // Use a set to avoid duplicate fetches
+    const userIdsToFetch = new Set<string>([data.userId]);
     if (data.collaboratorIds) {
-        data.collaboratorIds.forEach((id: string) => userPromises.push(getFullUser(id)));
+        data.collaboratorIds.forEach((id: string) => userIdsToFetch.add(id));
     }
-
     const commentsData = Array.isArray(data.comments) ? data.comments : [];
-    const commenterIds = commentsData.map(c => c.userId);
-    commenterIds.forEach(id => userPromises.push(getFullUser(id)));
+    commentsData.forEach(c => userIdsToFetch.add(c.userId));
 
-    await Promise.all(userPromises);
+    await Promise.all(Array.from(userIdsToFetch).map(id => getFullUser(id)));
 
     const user = userCache.get(data.userId)!;
     const collaborators = data.collaboratorIds?.map((id: string) => userCache.get(id)!) || [];
@@ -37,7 +44,7 @@ async function processPostDoc(doc: admin.firestore.DocumentSnapshot): Promise<Po
     const comments = commentsData.map((comment: any) => ({
         ...comment,
         user: userCache.get(comment.userId)!,
-    }));
+    })).filter(c => c.user); // Filter out comments from users that couldn't be fetched
 
     return {
         id: doc.id,
@@ -181,7 +188,7 @@ export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
 }
 
 export async function processMentions(text: string, actorId: string, postId: string) {
-    const mentionRegex = /@(\\w+)/g;
+    const mentionRegex = /@(\w+)/g;
     const mentions = text.match(mentionRegex);
     if (!mentions) return;
 
@@ -199,3 +206,32 @@ export async function processMentions(text: string, actorId: string, postId: str
         }
     }
 };
+
+export async function addCommentServer(postId: string, commentData: { userId: string, text: string }) {
+    const postRef = adminDb.collection('posts').doc(postId);
+    const newComment = {
+        id: adminDb.collection('posts').doc().id, // Generate a unique ID for the comment
+        ...commentData,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+    };
+    await postRef.update({
+        comments: admin.firestore.FieldValue.arrayUnion(newComment)
+    });
+
+    const postDoc = await postRef.get();
+    const postData = postDoc.data();
+    if(!postData) return;
+
+    // Create activity notification for the comment itself
+    if (postData.userId !== commentData.userId) {
+        await createActivity({
+            type: 'comment',
+            actorId: commentData.userId,
+            notifiedUserId: postData.userId,
+            postId: postId
+        });
+    }
+
+    // Handle mentions
+    await processMentions(commentData.text, commentData.userId, postId);
+}
