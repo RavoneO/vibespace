@@ -1,6 +1,4 @@
 
-"use client";
-
 // This is a mock ad service. In a real application, this would fetch ads from a database or a third-party ad network.
 
 export interface Ad {
