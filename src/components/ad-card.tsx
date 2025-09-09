@@ -75,7 +75,8 @@ export function AdCard({ recentCaptions }: { recentCaptions: string[] }) {
                         <Image
                             src={ad.imageUrl}
                             alt={ad.headline}
-                            fill
+                            width={96}
+                            height={96}
                             className="rounded-md object-cover"
                             data-ai-hint="product photo"
                         />

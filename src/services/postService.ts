@@ -9,49 +9,60 @@ import { getUserById, getUserByUsername } from './userService';
 import { createActivity } from './activityService';
 import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
 
-// Function to get a user by ID, with fallback to mock data
-async function getFullUser(userId: string) {
+// Helper to get a user by ID, with caching to prevent duplicate fetches
+const userCache = new Map<string, User>();
+async function getFullUser(userId: string): Promise<User> {
+    if (userCache.has(userId)) {
+        return userCache.get(userId)!;
+    }
     const user = await getUserById(userId);
-    if (user) return user;
-    // Fallback for cases where a user might be deleted but their content remains.
-    return { id: userId, name: "Unknown User", username: "unknown", avatar: "", bio: ""};
+    const result = user || { id: userId, name: "Unknown User", username: "unknown", avatar: "", bio: "" };
+    userCache.set(userId, result);
+    return result;
 }
 
+// Optimized function to process a post document
 async function processPostDoc(doc: any): Promise<Post> {
     const data = doc.data();
-    const user = await getFullUser(data.userId);
-    
-    // Fetch all comments and then get user details.
-    const commentsData = Array.isArray(data.comments) ? data.comments : [];
-    const comments: Comment[] = await Promise.all(
-        commentsData.map(async (comment: any) => ({
-            ...comment,
-            user: await getFullUser(comment.userId)
-        }))
-    );
-    
-    // Fetch collaborators if they exist
-    let collaborators: User[] = [];
-    if (Array.isArray(data.collaboratorIds) && data.collaboratorIds.length > 0) {
-        const collaboratorPromises = data.collaboratorIds.map((id: string) => getFullUser(id));
-        collaborators = await Promise.all(collaboratorPromises);
+
+    // Fetch author and collaborator user data in parallel
+    const userPromises = [getFullUser(data.userId)];
+    if (data.collaboratorIds) {
+        data.collaboratorIds.forEach((id: string) => userPromises.push(getFullUser(id)));
     }
 
+    // Fetch commenter user data in parallel
+    const commentsData = Array.isArray(data.comments) ? data.comments : [];
+    const commenterIds = commentsData.map(c => c.userId);
+    commenterIds.forEach(id => userPromises.push(getFullUser(id)));
+
+    // Await all user data fetching
+    await Promise.all(userPromises);
+
+    // Now that cache is populated, build the objects
+    const user = userCache.get(data.userId)!;
+    const collaborators = data.collaboratorIds?.map((id: string) => userCache.get(id)!) || [];
+    
+    const comments = commentsData.map((comment: any) => ({
+        ...comment,
+        user: userCache.get(comment.userId)!,
+    }));
+
     return {
-      id: doc.id,
-      user,
-      collaborators,
-      type: data.type,
-      contentUrl: data.contentUrl,
-      caption: data.caption,
-      hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
-      tags: Array.isArray(data.tags) ? data.tags : [],
-      likes: data.likes || 0,
-      likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
-      comments,
-      timestamp: data.timestamp,
-      status: data.status,
-      dataAiHint: data.dataAiHint,
+        id: doc.id,
+        user,
+        collaborators,
+        type: data.type,
+        contentUrl: data.contentUrl,
+        caption: data.caption,
+        hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
+        tags: Array.isArray(data.tags) ? data.tags : [],
+        likes: data.likes || 0,
+        likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
+        comments,
+        timestamp: data.timestamp,
+        status: data.status,
+        dataAiHint: data.dataAiHint,
     } as Post;
 }
 
@@ -59,22 +70,21 @@ async function processPostDoc(doc: any): Promise<Post> {
 export async function getPosts(): Promise<Post[]> {
   try {
     const postsCollection = collection(db, 'posts');
-    // Query for published posts and order by timestamp.
-    // Firestore requires an index for this query. If it fails, the index needs to be created in the Firebase console.
     const q = query(
         postsCollection, 
         where('status', '==', 'published'), 
         orderBy('timestamp', 'desc'), 
-        limit(50) // Limit to the latest 50 posts for performance
+        limit(50)
     );
     const querySnapshot = await getDocs(q);
     
+    // Clear cache for each new request
+    userCache.clear();
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
     
     return posts;
   } catch (error) {
     console.error("Error fetching posts:", error);
-    // If you see an error here about a missing index, you need to create it in your Firebase project's Firestore settings.
     return [];
   }
 }
@@ -91,6 +101,7 @@ export async function getReels(): Promise<Post[]> {
     );
     const querySnapshot = await getDocs(q);
     
+    userCache.clear();
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
     
     return posts;
@@ -107,6 +118,7 @@ export async function getPostById(postId: string): Promise<Post | null> {
         if (!postDoc.exists()) {
             return null;
         }
+        userCache.clear();
         return await processPostDoc(postDoc);
     } catch (error) {
         console.error("Error fetching post by ID:", error);
@@ -126,6 +138,7 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
     );
     const querySnapshot = await getDocs(q);
 
+    userCache.clear();
     const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
 
     return posts;
@@ -145,6 +158,7 @@ export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
           orderBy('timestamp', 'desc')
       );
       const querySnapshot = await getDocs(q);
+      userCache.clear();
       const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
       return posts;
     } catch (error) {
@@ -163,6 +177,7 @@ export async function getPostsByHashtag(hashtag: string): Promise<Post[]> {
             orderBy('timestamp', 'desc')
         );
         const querySnapshot = await getDocs(q);
+        userCache.clear();
         const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
         return posts;
     } catch (error) {
@@ -361,6 +376,7 @@ export async function deletePost(postId: string) {
       throw new Error("Post not found");
     }
     
+    userCache.clear();
     const postData = await processPostDoc(postDoc);
     
     // Delete media from Cloud Storage

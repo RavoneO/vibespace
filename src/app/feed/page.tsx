@@ -1,21 +1,15 @@
 
-"use client";
-
-import { useEffect, useState } from "react";
-import { collection, query, where, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import AppLayout from "@/components/app-layout";
 import { PostCard } from "@/components/post-card";
 import { Stories } from "@/components/stories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getStories } from "@/services/storyService";
-import { getUserById } from "@/services/userService";
-import type { Post, Story, User } from "@/lib/types";
+import { getPosts } from "@/services/postService";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
-import { AdCard } from "@/components/ad-card";
+import { AdCard } from "@/app/feed/ad-card";
+import { Suspense } from "react";
 
 function FeedSkeleton() {
   return (
@@ -38,121 +32,13 @@ function FeedSkeleton() {
   );
 }
 
-async function processPostDoc(doc: any): Promise<Post> {
-    const data = doc.data();
-    const user = await getUserById(data.userId);
-    
-    const commentsData = Array.isArray(data.comments) ? data.comments : [];
-    const comments = await Promise.all(
-        commentsData.map(async (comment: any) => ({
-            ...comment,
-            user: await getUserById(comment.userId) ?? { id: comment.userId, name: "Unknown User", username: "unknown", avatar: "", bio: "" }
-        }))
-    );
-
-    return {
-      id: doc.id,
-      user: user ?? { id: data.userId, name: "Unknown User", username: "unknown", avatar: "", bio: "" },
-      type: data.type,
-      contentUrl: data.contentUrl,
-      caption: data.caption,
-      hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
-      likes: data.likes || 0,
-      likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
-      comments,
-      timestamp: data.timestamp,
-      status: data.status,
-      dataAiHint: data.dataAiHint,
-    } as Post;
-}
-
-
-export default function FeedPage() {
-  const { user: authUser, userProfile, isGuest } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [stories, setStories] = useState<Story[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function loadStories() {
-        try {
-            const storiesData = await getStories();
-            setStories(storiesData);
-        } catch(err) {
-            console.error("Failed to load stories:", err);
-            // Non-critical, so we don't set a main error state
-        }
-    }
-    loadStories();
-  }, []);
-
-  useEffect(() => {
-    if (!authUser && !isGuest) { // Wait for auth state to resolve
-        return;
-    }
-    
-    setLoading(true);
-
-    const postsCollection = collection(db, 'posts');
-    let q;
-
-    if (isGuest) {
-      q = query(
-        postsCollection, 
-        orderBy('timestamp', 'desc'),
-        where('status', 'in', ['published', 'processing'])
-      );
-    } else if (authUser && userProfile) {
-        const followedUsers = userProfile.following || [];
-        const usersToFetch = [...followedUsers, authUser.uid]; // Show posts from followed users and self
-
-        if (usersToFetch.length === 0) {
-             setPosts([]);
-             setLoading(false);
-             return;
-        }
-       
-       // Firestore 'in' query is limited to 30 items. For larger scale apps, this would need a more complex solution.
-       // But for this context, it's the most direct approach.
-       q = query(
-            postsCollection,
-            where('userId', 'in', usersToFetch.slice(0, 30)),
-            where('status', 'in', ['published', 'processing']),
-            orderBy('timestamp', 'desc')
-        );
-    } else {
-        // Auth is still loading or there's no profile for the logged in user
-        setLoading(false);
-        return;
-    }
-    
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-        try {
-            const postsDataPromises = querySnapshot.docs.map(processPostDoc);
-            const postsData = (await Promise.all(postsDataPromises));
-
-            // Filter posts to only show 'published' or user's own 'processing' posts
-            const filteredPosts = postsData.filter(p => 
-                p.status === 'published' || (p.status === 'processing' && p.user.id === authUser?.uid)
-            );
-
-            setPosts(filteredPosts);
-            setError(null);
-        } catch (err) {
-            console.error("Failed to process posts:", err);
-            setError("Could not load the feed. Please try again later.");
-        } finally {
-            setLoading(false);
-        }
-    }, (err) => {
-        console.error("Snapshot error:", err);
-        setError("Could not connect to the feed. Please check your connection.");
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [authUser, isGuest, userProfile]);
+// This is now a Server Component
+export default async function FeedPage() {
+  // Fetch data on the server
+  const storiesData = getStories();
+  const postsData = getPosts();
+  
+  const [stories, posts] = await Promise.all([storiesData, postsData]);
 
   return (
     <AppLayout>
@@ -168,42 +54,40 @@ export default function FeedPage() {
                 </Link>
               </Button>
           </header>
-          <Stories stories={stories} />
-           {loading ? (
-             <FeedSkeleton />
-           ) : error ? (
-            <div className="text-center text-red-500 py-24 px-4">
-              <Icons.close className="mx-auto h-12 w-12" />
-              <p className="mt-4 font-semibold">Something went wrong</p>
-              <p className="text-sm">{error}</p>
-            </div>
-           ) : posts.length === 0 ? (
-            <div className="text-center text-muted-foreground py-24 px-4">
-                <Icons.home className="mx-auto h-12 w-12" />
-                <p className="mt-4 font-semibold">Welcome to your feed!</p>
-                <p className="text-sm">When you follow people, you'll see the photos and videos they post here.</p>
-                <Button asChild className="mt-4">
-                    <Link href="/search">Find People to Follow</Link>
-                </Button>
-            </div>
-           ) : (
-             <div className="space-y-1">
-                {posts.map((post, index) => {
-                  const adIndex = index + 1;
-                  const showAd = adIndex % 4 === 0;
-                  
-                  // Get captions from the last 3 posts for context
-                  const recentCaptions = posts.slice(Math.max(0, index - 3), index).map(p => p.caption);
 
-                  return (
-                    <>
-                      <PostCard key={post.id} post={post} />
-                      {showAd && <AdCard key={`ad-${index}`} recentCaptions={recentCaptions} />}
-                    </>
-                  )
-                })}
+          <Suspense fallback={<Skeleton className="h-[125px] w-full" />}>
+            <Stories stories={stories} />
+          </Suspense>
+
+          <Suspense fallback={<FeedSkeleton />}>
+            {posts.length === 0 ? (
+              <div className="text-center text-muted-foreground py-24 px-4">
+                  <Icons.home className="mx-auto h-12 w-12" />
+                  <p className="mt-4 font-semibold">Welcome to your feed!</p>
+                  <p className="text-sm">Follow people to see their posts here.</p>
+                  <Button asChild className="mt-4">
+                      <Link href="/search">Find People to Follow</Link>
+                  </Button>
               </div>
-           )}
+            ) : (
+              <div className="space-y-1">
+                  {posts.map((post, index) => {
+                    const adIndex = index + 1;
+                    const showAd = adIndex % 4 === 0;
+                    
+                    // Get captions from the last 3 posts for context
+                    const recentCaptions = posts.slice(Math.max(0, index - 3), index).map(p => p.caption);
+
+                    return (
+                      <div key={post.id}>
+                        <PostCard post={post} />
+                        {showAd && <AdCard recentCaptions={recentCaptions} />}
+                      </div>
+                    )
+                  })}
+                </div>
+            )}
+          </Suspense>
       </main>
     </AppLayout>
   );
