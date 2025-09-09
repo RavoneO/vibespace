@@ -74,7 +74,8 @@ export function PostCard({ post: initialPost }: PostCardProps) {
   const likeButtonRef = useRef<HTMLButtonElement>(null);
   
   const isProcessing = post.status === 'processing';
-  const isOwner = user?.uid === post.user.id;
+  const isOwner = user?.uid === post.user.id || post.collaborators?.some(c => c.id === user?.uid);
+
 
   useEffect(() => {
     async function checkBookmarkStatus() {
@@ -240,14 +241,36 @@ export function PostCard({ post: initialPost }: PostCardProps) {
     <>
       <Card className={cn("overflow-hidden animate-fade-in bg-transparent border-0 border-b rounded-none shadow-none", isProcessing && "opacity-50 pointer-events-none")}>
         <CardHeader className="flex flex-row items-center gap-3 p-4">
-          <Avatar>
-            <AvatarImage src={post.user.avatar} alt={post.user.name} />
-            <AvatarFallback>{post.user.name.charAt(0)}</AvatarFallback>
-          </Avatar>
+          <div className="flex -space-x-3">
+              <Link href={`/profile/${post.user.username}`}>
+                <Avatar className="border-2 border-background">
+                    <AvatarImage src={post.user.avatar} alt={post.user.name} />
+                    <AvatarFallback>{post.user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+              </Link>
+              {post.collaborators?.map(collab => (
+                <Link key={collab.id} href={`/profile/${collab.username}`}>
+                    <Avatar className="border-2 border-background">
+                        <AvatarImage src={collab.avatar} alt={collab.name} />
+                        <AvatarFallback>{collab.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                </Link>
+              ))}
+          </div>
           <div className="grid gap-0.5 text-sm">
-            <Link href={`/profile/${post.user.username}`} className="font-semibold hover:underline">
-              {post.user.name}
-            </Link>
+            <div className="font-semibold">
+                <Link href={`/profile/${post.user.username}`} className="hover:underline">
+                    {post.user.username}
+                </Link>
+                {post.collaborators?.map(collab => (
+                    <span key={collab.id}>
+                    {', '}
+                    <Link href={`/profile/${collab.username}`} className="hover:underline">
+                        {collab.username}
+                    </Link>
+                    </span>
+                ))}
+            </div>
             <div className="text-muted-foreground">{getTimestamp(post.timestamp)}</div>
           </div>
             <DropdownMenu>
@@ -416,5 +439,6 @@ export function PostCard({ post: initialPost }: PostCardProps) {
     </>
   );
 }
+
 
     
