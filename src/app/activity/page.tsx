@@ -3,8 +3,8 @@ import AppLayout from "@/components/app-layout";
 import { ActivityFeed } from "./activity-feed";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getActivity, markAllActivitiesAsRead } from "@/services/activityService";
-import { getAuth } from "firebase/auth/node";
+import { getActivity, markAllActivitiesAsRead } from "@/services/activityService.server";
+import { auth } from "@/lib/firebase";
 
 function ActivitySkeleton() {
     return (
@@ -22,15 +22,11 @@ function ActivitySkeleton() {
     );
 }
 
-// This is now a server component
 export default async function ActivityPage() {
-  // This is a placeholder for server-side session management.
-  // In a real app, you would get the user ID from a secure server-side session.
   const authUser = auth.currentUser;
   
   let activities = [];
   if (authUser) {
-      // Mark notifications as read when the user visits the feed
       await markAllActivitiesAsRead(authUser.uid);
       activities = await getActivity(authUser.uid);
   }

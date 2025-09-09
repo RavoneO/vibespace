@@ -1,11 +1,9 @@
 import { notFound } from "next/navigation";
-import { getUserByUsername } from "@/services/userService";
-import { getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/postService";
+import { getUserByUsername } from "@/services/userService.server";
+import { getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/postService.server";
 import { generateVibe } from "@/ai/flows/ai-profile-vibe";
-import { auth } from "@/lib/firebase";
 import { ProfileClientPage } from "./profile-client-page";
 import type { Post } from "@/lib/types";
-import { getAuth } from "firebase/auth/node";
 
 export default async function UserProfilePage({ params }: { params: { username: string }}) {
   const { username } = params;

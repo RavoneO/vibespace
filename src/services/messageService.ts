@@ -1,8 +1,5 @@
 
 import { db } from '@/lib/firebase';
-import { firestore as adminDb } from '@/lib/firebase-admin';
-import * as admin from 'firebase-admin';
-
 import { 
     collection, 
     query, 
@@ -21,26 +18,19 @@ import {
 import type { Conversation, Message, User } from '@/lib/types';
 import { getUserById } from './userService';
 
-const isServer = typeof window === 'undefined';
-
-// Helper to get full user details for conversations
-async function getFullUsers(userIds: string[]): Promise<User[]> {
-    const userPromises = userIds.map(id => getUserById(id));
-    const users = await Promise.all(userPromises);
-    return users.filter((u): u is User => u !== null);
-}
-
 // Get all conversations for a user
 export async function getConversations(userId: string): Promise<Conversation[]> {
-    const dbInstance = isServer ? adminDb : db;
-    const convosCollection = dbInstance.collection('conversations');
-    const q = convosCollection.where('userIds', 'array-contains', userId).orderBy('timestamp', 'desc');
+    const convosCollection = collection(db, 'conversations');
+    const q = query(convosCollection, where('userIds', 'array-contains', userId), orderBy('timestamp', 'desc'));
     
-    const querySnapshot = await q.get();
+    const querySnapshot = await getDocs(q);
     const conversations: Conversation[] = await Promise.all(
         querySnapshot.docs.map(async (doc) => {
             const data = doc.data();
-            const users = await getFullUsers(data.userIds);
+            const userIds = data.userIds as string[];
+            const userPromises = userIds.map(id => getUserById(id));
+            const users = (await Promise.all(userPromises)).filter((u): u is User => u !== null);
+            
             return {
                 id: doc.id,
                 ...data,
@@ -60,11 +50,10 @@ export function getMessagesQuery(conversationId: string) {
 
 // Send a new message
 export async function sendMessage(conversationId: string, senderId: string, text: string) {
-    const dbInstance = isServer ? adminDb : db;
-    const messagesCollection = dbInstance.collection('conversations').doc(conversationId).collection('messages');
-    const conversationRef = dbInstance.collection('conversations').doc(conversationId);
+    const messagesCollection = collection(db, 'conversations', conversationId, 'messages');
+    const conversationRef = doc(db, 'conversations', conversationId);
 
-    const timestamp = isServer ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp();
+    const timestamp = serverTimestamp();
 
     const newMessage = {
         senderId,
@@ -72,10 +61,10 @@ export async function sendMessage(conversationId: string, senderId: string, text
         timestamp,
     };
     
-    await messagesCollection.add(newMessage);
+    await addDoc(messagesCollection, newMessage);
 
     // Update the lastMessage and timestamp on the conversation
-    await conversationRef.update({
+    await updateDoc(conversationRef, {
         lastMessage: {
             text,
             senderId,
@@ -94,23 +83,22 @@ export async function findOrCreateConversation(currentUserId: string, targetUser
       throw new Error("Cannot create a conversation with yourself.");
     }
 
-    const dbInstance = isServer ? adminDb : db;
-    const convosCollection = dbInstance.collection('conversations');
+    const convosCollection = collection(db, 'conversations');
   
     const userIds = [currentUserId, targetUserId].sort();
     
-    const q = convosCollection.where('userIds', '==', userIds);
+    const q = query(convosCollection, where('userIds', '==', userIds));
 
-    const querySnapshot = await q.get();
+    const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
         // Conversation already exists
         return querySnapshot.docs[0].id;
     } else {
         // Create a new conversation
-        const newConvoRef = await convosCollection.add({
+        const newConvoRef = await addDoc(convosCollection, {
             userIds: userIds,
-            timestamp: isServer ? admin.firestore.FieldValue.serverTimestamp() : serverTimestamp(),
+            timestamp: serverTimestamp(),
             lastMessage: null,
         });
         return newConvoRef.id;

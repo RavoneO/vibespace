@@ -1,20 +1,17 @@
 
-import { db, storage } from '@/lib/firebase';
-import { firestore as adminDb } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { uploadFile } from './storageService';
 import { createActivity } from './activityService';
 import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
-
-const isServer = typeof window === 'undefined';
+import { searchUsers as searchUsersServer } from './userService.server';
 
 export async function getUserById(userId: string): Promise<User | null> {
   try {
-    const dbInstance = isServer ? adminDb : db;
-    const userDocRef = dbInstance.collection('users').doc(userId);
-    const userDoc = await userDocRef.get();
-    if (userDoc.exists) {
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
       return { id: userDoc.id, ...userDoc.data() } as User;
     }
     return null;
@@ -22,23 +19,6 @@ export async function getUserById(userId: string): Promise<User | null> {
     console.error(`Error fetching user by ID (${userId}):`, error);
     return null;
   }
-}
-
-export async function getUserByUsername(username: string): Promise<User | null> {
-    try {
-      const dbInstance = isServer ? adminDb : db;
-      const usersCollection = dbInstance.collection('users');
-      const q = usersCollection.where('username', '==', username);
-      const querySnapshot = await q.get();
-      if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0];
-        return { id: userDoc.id, ...userDoc.data() } as User;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error fetching user by username:", error);
-      return null;
-    }
 }
 
 export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
@@ -74,23 +54,9 @@ export async function createUserProfile(userId: string, data: { name: string; us
 }
 
 export async function searchUsers(searchText: string): Promise<User[]> {
-    if (!searchText.trim()) {
-        return [];
-    }
-    try {
-        const dbInstance = isServer ? adminDb : db;
-        const usersCollection = dbInstance.collection('users');
-        const q = usersCollection
-            .orderBy('username')
-            .startAt(searchText.toLowerCase())
-            .endAt(searchText.toLowerCase() + '\uf8ff');
-            
-        const querySnapshot = await q.get();
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-    } catch (error) {
-        console.error("Error searching users:", error);
-        return [];
-    }
+    // This now delegates to the server-only function for consistency,
+    // though it could be a client-side implementation if desired.
+    return searchUsersServer(searchText);
 }
 
 

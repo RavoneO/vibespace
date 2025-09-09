@@ -1,201 +1,16 @@
 
 import { db, storage } from '@/lib/firebase';
-import { firestore as adminDb, adminStorage } from '@/lib/firebase-admin';
-import * as admin from 'firebase-admin';
-import { collection, getDocs as getDocsClient, query as queryClient, where as whereClient, orderBy as orderByClient, doc as docClient, getDoc as getDocClient, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, limit as limitClient, deleteDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, deleteDoc, getDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
-import type { Post, Comment, User, PostTag } from '@/lib/types';
-import { getUserById, getUserByUsername } from './userService';
+import type { PostTag } from '@/lib/types';
 import { createActivity } from './activityService';
 import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
 
-const isServer = typeof window === 'undefined';
-
-// Helper to get a user by ID, with caching to prevent duplicate fetches
-const userCache = new Map<string, User>();
-async function getFullUser(userId: string): Promise<User> {
-    if (userCache.has(userId)) {
-        return userCache.get(userId)!;
-    }
-    const user = await getUserById(userId);
-    const result = user || { id: userId, name: "Unknown User", username: "unknown", avatar: "", bio: "" };
-    userCache.set(userId, result);
-    return result;
-}
-
-// Optimized function to process a post document
-async function processPostDoc(doc: any): Promise<Post> {
-    const data = doc.data();
-
-    // Fetch author and collaborator user data in parallel
-    const userPromises = [getFullUser(data.userId)];
-    if (data.collaboratorIds) {
-        data.collaboratorIds.forEach((id: string) => userPromises.push(getFullUser(id)));
-    }
-
-    // Fetch commenter user data in parallel
-    const commentsData = Array.isArray(data.comments) ? data.comments : [];
-    const commenterIds = commentsData.map(c => c.userId);
-    commenterIds.forEach(id => userPromises.push(getFullUser(id)));
-
-    // Await all user data fetching
-    await Promise.all(userPromises);
-
-    // Now that cache is populated, build the objects
-    const user = userCache.get(data.userId)!;
-    const collaborators = data.collaboratorIds?.map((id: string) => userCache.get(id)!) || [];
-    
-    const comments = commentsData.map((comment: any) => ({
-        ...comment,
-        user: userCache.get(comment.userId)!,
-    }));
-
-    return {
-        id: doc.id,
-        user,
-        collaborators,
-        type: data.type,
-        contentUrl: data.contentUrl,
-        caption: data.caption,
-        hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
-        tags: Array.isArray(data.tags) ? data.tags : [],
-        likes: data.likes || 0,
-        likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
-        comments,
-        timestamp: data.timestamp,
-        status: data.status,
-        dataAiHint: data.dataAiHint,
-    } as Post;
-}
-
-
-export async function getPosts(): Promise<Post[]> {
-  try {
-    const dbInstance = isServer ? adminDb : db;
-    const postsCollection = dbInstance.collection('posts');
-    const q = postsCollection
-        .where('status', '==', 'published')
-        .orderBy('timestamp', 'desc')
-        .limit(50);
-    
-    const querySnapshot = await q.get();
-    
-    userCache.clear();
-    const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-    
-    return posts;
-  } catch (error) {
-    console.error("Error fetching posts:", error);
-    return [];
-  }
-}
-
-export async function getReels(): Promise<Post[]> {
-  try {
-    const dbInstance = isServer ? adminDb : db;
-    const postsCollection = dbInstance.collection('posts');
-    const q = postsCollection
-        .where('status', '==', 'published') 
-        .where('type', '==', 'video')
-        .orderBy('timestamp', 'desc')
-        .limit(50);
-    const querySnapshot = await q.get();
-    
-    userCache.clear();
-    const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-    
-    return posts;
-  } catch (error) {
-    console.error("Error fetching reels:", error);
-    return [];
-  }
-}
-
-export async function getPostById(postId: string): Promise<Post | null> {
-    try {
-        const dbInstance = isServer ? adminDb : db;
-        const postRef = dbInstance.collection('posts').doc(postId);
-        const postDoc = await postRef.get();
-        if (!postDoc.exists) {
-            return null;
-        }
-        userCache.clear();
-        return await processPostDoc(postDoc);
-    } catch (error) {
-        console.error("Error fetching post by ID:", error);
-        return null;
-    }
-}
-
-
-export async function getPostsByUserId(userId: string): Promise<Post[]> {
-  try {
-    const dbInstance = isServer ? adminDb : db;
-    const postsCollection = dbInstance.collection('posts');
-    const q = postsCollection
-        .where('status', '==', 'published')
-        .where('userId', '==', userId)
-        .orderBy('timestamp', 'desc');
-    const querySnapshot = await q.get();
-
-    userCache.clear();
-    const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-
-    return posts;
-  } catch (error) {
-    console.error("Error fetching posts by user ID:", error);
-    return [];
-  }
-}
-
-export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
-    try {
-      const dbInstance = isServer ? adminDb : db;
-      const postsCollection = dbInstance.collection('posts');
-      const q = postsCollection
-          .where('likedBy', 'array-contains', userId)
-          .where('status', '==', 'published')
-          .orderBy('timestamp', 'desc');
-      const querySnapshot = await q.get();
-      userCache.clear();
-      const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-      return posts;
-    } catch (error) {
-      console.error("Error fetching liked posts by user ID:", error);
-      return [];
-    }
-  }
-
-export async function getPostsByHashtag(hashtag: string): Promise<Post[]> {
-    try {
-        const dbInstance = isServer ? adminDb : db;
-        const postsCollection = dbInstance.collection('posts');
-        const q = postsCollection
-            .where('hashtags', 'array-contains', `#${hashtag}`)
-            .where('status', '==', 'published')
-            .orderBy('timestamp', 'desc');
-        const querySnapshot = await q.get();
-        userCache.clear();
-        const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
-        return posts;
-    } catch (error) {
-        console.error("Error fetching posts by hashtag:", error);
-        return [];
-    }
-}
-
-export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
-    if (!postIds || postIds.length === 0) {
-        return [];
-    }
-    try {
-        const postPromises = postIds.map(id => getPostById(id));
-        const posts = await Promise.all(postPromises);
-        return posts.filter((p): p is Post => p !== null && p.status === 'published');
-    } catch (error) {
-        console.error("Error fetching saved posts:", error);
-        return [];
-    }
+// This function is defined and exported in postService.server.ts and called from the server-side addComment implementation there.
+// We will call it from our client implementation as well.
+async function processMentionsOnServer(text: string, actorId: string, postId: string) {
+    const { processMentions } = await import('./postService.server');
+    return processMentions(text, actorId, postId);
 }
 
 
@@ -234,29 +49,7 @@ export async function createPost(postData: {
     }
 }
 
-// Helper to find mentions and create notifications
-const processMentions = async (text: string, actorId: string, postId: string) => {
-    const mentionRegex = /@(\\w+)/g;
-    const mentions = text.match(mentionRegex);
-    if (!mentions) return;
-
-    // Use a Set to avoid duplicate notifications for the same user
-    const mentionedUsernames = new Set(mentions.map(m => m.substring(1)));
-
-    for (const username of mentionedUsernames) {
-        const user = await getUserByUsername(username);
-        if (user && user.id !== actorId) {
-            await createActivity({
-                type: 'mention',
-                actorId: actorId,
-                notifiedUserId: user.id,
-                postId: postId
-            });
-        }
-    }
-};
-
-export async function updatePost(postId: string, data: Partial<Post>) {
+export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
     try {
         if (data.caption) {
             const moderationResult = await analyzeContent({ text: data.caption });
@@ -270,10 +63,10 @@ export async function updatePost(postId: string, data: Partial<Post>) {
 
         // If caption is updated or post is newly published, process mentions
         if (data.caption || data.status === 'published') {
-            const postDoc = await getDocClient(postRef);
+            const postDoc = await getDoc(postRef);
             const postData = postDoc.data();
             if (postData) {
-                await processMentions(postData.caption, postData.userId, postId);
+                await processMentionsOnServer(postData.caption, postData.userId, postId);
             }
         }
 
@@ -301,7 +94,7 @@ export async function addComment(postId: string, commentData: { userId: string, 
             comments: arrayUnion(newComment)
         });
 
-        const postDoc = await getDocClient(postRef);
+        const postDoc = await getDoc(postRef);
         const postData = postDoc.data();
         if(!postData) return;
 
@@ -316,7 +109,7 @@ export async function addComment(postId: string, commentData: { userId: string, 
         }
         
         // Process mentions in the comment
-        await processMentions(commentData.text, commentData.userId, postId);
+        await processMentionsOnServer(commentData.text, commentData.userId, postId);
 
     } catch (error) {
         console.error("Error adding comment:", error);
@@ -327,7 +120,7 @@ export async function addComment(postId: string, commentData: { userId: string, 
 export async function toggleLike(postId: string, userId: string) {
     try {
         const postRef = doc(db, 'posts', postId);
-        const postDoc = await getDocClient(postRef);
+        const postDoc = await getDoc(postRef);
 
         if (!postDoc.exists()) {
             throw new Error("Post not found");
@@ -369,13 +162,12 @@ export async function deletePost(postId: string) {
   const postRef = doc(db, 'posts', postId);
   
   try {
-    const postDoc = await getDocClient(postRef);
+    const postDoc = await getDoc(postRef);
     if (!postDoc.exists()) {
       throw new Error("Post not found");
     }
     
-    userCache.clear();
-    const postData = await processPostDoc(postDoc);
+    const postData = postDoc.data();
     
     // Delete media from Cloud Storage
     if (postData.contentUrl) {

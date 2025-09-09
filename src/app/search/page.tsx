@@ -3,7 +3,7 @@ import AppLayout from "@/components/app-layout";
 import { ExploreClient } from "./explore-client";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPosts } from "@/services/postService";
+import { getPosts } from "@/services/postService.server";
 import type { Post } from "@/lib/types";
 
 function ExplorePageSkeleton() {
