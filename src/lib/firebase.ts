@@ -1,6 +1,4 @@
 
-"use client";
-
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -25,6 +23,6 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 // Initialize Analytics if supported
-const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
+const analytics = typeof window !== 'undefined' ? isSupported().then(yes => yes ? getAnalytics(app) : null) : Promise.resolve(null);
 
 export { app, auth, db, storage, analytics };
