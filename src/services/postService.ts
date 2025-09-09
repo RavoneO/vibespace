@@ -143,55 +143,6 @@ export async function getPostById(postId: string): Promise<Post | null> {
 }
 
 
-export async function toggleLike(postId: string, userId: string): Promise<boolean> {
-  const postRef = adminDb.collection('posts').doc(postId);
-
-  let isLiked = false;
-  
-  await adminDb.runTransaction(async (transaction) => {
-    const postDoc = await transaction.get(postRef);
-    if (!postDoc.exists) {
-      throw new Error("Post does not exist!");
-    }
-    
-    const postData = postDoc.data();
-    if (!postData) throw new Error("Post data not found");
-    const likedBy: string[] = postData.likedBy || [];
-    
-    if (likedBy.includes(userId)) {
-      // Unlike
-      transaction.update(postRef, { 
-        likedBy: FieldValue.arrayRemove(userId),
-        likes: FieldValue.increment(-1),
-      });
-      isLiked = false;
-    } else {
-      // Like
-      transaction.update(postRef, { 
-        likedBy: FieldValue.arrayUnion(userId),
-        likes: FieldValue.increment(1),
-      });
-      isLiked = true;
-    }
-  });
-
-  // Create activity notification outside the transaction
-  if (isLiked) {
-      const post = await getPostById(postId);
-      if (post && post.user.id !== userId) {
-        await createActivity({
-            type: 'like',
-            actorId: userId,
-            notifiedUserId: post.user.id,
-            postId: postId,
-        });
-      }
-  }
-
-  return isLiked;
-}
-
-
 export async function addComment(postId: string, comment: { userId: string, text: string }) {
   const postRef = adminDb.collection('posts').doc(postId);
   
@@ -246,17 +197,10 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
         .orderBy('timestamp', 'desc');
     const querySnapshot = await q.get();
 
-    const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        const user = await getUserById(data.userId); 
-        return {
-            id: doc.id,
-            ...data,
-            user,
-        } as Post;
-    }));
+    userCache.clear();
+    const posts = await Promise.all(querySnapshot.docs.map(processPostDoc));
 
-    return posts.filter(p => p.user);
+    return posts.filter((p): p is Post => p !== null);
   } catch (error) {
     console.error("Error fetching posts by user ID:", error);
     return [];
@@ -271,16 +215,9 @@ export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
           .where('status', '==', 'published')
           .orderBy('timestamp', 'desc');
       const querySnapshot = await q.get();
-      const posts: Post[] = await Promise.all(querySnapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        const user = await getUserById(data.userId);
-        return {
-            id: doc.id,
-            ...data,
-            user,
-        } as Post;
-    }));
-      return posts.filter(p => p.user);
+      userCache.clear();
+      const posts = await Promise.all(querySnapshot.docs.map(processPostDoc));
+      return posts.filter((p): p is Post => p !== null);
     } catch (error) {
       console.error("Error fetching liked posts by user ID:", error);
       return [];
@@ -292,17 +229,9 @@ export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
         return [];
     }
     try {
-        const postPromises = postIds.map(async id => {
-            const postRef = adminDb.collection('posts').doc(id);
-            const postDoc = await postRef.get();
-            if (!postDoc.exists || postDoc.data()?.status !== 'published') return null;
-            const data = postDoc.data();
-            if(!data) return null;
-            const user = await getUserById(data.userId);
-            return user ? { id: postDoc.id, ...data, user } as Post : null;
-        });
+        const postPromises = postIds.map(id => getPostById(id));
         const posts = await Promise.all(postPromises);
-        return posts.filter((p): p is Post => p !== null);
+        return posts.filter((p): p is Post => p !== null && p.status === 'published');
     } catch (error) {
         console.error("Error fetching saved posts:", error);
         return [];

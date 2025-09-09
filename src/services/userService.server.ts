@@ -3,8 +3,9 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { User, Post } from '@/lib/types';
+import type { User } from '@/lib/types';
 import { createActivity } from './activityService';
+import { getPostById } from './postService';
 
 
 export async function getUserById(userId: string): Promise<User | null> {
@@ -66,4 +67,52 @@ export async function toggleBookmark(userId: string, postId: string): Promise<bo
         console.error("Error toggling bookmark:", error);
         throw new Error("Failed to toggle bookmark status.");
     }
+}
+
+export async function toggleLike(postId: string, userId: string): Promise<boolean> {
+  const postRef = adminDb.collection('posts').doc(postId);
+
+  let isLiked = false;
+  
+  await adminDb.runTransaction(async (transaction) => {
+    const postDoc = await transaction.get(postRef);
+    if (!postDoc.exists) {
+      throw new Error("Post does not exist!");
+    }
+    
+    const postData = postDoc.data();
+    if (!postData) throw new Error("Post data not found");
+    const likedBy: string[] = postData.likedBy || [];
+    
+    if (likedBy.includes(userId)) {
+      // Unlike
+      transaction.update(postRef, { 
+        likedBy: FieldValue.arrayRemove(userId),
+        likes: FieldValue.increment(-1),
+      });
+      isLiked = false;
+    } else {
+      // Like
+      transaction.update(postRef, { 
+        likedBy: FieldValue.arrayUnion(userId),
+        likes: FieldValue.increment(1),
+      });
+      isLiked = true;
+    }
+  });
+
+  // Create activity notification outside the transaction
+  if (isLiked) {
+      const post = await getPostById(postId);
+      if (post && post.user.id !== userId) {
+        await createActivity({
+            type: 'like',
+            actorId: userId,
+            notifiedUserId: post.user.id,
+            postId: postId,
+        });
+      }
+  }
+
+  return isLiked;
 }
