@@ -6,7 +6,7 @@ import AppLayout from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
-import { getReels } from "@/services/postService";
+import { getReels } from "@/services/postService.server";
 import type { Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReelViewer } from "@/components/reel-viewer";

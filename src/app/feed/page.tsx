@@ -4,7 +4,7 @@ import { PostCard } from "@/components/post-card";
 import { Stories } from "@/components/stories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getStories } from "@/services/storyService";
-import { getPosts } from "@/services/postService";
+import { getPosts } from "@/services/postService.server";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";

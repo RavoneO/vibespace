@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Post as PostType, User } from "@/lib/types";
+import type { Post as PostType } from "@/lib/types";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -41,12 +41,11 @@ import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { CommentSheet } from "./comment-sheet";
-import { getPostById, deletePost, updatePost } from "@/services/postService";
+import { getPostById, deletePost, updatePost, addComment } from "@/services/postService.server";
 import { toggleBookmark, toggleLike } from "@/services/userService.server";
 import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "./ui/aspect-ratio";
 import { formatDistanceToNow } from "date-fns";
-import { Skeleton } from "./ui/skeleton";
 import { Badge } from "./ui/badge";
 import { Textarea } from "./ui/textarea";
 import { CaptionWithLinks } from "./caption-with-links";

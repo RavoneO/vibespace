@@ -18,7 +18,7 @@ import { Icons } from "./icons";
 import { Separator } from "./ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useCallback, memo } from "react";
-import { addComment } from "@/services/postService";
+import { addComment } from "@/services/postService.server";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { formatDistanceToNowStrict } from "date-fns";
