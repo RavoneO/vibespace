@@ -1,6 +1,6 @@
 
 import { notFound } from "next/navigation";
-import { getUserByUsername, getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/userService";
+import { getUserByUsername, getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/userService.server";
 import { ProfileClientPage } from "./profile-client-page";
 import type { Post } from "@/lib/types";
 

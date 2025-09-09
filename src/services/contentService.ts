@@ -2,7 +2,7 @@
 'use server';
 
 import { analyzeContent as analyzeContentFlow } from '@/ai/flows/ai-content-analyzer';
-import { getUserByUsername } from './userService';
+import { getUserByUsername } from './userService.server';
 import { createActivity } from './activityService';
 
 export async function analyzeContent(input: { text: string }) {

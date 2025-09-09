@@ -3,7 +3,7 @@
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, query, where, orderBy, getDocs } from 'firebase/firestore';
 import type { Story, User } from '@/lib/types';
-import { getUserById } from './userService';
+import { getUserById } from './userService.server';
 
 
 async function getFullUser(userId: string): Promise<User> {

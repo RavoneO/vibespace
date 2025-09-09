@@ -4,7 +4,7 @@
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, orderBy, limit, doc, writeBatch } from 'firebase/firestore';
 import type { Activity, Post } from '@/lib/types';
-import { getUserById } from './userService';
+import { getUserById } from './userService.server';
 import { getPostById } from './postService';
 
 

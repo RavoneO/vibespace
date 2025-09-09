@@ -16,7 +16,7 @@ import {
     or
 } from 'firebase/firestore';
 import type { Conversation, Message, User } from '@/lib/types';
-import { getUserById } from './userService';
+import { getUserById } from './userService.server';
 
 // Get all conversations for a user
 export async function getConversations(userId: string): Promise<Conversation[]> {

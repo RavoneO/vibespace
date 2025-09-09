@@ -20,7 +20,7 @@ import {
     deleteDoc
 } from 'firebase/firestore';
 import type { Post, PostTag, User, Comment } from '@/lib/types';
-import { getUserById } from './userService';
+import { getUserById } from './userService.server';
 import { createActivity } from './activityService';
 import { analyzeContent, processMentions } from './contentService';
 
@@ -259,5 +259,25 @@ export async function addComment(postId: string, comment: { userId: string, text
               postId: postId,
           });
       }
+  }
+}
+
+export async function getPostsByHashtag(tag: string): Promise<Post[]> {
+  try {
+    const postsCollection = collection(db, 'posts');
+    const q = query(
+      postsCollection,
+      where('status', '==', 'published'),
+      where('hashtags', 'array-contains', `#${tag}`),
+      orderBy('timestamp', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    const posts = await Promise.all(
+      querySnapshot.docs.map((doc) => processPostDoc(doc))
+    );
+    return posts.filter((p): p is Post => p !== null);
+  } catch (error) {
+    console.error(`Error fetching posts for hashtag #${tag}:`, error);
+    return [];
   }
 }
