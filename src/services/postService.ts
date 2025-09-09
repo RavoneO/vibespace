@@ -6,8 +6,8 @@ import { collection, doc, updateDoc, arrayUnion, addDoc, serverTimestamp, increm
 import { ref, deleteObject } from 'firebase/storage';
 import type { PostTag } from '@/lib/types';
 import { createActivity } from './activityService';
-import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
-import { addCommentServer } from './postService.server';
+import { createPost as createPostServer, updatePost as updatePostServer, addComment as addCommentServer } from './postService.server';
+
 
 export async function createPost(postData: {
     userId: string;
@@ -17,65 +17,16 @@ export async function createPost(postData: {
     tags?: PostTag[];
     collaboratorIds?: string[];
 }) {
-    try {
-        const moderationResult = await analyzeContent({ text: postData.caption });
-        if (!moderationResult.isAllowed) {
-            throw new Error(moderationResult.reason || "This content is not allowed.");
-        }
-
-        const docRef = await addDoc(collection(db, 'posts'), {
-            userId: postData.userId,
-            type: postData.type,
-            caption: postData.caption,
-            hashtags: postData.hashtags,
-            tags: postData.tags || [],
-            collaboratorIds: postData.collaboratorIds || [],
-            contentUrl: '',
-            likes: 0,
-            likedBy: [],
-            comments: [],
-            timestamp: serverTimestamp(),
-            status: 'processing',
-        });
-        return docRef.id;
-    } catch (error) {
-        console.error("Error creating post:", error);
-        throw new Error("Failed to create post.");
-    }
+    return await createPostServer(postData);
 }
 
 export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
-    try {
-        if (data.caption) {
-            const moderationResult = await analyzeContent({ text: data.caption });
-            if (!moderationResult.isAllowed) {
-                throw new Error(moderationResult.reason || "This caption is not allowed.");
-            }
-        }
-
-        const postRef = doc(db, 'posts', postId);
-        await updateDoc(postRef, data as any);
-
-    } catch (error) {
-        console.error("Error updating post:", error);
-        throw new Error("Failed to update post.");
-    }
+    return await updatePostServer(postId, data);
 }
 
 
 export async function addComment(postId: string, commentData: { userId: string, text: string }) {
-    try {
-        const moderationResult = await analyzeContent({ text: commentData.text });
-        if (!moderationResult.isAllowed) {
-            throw new Error(moderationResult.reason || "This comment is not allowed.");
-        }
-        
-        await addCommentServer(postId, commentData);
-        
-    } catch (error) {
-        console.error("Error adding comment:", error);
-        throw new Error("Failed to add comment.");
-    }
+    await addCommentServer(postId, commentData);
 }
 
 export async function toggleLike(postId: string, userId: string) {

@@ -3,9 +3,10 @@
 
 import { firestore as adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
-import type { Post, User, Comment } from '@/lib/types';
+import type { Post, User, Comment, PostTag } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService.server';
 import { createActivity } from './activityService.server';
+import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
 
 
 const userCache = new Map<string, User>();
@@ -63,6 +64,60 @@ async function processPostDoc(doc: admin.firestore.DocumentSnapshot): Promise<Po
         dataAiHint: data.dataAiHint,
     } as Post;
 }
+
+export async function createPost(postData: {
+    userId: string;
+    type: 'image' | 'video';
+    caption: string;
+    hashtags: string[];
+    tags?: PostTag[];
+    collaboratorIds?: string[];
+}) {
+    try {
+        const moderationResult = await analyzeContent({ text: postData.caption });
+        if (!moderationResult.isAllowed) {
+            throw new Error(moderationResult.reason || "This content is not allowed.");
+        }
+
+        const docRef = await adminDb.collection('posts').add({
+            userId: postData.userId,
+            type: postData.type,
+            caption: postData.caption,
+            hashtags: postData.hashtags,
+            tags: postData.tags || [],
+            collaboratorIds: postData.collaboratorIds || [],
+            contentUrl: '',
+            likes: 0,
+            likedBy: [],
+            comments: [],
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            status: 'processing',
+        });
+        return docRef.id;
+    } catch (error) {
+        console.error("Error creating post:", error);
+        throw new Error("Failed to create post.");
+    }
+}
+
+export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
+    try {
+        if (data.caption) {
+            const moderationResult = await analyzeContent({ text: data.caption });
+            if (!moderationResult.isAllowed) {
+                throw new Error(moderationResult.reason || "This caption is not allowed.");
+            }
+        }
+
+        const postRef = adminDb.collection('posts').doc(postId);
+        await postRef.update(data);
+
+    } catch (error) {
+        console.error("Error updating post:", error);
+        throw new Error("Failed to update post.");
+    }
+}
+
 
 export async function getPosts(): Promise<Post[]> {
   try {
@@ -207,31 +262,43 @@ export async function processMentions(text: string, actorId: string, postId: str
     }
 };
 
-export async function addCommentServer(postId: string, commentData: { userId: string, text: string }) {
+export async function addComment(postId: string, commentData: { userId: string, text: string }) {
     const postRef = adminDb.collection('posts').doc(postId);
-    const newComment = {
-        id: adminDb.collection('posts').doc().id, // Generate a unique ID for the comment
-        ...commentData,
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
-    };
-    await postRef.update({
-        comments: admin.firestore.FieldValue.arrayUnion(newComment)
-    });
 
-    const postDoc = await postRef.get();
-    const postData = postDoc.data();
-    if(!postData) return;
-
-    // Create activity notification for the comment itself
-    if (postData.userId !== commentData.userId) {
-        await createActivity({
-            type: 'comment',
-            actorId: commentData.userId,
-            notifiedUserId: postData.userId,
-            postId: postId
+    try {
+        const moderationResult = await analyzeContent({ text: commentData.text });
+        if (!moderationResult.isAllowed) {
+            throw new Error(moderationResult.reason || "This comment is not allowed.");
+        }
+        
+        const newComment = {
+            id: adminDb.collection('posts').doc().id, // Generate a unique ID for the comment
+            ...commentData,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        };
+        await postRef.update({
+            comments: admin.firestore.FieldValue.arrayUnion(newComment)
         });
-    }
 
-    // Handle mentions
-    await processMentions(commentData.text, commentData.userId, postId);
+        const postDoc = await postRef.get();
+        const postData = postDoc.data();
+        if(!postData) return;
+
+        // Create activity notification for the comment itself
+        if (postData.userId !== commentData.userId) {
+            await createActivity({
+                type: 'comment',
+                actorId: commentData.userId,
+                notifiedUserId: postData.userId,
+                postId: postId
+            });
+        }
+
+        // Handle mentions
+        await processMentions(commentData.text, commentData.userId, postId);
+
+    } catch (error) {
+        console.error("Error adding comment:", error);
+        throw new Error("Failed to add comment.");
+    }
 }
