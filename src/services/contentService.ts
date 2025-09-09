@@ -1,10 +1,9 @@
 
 'use server';
-import 'server-only';
 
 import { analyzeContent as analyzeContentFlow } from '@/ai/flows/ai-content-analyzer';
-import { getUserByUsername } from './userService.server';
-import { createActivity } from './activityService.server';
+import { getUserByUsername } from './userService';
+import { createActivity } from './activityService';
 
 export async function analyzeContent(input: { text: string }) {
     return await analyzeContentFlow(input);

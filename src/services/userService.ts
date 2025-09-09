@@ -5,13 +5,11 @@ import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { uploadFile } from './storageService';
-// Functions in this file are now client-safe or server-actions that can be called from the client.
-// Server-only logic has been moved to userService.server.ts
+
 
 export async function getUserById(userId: string): Promise<User | null> {
   if (!userId) return null;
   try {
-    // Note: This uses the client-side SDK's getDoc, which is fine to call from client components.
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
     if (userDoc.exists()) {
@@ -22,6 +20,22 @@ export async function getUserById(userId: string): Promise<User | null> {
     console.error(`Error fetching user by ID (${userId}):`, error);
     return null;
   }
+}
+
+export async function getUserByUsername(username: string): Promise<User | null> {
+    try {
+      const usersCollection = collection(db, 'users');
+      const q = query(usersCollection, where('username', '==', username));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        return { id: userDoc.id, ...userDoc.data() } as User;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching user by username:", error);
+      return null;
+    }
 }
 
 export async function searchUsers(searchText: string): Promise<User[]> {
@@ -42,6 +56,23 @@ export async function searchUsers(searchText: string): Promise<User[]> {
         console.error("Error searching users:", error);
         return [];
     }
+}
+
+export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
+    const userRef = doc(db, 'users', userId);
+    const nameForAvatar = data.name.split(' ').join('+');
+    await setDoc(userRef, {
+        name: data.name,
+        username: data.username,
+        email: data.email,
+        avatar: `https://ui-avatars.com/api/?name=${nameForAvatar}&background=random`,
+        bio: "Welcome to Vibespace!",
+        followers: [],
+        following: [],
+        savedPosts: [],
+        isPrivate: false,
+        showActivityStatus: true,
+    });
 }
 
 export async function toggleFollow(currentUserId: string, targetUserId: string): Promise<boolean> {

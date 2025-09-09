@@ -3,8 +3,7 @@ import AppLayout from "@/components/app-layout";
 import { ActivityFeed } from "./activity-feed";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getActivity, markAllActivitiesAsRead } from "@/services/activityService.server";
-import { authOptions } from '@/lib/firebase'; // This will be replaced by a real auth solution
+import { getActivity, markAllActivitiesAsRead } from "@/services/activityService";
 import { headers } from 'next/headers';
 import { redirect } from "next/navigation";
 
@@ -27,18 +26,14 @@ function ActivitySkeleton() {
 
 export default async function ActivityPage() {
     const headersList = headers();
+    // This is a workaround to get user in server component without a full auth library like next-auth
     const userHeader = headersList.get('x-user-id');
-    
-    if (!userHeader) {
-      // This is a simplified check. In a real app, you'd have a proper auth check.
-      // For now, we allow guests to see the page but the feed will show a login prompt.
-    }
-  
-    const userId = userHeader || '';
+    const userId = userHeader; // In a real app, you'd get this from a session
   
     if (userId) {
         await markAllActivitiesAsRead(userId);
     }
+
     const activities = userId ? await getActivity(userId) : [];
 
   return (

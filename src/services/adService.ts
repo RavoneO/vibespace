@@ -1,5 +1,6 @@
 
-// This is a mock ad service. In a real application, this would fetch ads from a database or a third-party ad network.
+'use server'
+import { selectAd as selectAdFlow } from '@/ai/flows/ai-ad-selector';
 
 export interface Ad {
     id: string;
@@ -76,4 +77,14 @@ export function getAvailableAds(): Ad[] {
 export function getSplashAd(): Ad | null {
     // This function returns the splash ad only if it's currently active.
     return isSplashAdActive ? splashAd : null;
+}
+
+export async function selectAd(availableAds: Ad[], recentCaptions: string[]): Promise<Ad> {
+    try {
+        const ad = await selectAdFlow({ availableAds, recentCaptions });
+        return ad;
+    } catch (e) {
+        console.error("AI ad selection failed, falling back to random.", e);
+        return availableAds[Math.floor(Math.random() * availableAds.length)];
+    }
 }

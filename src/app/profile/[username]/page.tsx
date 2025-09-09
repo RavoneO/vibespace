@@ -1,7 +1,7 @@
 
 import { notFound } from "next/navigation";
-import { getUserByUsername } from "@/services/userService.server";
-import { getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/postService.server";
+import { getUserByUsername } from "@/services/userService";
+import { getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/postService";
 import { ProfileClientPage } from "./profile-client-page";
 import type { Post } from "@/lib/types";
 
@@ -20,9 +20,6 @@ export default async function UserProfilePage({ params }: { params: { username: 
   const postsPromise = getPostsByUserId(fetchedUser.id);
   
   // 2. Fetch saved and liked posts
-  // In a real app, you'd get the current authenticated user's ID from the session.
-  // For now, we'll assume we can't see another user's saved/liked posts.
-  // This logic is simplified for this context but showcases parallel fetching.
   const savedPostsPromise = getSavedPosts(fetchedUser.savedPosts || []);
   const likedPostsPromise = getLikedPostsByUserId(fetchedUser.id);
 

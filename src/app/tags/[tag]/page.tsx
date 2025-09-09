@@ -1,6 +1,6 @@
 
 import AppLayout from "@/components/app-layout";
-import { getPostsByHashtag } from "@/services/postService.server";
+import { getPostsByHashtag } from "@/services/postService";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import { Icons } from "@/components/icons";

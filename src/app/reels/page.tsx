@@ -6,7 +6,7 @@ import AppLayout from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
-import { getReels } from "@/services/postService.server";
+import { getReels } from "@/services/postService";
 import type { Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReelViewer } from "@/components/reel-viewer";
@@ -52,9 +52,34 @@ function ReelsSkeleton() {
     )
 }
 
-export default async function ReelsPage() {
-  const reels = await getReels();
+// We need a client component wrapper to fetch the data
+function ReelsPageContent() {
+    const [reels, setReels] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
 
+    useEffect(() => {
+        getReels().then(data => {
+            setReels(data);
+            setLoading(false);
+        });
+    }, []);
+
+    if (loading) {
+        return <ReelsSkeleton />;
+    }
+
+    return reels.length > 0 ? (
+        <ReelsPageClient initialReels={reels} />
+    ) : (
+        <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center px-4">
+            <Icons.reels className="mx-auto h-16 w-16" />
+            <h2 className="mt-4 text-xl font-bold">No Reels Yet</h2>
+            <p className="mt-1 text-sm">Upload your first reel to get started.</p>
+        </div>
+    );
+}
+
+export default function ReelsPage() {
   return (
     <AppLayout>
       <header className="flex items-center justify-between p-4 border-b">
@@ -70,15 +95,7 @@ export default async function ReelsPage() {
       </header>
       <main className="flex-1 overflow-y-auto">
         <Suspense fallback={<ReelsSkeleton />}>
-           {reels.length > 0 ? (
-                <ReelsPageClient initialReels={reels} />
-           ) : (
-             <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center px-4">
-                <Icons.reels className="mx-auto h-16 w-16" />
-                <h2 className="mt-4 text-xl font-bold">No Reels Yet</h2>
-                <p className="mt-1 text-sm">Upload your first reel to get started.</p>
-             </div>
-           )}
+           <ReelsPageContent />
         </Suspense>
       </main>
     </AppLayout>
