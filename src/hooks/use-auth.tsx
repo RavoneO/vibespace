@@ -12,13 +12,16 @@ import {
 import { useSession } from "next-auth/react";
 import type { User as AppUser } from "@/lib/types";
 import { getUserById } from "@/services/userService";
+import { User } from "firebase/auth";
 
 export const AuthContext = createContext<{
+  user: User | null;
   userProfile: AppUser | null;
   loading: boolean;
   isGuest: boolean;
   setAsGuest: () => void;
 }>({
+  user: null,
   userProfile: null,
   loading: true,
   isGuest: false,
@@ -33,6 +36,7 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const { data: session, status } = useSession();
+  const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [isGuest, setIsGuestState] = useState(true);
 
@@ -71,6 +75,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 
   const value = {
+    user,
     userProfile,
     loading: loading || (status === 'authenticated' && !userProfile),
     isGuest,

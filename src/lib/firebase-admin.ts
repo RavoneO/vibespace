@@ -1,33 +1,14 @@
 
 'use server';
 
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
-let app: admin.app.App;
-
-function getFirebaseAdmin() {
-  if (!app) {
-    if (!admin.apps.length) {
-      app = admin.initializeApp();
-    } else {
-      app = admin.app();
-    }
-  }
-  return app;
+if (!admin.apps.length) {
+  admin.initializeApp();
 }
 
-export function getFirestore() {
-  return getFirebaseAdmin().firestore();
-}
+const firestore = admin.firestore();
+const adminAuth = admin.auth();
+const adminStorage = admin.storage();
 
-export function getAuth() {
-  return getFirebaseAdmin().auth();
-}
-
-export function getStorage() {
-  return getFirebaseAdmin().storage();
-}
-
-export const adminAuth = getAuth();
-export const firestore = getFirestore();
-export const adminStorage = getStorage();
+export { adminAuth, firestore, adminStorage };
