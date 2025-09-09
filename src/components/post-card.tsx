@@ -51,6 +51,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Skeleton } from "./ui/skeleton";
 import { Badge } from "./ui/badge";
 import { Textarea } from "./ui/textarea";
+import { CaptionWithLinks } from "./caption-with-links";
 
 interface PostCardProps {
   post: PostType;
@@ -308,16 +309,7 @@ export function PostCard({ post: initialPost }: PostCardProps) {
         </CardHeader>
         <CardContent className="px-4 py-0">
           <div className="text-sm text-foreground/90 mb-4 space-y-2">
-            <p>{post.caption}</p>
-            <div className="flex flex-wrap gap-x-2">
-                {post.hashtags.map((tag) => (
-                    <Link href={`/tags/${tag.slice(1)}`} key={tag}>
-                        <span className="font-medium text-primary hover:underline">
-                            {tag}
-                        </span>
-                    </Link>
-                ))}
-            </div>
+            <CaptionWithLinks text={post.caption} />
             {post.tags && post.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-2">
                     {post.tags.map((tag, index) => (
@@ -439,6 +431,3 @@ export function PostCard({ post: initialPost }: PostCardProps) {
     </>
   );
 }
-
-
-    
