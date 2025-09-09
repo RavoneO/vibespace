@@ -11,7 +11,7 @@ import 'server-only';
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { getPosts } from '@/services/postService';
+import { getPosts } from '@/services/postService.server';
 import type { Post } from '@/lib/types';
 
 const SemanticSearchInputSchema = z.object({
