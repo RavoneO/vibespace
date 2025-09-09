@@ -13,7 +13,6 @@ import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { findOrCreateConversation } from "@/services/messageService.server";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UserPosts, PostGridSkeleton } from "./user-posts";
 
@@ -186,7 +185,20 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
     }
     setIsMessageLoading(true);
     try {
-        const conversationId = await findOrCreateConversation(userProfile.id, user.id);
+        const response = await fetch('/api/conversations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                currentUserId: userProfile.id,
+                targetUserId: user.id
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to start conversation');
+        }
+
+        const { conversationId } = await response.json();
         router.push(`/messages/chat?id=${conversationId}`);
     } catch (error) {
         console.error("Failed to start conversation", error);
