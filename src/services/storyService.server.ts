@@ -6,9 +6,9 @@ import type { Story, User } from '@/lib/types';
 import { getUserById } from './userService.server';
 
 
-async function getFullUser(userId: string): Promise<User> {
+async function getFullUser(userId: string): Promise<User | null> {
     const user = await getUserById(userId);
-    return user || { id: userId, name: "Unknown User", username: "unknown", email: "", avatar: "", bio: ""};
+    return user;
 }
 
 export async function getStories(): Promise<Story[]> {
@@ -28,7 +28,8 @@ export async function getStories(): Promise<Story[]> {
       const user = await getFullUser(data.userId);
       
       if (!user) {
-          throw new Error(`User not found for story ${doc.id}`);
+          console.warn(`User not found for story ${doc.id}, skipping story.`);
+          return null;
       }
 
       return {
@@ -43,7 +44,7 @@ export async function getStories(): Promise<Story[]> {
     }));
 
     const stories = results
-        .filter(result => result.status === 'fulfilled')
+        .filter(result => result.status === 'fulfilled' && result.value !== null)
         .map(result => (result as PromiseFulfilledResult<Story>).value);
     
     const latestStories: { [userId: string]: Story } = {};

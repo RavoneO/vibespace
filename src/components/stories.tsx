@@ -99,9 +99,6 @@ export function Stories({ stories: initialStories }: StoriesProps) {
         backgroundUpload();
     };
     
-    const currentUserStory = stories.find(s => s.user.id === userProfile?.id);
-    const otherUserStories = stories.filter(s => s.user.id !== userProfile?.id);
-
     return (
         <>
             <input 

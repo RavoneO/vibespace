@@ -49,7 +49,7 @@ import { Textarea } from "./ui/textarea";
 import { CaptionWithLinks } from "./caption-with-links";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import { getPostById } from "@/services/postService.server";
+import { getPostById } from "@/services/postService";
 
 
 interface PostCardProps {
@@ -196,26 +196,26 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
   }, [isProcessing]);
 
   const handleDelete = useCallback(async () => {
-    if (!isOwner) return;
+    if (!isOwner || !userProfile) return;
 
     setIsDeleting(true);
     try {
         const response = await fetch(`/api/posts/${post.id}`, { 
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: userProfile?.id })
+            body: JSON.stringify({ userId: userProfile.id })
         });
         if (!response.ok) throw new Error('Failed to delete post');
         toast({ title: "Post deleted successfully" });
         setIsDeleteDialogOpen(false);
-        window.location.reload();
+        router.refresh();
     } catch (error) {
         console.error("Error deleting post:", error);
         toast({ title: "Failed to delete post", variant: "destructive" });
     } finally {
         setIsDeleting(false);
     }
-  }, [isOwner, post.id, userProfile?.id, toast]);
+  }, [isOwner, post.id, userProfile, toast, router]);
   
   const handleEditSave = useCallback(async () => {
       if (!isOwner) return;
@@ -252,6 +252,7 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
           comments: [...prev.comments, newComment as any]
       }));
 
+      // Re-fetch post data to get the definitive state from the server
       const updatedPost = await getPostById(post.id);
       if (updatedPost) {
           setPost(updatedPost);

@@ -113,7 +113,8 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
         }
       }
     }
-    generateVibe();
+    // Temporarily disable AI vibe generation to avoid potential issues
+    // generateVibe();
   }, [initialPosts]);
 
   const showLoginToast = useCallback(() => {
@@ -142,6 +143,7 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
     setIsFollowLoading(true);
     const originalIsFollowing = isFollowing;
     
+    // Optimistic update
     setIsFollowing(!originalIsFollowing);
     setFollowCount(prev => ({
         ...prev,
@@ -160,9 +162,11 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
       }
 
       const { isFollowing: newIsFollowing } = await response.json();
+      // Sync with server state
       setIsFollowing(newIsFollowing);
 
     } catch (error) {
+        // Revert on error
         setIsFollowing(originalIsFollowing);
         setFollowCount(prev => ({
             ...prev,
@@ -262,7 +266,7 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
                     <p className="font-medium">{vibe}</p>
                   </div>
               ) : (
-                  <Skeleton className="h-5 w-48 mt-2" />
+                  initialPosts.length > 0 && <Skeleton className="h-5 w-48 mt-2" />
               )}
           </div>
           <div className="mt-4 flex gap-2">

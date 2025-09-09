@@ -9,22 +9,20 @@ import {
     getDocs, 
     query, 
     where, 
-    updateDoc, 
-    arrayUnion, 
-    arrayRemove, 
-    runTransaction, 
+    updateDoc,
     startAt, 
     endAt, 
     orderBy, 
-    setDoc 
 } from 'firebase/firestore';
-import type { User, Post } from '@/lib/types';
+import type { User } from '@/lib/types';
 import { uploadFile } from './storageService';
 
 
 export async function getUserById(userId: string): Promise<User | null> {
   if (!userId) return null;
   try {
+    // This now uses the client SDK, which means it will only work for rules that allow it.
+    // For server-auth tasks, use API routes that call userService.server.
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
     if (userDoc.exists()) {
@@ -82,4 +80,20 @@ export async function updateUserProfile(userId: string, data: { name: string; bi
     }
 
     await updateDoc(userRef, updateData);
+}
+
+// Client-side toggle follow, calls our API route
+export async function toggleFollow(currentUserId: string, targetUserId: string): Promise<boolean> {
+    const response = await fetch(`/api/users/${targetUserId}/follow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to toggle follow');
+    }
+
+    const { isFollowing } = await response.json();
+    return isFollowing;
 }
