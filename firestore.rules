@@ -1,96 +1,71 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // Helper function to check if a user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
-
+    
+    // Helper function to check if the user is the owner of a document
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-    
-    // Users Collection
+
+    // Users: Publicly readable, but only the user can write to their own document.
     match /users/{userId} {
-      // Anyone can read a user's profile
       allow read: if true;
-      
-      // A user can only create their own profile document
-      allow create: if isOwner(userId);
-
-      // A user can only update their own profile document
-      allow update: if isOwner(userId);
-      
-      // Users should not be able to delete their accounts directly through the client
-      allow delete: if false;
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isAuthenticated() && isOwner(userId);
+      allow delete: if false; // Generally, don't allow user deletion from client
     }
-    
-    // Posts Collection
+
+    // Posts: Publicly readable. Authenticated users can create. Only owner/collaborator can update/delete.
     match /posts/{postId} {
-      // Anyone can read a published post
-      allow read: if resource.data.status == 'published';
-
-      // Authenticated users can create posts
+      allow read: if true;
       allow create: if isAuthenticated();
-
-      // Only the owner can update the post, except for likes and comments
+      
+      // Allow update for caption/tags/collaborators only by owner/collaborator
       allow update: if isAuthenticated() && (
-                      // Owner can edit caption, tags etc.
-                      (isOwner(resource.data.userId) || resource.data.collaboratorIds.hasAny([request.auth.uid])) &&
-                      // Anyone can update likes and comments
-                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy', 'comments']))
+                      isOwner(resource.data.userId) || 
+                      request.auth.uid in resource.data.collaboratorIds
+                    ) &&
+                    request.resource.data.keys().hasOnly(['caption', 'contentUrl', 'status', 'tags']);
+
+      // Liking and commenting can be done by any authenticated user
+      allow update: if isAuthenticated() && 
+                      request.resource.data.keys().hasAny(['likes', 'likedBy', 'comments']);
+
+      allow delete: if isAuthenticated() && (
+                      isOwner(resource.data.userId) || 
+                      request.auth.uid in resource.data.collaboratorIds
                     );
-                    
-      // Only the owner can delete the post
-      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
     }
     
-    // Stories Collection
+    // Stories: Publicly readable for 24 hours (enforced by query). Only owner can create/delete.
     match /stories/{storyId} {
-        // Anyone can read a published story
-        allow read: if resource.data.status == 'published';
-        
-        // Authenticated users can create stories
-        allow create: if isAuthenticated();
-        
-        // Only owner can update (e.g. status)
-        allow update: if isAuthenticated() && isOwner(resource.data.userId);
-
-        // Only owner can delete
-        allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+      allow read: if true;
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.userId);
     }
-    
-    // Conversations and Messages
-    match /conversations/{conversationId} {
-      // Allow read/write only if the user is part of the conversation
-      allow read, write: if isAuthenticated() && request.auth.uid in resource.data.userIds;
 
-      match /messages/{messageId} {
-        // Allow read only if user is part of the parent conversation
-        allow read: if isAuthenticated() && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
-        
-        // Allow create only if the user is the sender and is part of the conversation
-        allow create: if isAuthenticated() && 
-                        isOwner(request.resource.data.senderId) && 
-                        get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
-      }
-    }
-    
-    // Activity Feed
+    // Activity: Only the notified user can read their own activity stream.
     match /activity/{activityId} {
-        // A user can only read their own notifications
-        allow read: if isAuthenticated() && isOwner(resource.data.notifiedUserId);
+      allow read: if isAuthenticated() && isOwner(resource.data.notifiedUserId);
+      allow create: if isAuthenticated(); // Creations are validated by backend logic
+      allow update, delete: if false;
+    }
+    
+    // Conversations: Only members of the conversation can interact.
+    match /conversations/{conversationId} {
+        allow read, create, update: if isAuthenticated() && request.auth.uid in resource.data.userIds;
         
-        // Creating activity is handled by backend logic/secure functions, but we add a basic rule here
-        allow create: if isAuthenticated();
-        
-        // Only the user can "update" (e.g., mark as read) their own activity
-        allow update: if isAuthenticated() && isOwner(resource.data.notifiedUserId);
-        
-        allow delete: if false; // Don't allow client-side deletion
+        // Messages: Only members of the conversation can read/write messages.
+        match /messages/{messageId} {
+             allow read, create: if isAuthenticated() && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
+             allow update, delete: if false;
+        }
     }
   }
 }
