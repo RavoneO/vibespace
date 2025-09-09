@@ -1,8 +1,9 @@
 'use server';
 
-import { db, storage } from '@/lib/firebase';
-import { collection, doc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, deleteDoc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc, arrayUnion, increment, arrayRemove, deleteDoc, getDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 import type { PostTag } from '@/lib/types';
 import { createActivity } from './activityService';
 import { createPost as createPostServer, updatePost as updatePostServer, addComment as addCommentServer } from './postService.server';

@@ -5,7 +5,7 @@ import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, 
 import type { User } from '@/lib/types';
 import { uploadFile } from './storageService';
 import { createActivity } from './activityService';
-import { createUserProfile as createUserProfileServer, updateUserProfile as updateUserProfileServer } from './userService.server';
+import { createUserProfile as createUserProfileServer, updateUserProfile as updateUserProfileServer, searchUsers as searchUsersServer } from './userService.server';
 
 export async function getUserById(userId: string): Promise<User | null> {
   try {
@@ -26,24 +26,7 @@ export async function createUserProfile(userId: string, data: { name: string; us
 }
 
 export async function searchUsers(searchText: string): Promise<User[]> {
-    if (!searchText.trim()) {
-        return [];
-    }
-    try {
-        const usersCollection = collection(db, 'users');
-        const q = query(
-            usersCollection,
-            orderBy('username'),
-            startAt(searchText.toLowerCase()),
-            endAt(searchText.toLowerCase() + '\uf8ff')
-        );
-            
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-    } catch (error) {
-        console.error("Error searching users:", error);
-        return [];
-    }
+   return searchUsersServer(searchText);
 }
 
 

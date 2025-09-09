@@ -1,6 +1,10 @@
 
+'use server';
+
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
+import { createActivity as createActivityServer } from './activityService.server';
+
 
 interface CreateActivityParams {
     type: 'like' | 'comment' | 'follow' | 'mention';
@@ -13,17 +17,6 @@ export async function createActivity(params: CreateActivityParams) {
     if (params.actorId === params.notifiedUserId) {
         return;
     }
-
-    try {
-        await addDoc(collection(db, 'activity'), {
-            type: params.type,
-            actorId: params.actorId,
-            notifiedUserId: params.notifiedUserId,
-            postId: params.postId || null,
-            timestamp: serverTimestamp(),
-            read: false,
-        });
-    } catch (error) {
-        console.error("Error creating activity:", error);
-    }
+    
+    await createActivityServer(params);
 }
