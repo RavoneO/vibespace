@@ -74,9 +74,13 @@ export default function EditProfilePage() {
         // Optionally force a reload of userProfile in useAuth hook or just navigate
         router.push(`/profile/${userProfile?.username}`);
         router.refresh(); // Refresh the page to show new profile info
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to update profile", error);
-        toast({ title: "Failed to update profile.", variant: "destructive" });
+        toast({ 
+            title: "Failed to update profile.", 
+            description: error.message.replace('Failed to update user profile:', '').trim(),
+            variant: "destructive" 
+        });
     } finally {
         setIsSubmitting(false);
     }

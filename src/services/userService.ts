@@ -6,6 +6,7 @@ import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, 
 import type { User } from '@/lib/types';
 import { uploadFile } from './storageService';
 import { createActivity } from './activityService';
+import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
 
 export async function getUserById(userId: string): Promise<User | null> {
   try {
@@ -39,6 +40,16 @@ export async function getUserByUsername(username: string): Promise<User | null> 
 
 export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
     try {
+        const nameCheck = await analyzeContent({ text: data.name });
+        if (!nameCheck.isAllowed) {
+            throw new Error(nameCheck.reason || "The provided name is not allowed.");
+        }
+
+        const usernameCheck = await analyzeContent({ text: data.username });
+        if (!usernameCheck.isAllowed) {
+            throw new Error(usernameCheck.reason || "The provided username is not allowed.");
+        }
+
         const userRef = doc(db, 'users', userId);
         const nameForAvatar = data.name.split(' ').join('+');
         await setDoc(userRef, {
@@ -53,9 +64,9 @@ export async function createUserProfile(userId: string, data: { name: string; us
             isPrivate: false,
             showActivityStatus: true,
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error creating user profile:", error);
-        throw new Error("Failed to create user profile.");
+        throw new Error(`Failed to create user profile: ${error.message}`);
     }
 }
 
@@ -164,6 +175,18 @@ export async function updateUserSettings(userId: string, settings: Partial<Pick<
 
 export async function updateUserProfile(userId: string, data: { name: string; bio: string; avatarFile?: File }) {
     try {
+        const nameCheck = await analyzeContent({ text: data.name });
+        if (!nameCheck.isAllowed) {
+            throw new Error(nameCheck.reason || "The provided name is not allowed.");
+        }
+        
+        if (data.bio) {
+            const bioCheck = await analyzeContent({ text: data.bio });
+            if (!bioCheck.isAllowed) {
+                throw new Error(bioCheck.reason || "The provided bio is not allowed.");
+            }
+        }
+
         const userRef = doc(db, 'users', userId);
         const updateData: { name: string; bio: string; avatar?: string } = {
             name: data.name,
@@ -176,8 +199,8 @@ export async function updateUserProfile(userId: string, data: { name: string; bi
         }
 
         await updateDoc(userRef, updateData);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error updating user profile:", error);
-        throw new Error("Failed to update user profile.");
+        throw new Error(`Failed to update user profile: ${error.message}`);
     }
 }

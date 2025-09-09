@@ -81,7 +81,12 @@ export default function SignupPage() {
                 description = "Email and password accounts are not enabled. Please contact support.";
                 break;
             default:
-                description = error.message;
+                 // Check for our custom moderation error
+                if (error.message?.includes('Failed to create user profile')) {
+                    description = error.message.replace('Failed to create user profile:', '').trim();
+                } else {
+                    description = error.message;
+                }
                 break;
         }
        toast({
