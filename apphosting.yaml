@@ -1,5 +1,6 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
+# Forcing a rebuild to clear environment cache.
 run:
   # The command to run to start your server
   command: npm run start
