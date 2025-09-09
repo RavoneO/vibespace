@@ -34,7 +34,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const PROTECTED_ROUTES = ["/feed", "/create", "/reels", "/settings", "/messages", "/profile", "/search"];
+const PROTECTED_ROUTES = ["/feed", "/create", "/reels", "/settings", "/messages", "/profile", "/activity", "/search"];
 const PUBLIC_ROUTES = ["/", "/login", "/signup"];
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {

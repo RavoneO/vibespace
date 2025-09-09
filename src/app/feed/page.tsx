@@ -68,7 +68,7 @@ async function processPostDoc(doc: any): Promise<Post> {
 
 
 export default function FeedPage() {
-  const { user: authUser, isGuest } = useAuth();
+  const { user: authUser, userProfile, isGuest } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,11 +95,37 @@ export default function FeedPage() {
     setLoading(true);
 
     const postsCollection = collection(db, 'posts');
-    const q = query(
-      postsCollection, 
-      orderBy('timestamp', 'desc'),
-      where('status', 'in', ['published', 'processing'])
-    );
+    let q;
+
+    if (isGuest) {
+      q = query(
+        postsCollection, 
+        orderBy('timestamp', 'desc'),
+        where('status', 'in', ['published', 'processing'])
+      );
+    } else if (authUser && userProfile) {
+        const followedUsers = userProfile.following || [];
+        const usersToFetch = [...followedUsers, authUser.uid]; // Show posts from followed users and self
+
+        if (usersToFetch.length === 0) {
+             setPosts([]);
+             setLoading(false);
+             return;
+        }
+       
+       // Firestore 'in' query is limited to 30 items. For larger scale apps, this would need a more complex solution.
+       // But for this context, it's the most direct approach.
+       q = query(
+            postsCollection,
+            where('userId', 'in', usersToFetch.slice(0, 30)),
+            where('status', 'in', ['published', 'processing']),
+            orderBy('timestamp', 'desc')
+        );
+    } else {
+        // Auth is still loading or there's no profile for the logged in user
+        setLoading(false);
+        return;
+    }
     
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         try {
@@ -126,7 +152,7 @@ export default function FeedPage() {
     });
 
     return () => unsubscribe();
-  }, [authUser, isGuest]);
+  }, [authUser, isGuest, userProfile]);
 
   return (
     <AppLayout>
@@ -155,7 +181,10 @@ export default function FeedPage() {
             <div className="text-center text-muted-foreground py-24 px-4">
                 <Icons.home className="mx-auto h-12 w-12" />
                 <p className="mt-4 font-semibold">Welcome to your feed!</p>
-                <p className="text-sm">It's looking a little empty. Create your first post or follow some friends.</p>
+                <p className="text-sm">When you follow people, you'll see the photos and videos they post here.</p>
+                <Button asChild className="mt-4">
+                    <Link href="/search">Find People to Follow</Link>
+                </Button>
             </div>
            ) : (
              <div className="space-y-1">
