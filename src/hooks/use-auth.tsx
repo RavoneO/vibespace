@@ -37,7 +37,7 @@ export const AuthContext = createContext<{
   user: null,
   userProfile: null,
   loading: true,
-  profileLoading: false,
+  profileLoading: true,
   isGuest: false,
   setAsGuest: () => {},
 });
@@ -52,12 +52,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [isGuest, setIsGuestState] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
+      setLoading(false); // Auth state is now known, unblock UI immediately
       
       const guestStatus = sessionStorage.getItem('isGuest');
       if (guestStatus === 'true' && !firebaseUser) {
@@ -65,45 +66,47 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } else {
         setIsGuestState(false);
       }
-      
-      setLoading(false); // Auth state is now known, unblock UI
-
-      if (firebaseUser) {
-        setProfileLoading(true);
-        sessionStorage.removeItem('isGuest');
-        // Fetch profile in the background
-        getUserById(firebaseUser.uid).then(profile => {
-            if (profile) {
-                setUserProfile(profile);
-            } else {
-                 // Profile doesn't exist, create it
-                const username = firebaseUser.email?.split('@')[0].toLowerCase() || `user${Date.now()}`;
-                const newProfileData = {
-                    name: firebaseUser.displayName || "New User",
-                    username: username,
-                    email: firebaseUser.email!,
-                };
-                createUserProfile(firebaseUser.uid, newProfileData)
-                    .then(() => getUserById(firebaseUser.uid))
-                    .then(newProfile => setUserProfile(newProfile))
-                    .catch(e => console.error("Failed to create/fetch user profile", e));
-            }
-        }).catch(e => {
-            console.error("Error fetching user profile", e);
-        }).finally(() => {
-            setProfileLoading(false);
-        });
-      } else {
-        setUserProfile(null);
-      }
     });
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (user) {
+        setProfileLoading(true);
+        sessionStorage.removeItem('isGuest');
+        try {
+            let profile = await getUserById(user.uid);
+            if (!profile) {
+                const username = user.email?.split('@')[0].toLowerCase() || `user${Date.now()}`;
+                const newProfileData = {
+                    name: user.displayName || "New User",
+                    username: username,
+                    email: user.email!,
+                };
+                await createUserProfile(user.uid, newProfileData);
+                profile = await getUserById(user.uid);
+            }
+            setUserProfile(profile);
+        } catch (e) {
+            console.error("Error fetching user profile", e);
+            setUserProfile(null);
+        } finally {
+            setProfileLoading(false);
+        }
+      } else {
+        setUserProfile(null);
+        setProfileLoading(false);
+      }
+    }
+    fetchProfile();
+  }, [user]);
   
   const setAsGuest = useCallback(() => {
     sessionStorage.setItem('isGuest', 'true');
     setIsGuestState(true);
+    setUser(null);
   }, []);
 
 
