@@ -1,9 +1,9 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
-import { uploadFile } from './storageService';
 import { createActivity } from './activityService';
 import { createUserProfile as createUserProfileServer, updateUserProfile as updateUserProfileServer, searchUsers as searchUsersServer } from './userService.server';
 
@@ -22,11 +22,11 @@ export async function getUserById(userId: string): Promise<User | null> {
 }
 
 export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
-    return createUserProfileServer(userId, data);
+    return await createUserProfileServer(userId, data);
 }
 
 export async function searchUsers(searchText: string): Promise<User[]> {
-   return searchUsersServer(searchText);
+   return await searchUsersServer(searchText);
 }
 
 
@@ -113,5 +113,5 @@ export async function updateUserSettings(userId: string, settings: Partial<Pick<
 }
 
 export async function updateUserProfile(userId: string, data: { name: string; bio: string; avatarFile?: File }) {
-    return updateUserProfileServer(userId, data);
+    return await updateUserProfileServer(userId, data);
 }

@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -27,7 +28,7 @@ export async function addComment(postId: string, commentData: { userId: string, 
     await addCommentServer(postId, commentData);
 }
 
-export async function toggleLike(postId: string, userId: string) {
+export async function toggleLike(postId: string, userId:string) {
     try {
         const postRef = doc(db, 'posts', postId);
         const postDoc = await getDoc(postRef);
