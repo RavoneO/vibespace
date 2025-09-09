@@ -135,6 +135,24 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
   }
 }
 
+export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
+    try {
+      const postsCollection = collection(db, 'posts');
+      const q = query(
+          postsCollection,
+          where('likedBy', 'array-contains', userId),
+          where('status', '==', 'published'),
+          orderBy('timestamp', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      const posts: Post[] = await Promise.all(querySnapshot.docs.map(processPostDoc));
+      return posts;
+    } catch (error) {
+      console.error("Error fetching liked posts by user ID:", error);
+      return [];
+    }
+  }
+
 export async function getPostsByHashtag(hashtag: string): Promise<Post[]> {
     try {
         const postsCollection = collection(db, 'posts');
