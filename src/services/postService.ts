@@ -4,7 +4,7 @@
 import { db, storage } from '@/lib/firebase';
 import { collection, getDocs, query, where, orderBy, doc, getDoc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, limit, deleteDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
-import type { Post, Comment, User } from '@/lib/types';
+import type { Post, Comment, User, PostTag } from '@/lib/types';
 import { getUserById } from './userService';
 import { createActivity } from './activityService';
 
@@ -36,6 +36,7 @@ async function processPostDoc(doc: any): Promise<Post> {
       contentUrl: data.contentUrl,
       caption: data.caption,
       hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
+      tags: Array.isArray(data.tags) ? data.tags : [],
       likes: data.likes || 0,
       likedBy: Array.isArray(data.likedBy) ? data.likedBy : [],
       comments,
@@ -163,6 +164,7 @@ export async function createPost(postData: {
     type: 'image' | 'video';
     caption: string;
     hashtags: string[];
+    tags: PostTag[];
 }) {
     try {
         const docRef = await addDoc(collection(db, 'posts'), {

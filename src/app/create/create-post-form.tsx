@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
@@ -9,6 +9,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { suggestHashtags } from "@/ai/flows/ai-suggested-hashtags";
 import { generateCaption } from "@/ai/flows/ai-generated-caption";
+import { detectObjectsInImage } from "@/ai/flows/ai-object-detection";
+import type { DetectObjectsOutput } from "@/ai/flows/ai-object-detection";
 import { createPost, updatePost } from "@/services/postService";
 import { uploadFile } from "@/services/storageService";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,6 +25,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Icons } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +34,8 @@ import { Separator } from "@/components/ui/separator";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import type { PostTag } from "@/lib/types";
 
 const formSchema = z.object({
   caption: z.string().max(2200, "Caption is too long."),
@@ -71,6 +76,14 @@ export function CreatePostForm() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // New states for object detection and tagging
+  const [detectedObjects, setDetectedObjects] = useState<DetectObjectsOutput['objects'] | []>([]);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [tags, setTags] = useState<PostTag[]>([]);
+  const [activeTaggingBox, setActiveTaggingBox] = useState<{box: number[], label: string} | null>(null);
+  const [tagInput, setTagInput] = useState("");
+
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -79,22 +92,69 @@ export function CreatePostForm() {
     },
   });
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const resetAiFeatures = useCallback(() => {
+    setSuggestedHashtags([]);
+    setSuggestedCaptions([]);
+    setDetectedObjects([]);
+    setTags([]);
+    setIsDetecting(false);
+  }, []);
+
+  const handleDetectObjects = useCallback(async (dataUri: string) => {
+    setIsDetecting(true);
+    setDetectedObjects([]);
+    try {
+        const result = await detectObjectsInImage({ mediaDataUri: dataUri });
+        setDetectedObjects(result.objects);
+    } catch (error) {
+        console.error("Error detecting objects:", error);
+        toast({
+            title: "Object Detection Failed",
+            description: "Could not analyze the image at this time.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsDetecting(false);
+    }
+  }, [toast]);
+
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       form.setValue("file", file);
-      setFileType(file.type.startsWith('image') ? 'image' : 'video');
+      const currentFileType = file.type.startsWith('image') ? 'image' : 'video';
+      setFileType(currentFileType);
+      
+      resetAiFeatures();
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreview(reader.result as string);
-        setMediaDataUri(reader.result as string);
+        const result = reader.result as string;
+        setPreview(result);
+        setMediaDataUri(result);
+
+        if (currentFileType === 'image') {
+          handleDetectObjects(result);
+        }
       };
       reader.readAsDataURL(file);
-      // Clear previous suggestions when a new file is selected
-      setSuggestedHashtags([]);
-      setSuggestedCaptions([]);
     }
+  }, [form, resetAiFeatures, handleDetectObjects]);
+
+  const handleSaveTag = () => {
+    if (!tagInput.trim() || !activeTaggingBox) return;
+    
+    // Remove existing tag for this box if it exists
+    const otherTags = tags.filter(t => t.box.toString() !== activeTaggingBox.box.toString());
+
+    setTags([
+      ...otherTags,
+      { ...activeTaggingBox, text: tagInput }
+    ]);
+    setTagInput("");
+    setActiveTaggingBox(null);
   };
+
 
   const handleSuggestHashtags = async () => {
     if (!mediaDataUri) {
@@ -191,6 +251,7 @@ export function CreatePostForm() {
                 type: fileType,
                 caption: values.caption,
                 hashtags,
+                tags: fileType === 'image' ? tags : [],
             });
     
             const contentUrl = await uploadFile(file, `posts/${user.uid}/${postId}_${file.name}`);
@@ -219,25 +280,77 @@ export function CreatePostForm() {
 
   return (
     <div className="grid md:grid-cols-2 gap-8">
-      <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg h-96 md:h-full">
+      <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg h-96 md:h-[500px] relative">
         {preview ? (
-            fileType === 'image' ? (
-                <Image
-                    src={preview}
-                    alt="Post preview"
-                    width={400}
-                    height={400}
-                    className="max-h-full w-auto object-contain rounded-md"
-                />
-            ) : (
-                <AspectRatio ratio={9 / 16} className="bg-muted rounded-md overflow-hidden w-full max-w-sm">
-                    <video
+            <div className="relative w-full h-full">
+                {fileType === 'image' ? (
+                    <>
+                    <Image
                         src={preview}
-                        controls
-                        className="w-full h-full object-contain"
+                        alt="Post preview"
+                        fill
+                        className="object-contain rounded-md"
                     />
-                </AspectRatio>
-            )
+                    {isDetecting && (
+                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md">
+                            <div className="text-white text-center">
+                                <Icons.sparkles className="mx-auto h-8 w-8 animate-spin" />
+                                <p>Finding objects...</p>
+                            </div>
+                        </div>
+                    )}
+                    {detectedObjects.map(({ box, label }, index) => {
+                         const tagged = tags.find(t => t.box.toString() === box.toString());
+                         return(
+                            <Popover key={index} onOpenChange={(open) => {
+                                if (!open) {
+                                    setActiveTaggingBox(null);
+                                    setTagInput("");
+                                }
+                             }}>
+                                <PopoverTrigger asChild>
+                                    <button
+                                        type="button"
+                                        className={cn(
+                                            "absolute border-2 hover:border-blue-400 focus:border-blue-400 focus:outline-none transition-all",
+                                            tagged ? "border-blue-500 bg-blue-500/30" : "border-dashed border-white/80 hover:bg-white/20",
+                                        )}
+                                        style={{
+                                            left: `${box[0] * 100}%`,
+                                            top: `${box[1] * 100}%`,
+                                            width: `${(box[2] - box[0]) * 100}%`,
+                                            height: `${(box[3] - box[1]) * 100}%`,
+                                        }}
+                                        onClick={() => setActiveTaggingBox({box, label})}
+                                    >
+                                        <span className="absolute -top-6 left-0 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded-full capitalize">{tagged ? tagged.text : label}</span>
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent>
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium">Tag "{label}"</p>
+                                        <Input 
+                                            placeholder="Add a tag..."
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                        />
+                                        <Button onClick={handleSaveTag} size="sm" className="w-full">Save Tag</Button>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                         )
+                    })}
+                    </>
+                ) : (
+                    <AspectRatio ratio={9 / 16} className="bg-muted rounded-md overflow-hidden w-full max-w-sm mx-auto">
+                        <video
+                            src={preview}
+                            controls
+                            className="w-full h-full object-contain"
+                        />
+                    </AspectRatio>
+                )}
+            </div>
         ) : (
           <div className="text-center text-muted-foreground">
             <Icons.image className="mx-auto h-12 w-12" />

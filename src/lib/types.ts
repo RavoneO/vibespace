@@ -22,6 +22,12 @@ export type Comment = {
   timestamp: string | Timestamp;
 };
 
+export type PostTag = {
+  label: string;
+  text: string;
+  box: number[];
+}
+
 export type Post = {
   id: string;
   user: User;
@@ -32,6 +38,7 @@ export type Post = {
   likes: number;
   likedBy: string[];
   comments: Comment[];
+  tags?: PostTag[];
   timestamp: string | Timestamp;
   status?: 'processing' | 'published';
   dataAiHint?: string;
