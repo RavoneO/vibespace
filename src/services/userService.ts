@@ -1,10 +1,11 @@
+'use server';
 
 import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { uploadFile } from './storageService';
 import { createActivity } from './activityService';
-import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
+import { createUserProfile as createUserProfileServer, updateUserProfile as updateUserProfileServer } from './userService.server';
 
 export async function getUserById(userId: string): Promise<User | null> {
   try {
@@ -21,35 +22,7 @@ export async function getUserById(userId: string): Promise<User | null> {
 }
 
 export async function createUserProfile(userId: string, data: { name: string; username: string; email: string; }) {
-    try {
-        const nameCheck = await analyzeContent({ text: data.name });
-        if (!nameCheck.isAllowed) {
-            throw new Error(nameCheck.reason || "The provided name is not allowed.");
-        }
-
-        const usernameCheck = await analyzeContent({ text: data.username });
-        if (!usernameCheck.isAllowed) {
-            throw new Error(usernameCheck.reason || "The provided username is not allowed.");
-        }
-
-        const userRef = doc(db, 'users', userId);
-        const nameForAvatar = data.name.split(' ').join('+');
-        await setDoc(userRef, {
-            name: data.name,
-            username: data.username,
-            email: data.email,
-            avatar: `https://ui-avatars.com/api/?name=${nameForAvatar}&background=random`,
-            bio: "Welcome to Vibespace!",
-            followers: [],
-            following: [],
-            savedPosts: [],
-            isPrivate: false,
-            showActivityStatus: true,
-        });
-    } catch (error: any) {
-        console.error("Error creating user profile:", error);
-        throw new Error(`Failed to create user profile: ${error.message}`);
-    }
+    return createUserProfileServer(userId, data);
 }
 
 export async function searchUsers(searchText: string): Promise<User[]> {
@@ -157,33 +130,5 @@ export async function updateUserSettings(userId: string, settings: Partial<Pick<
 }
 
 export async function updateUserProfile(userId: string, data: { name: string; bio: string; avatarFile?: File }) {
-    try {
-        const nameCheck = await analyzeContent({ text: data.name });
-        if (!nameCheck.isAllowed) {
-            throw new Error(nameCheck.reason || "The provided name is not allowed.");
-        }
-        
-        if (data.bio) {
-            const bioCheck = await analyzeContent({ text: data.bio });
-            if (!bioCheck.isAllowed) {
-                throw new Error(bioCheck.reason || "The provided bio is not allowed.");
-            }
-        }
-
-        const userRef = doc(db, 'users', userId);
-        const updateData: { name: string; bio: string; avatar?: string } = {
-            name: data.name,
-            bio: data.bio,
-        };
-
-        if (data.avatarFile) {
-            const avatarUrl = await uploadFile(data.avatarFile, `avatars/${userId}_${Date.now()}`);
-            updateData.avatar = avatarUrl;
-        }
-
-        await updateDoc(userRef, updateData);
-    } catch (error: any) {
-        console.error("Error updating user profile:", error);
-        throw new Error(`Failed to update user profile: ${error.message}`);
-    }
+    return updateUserProfileServer(userId, data);
 }

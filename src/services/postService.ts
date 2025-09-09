@@ -1,4 +1,3 @@
-
 'use server';
 
 import { db, storage } from '@/lib/firebase';
@@ -7,7 +6,6 @@ import { ref, deleteObject } from 'firebase/storage';
 import type { PostTag } from '@/lib/types';
 import { createActivity } from './activityService';
 import { createPost as createPostServer, updatePost as updatePostServer, addComment as addCommentServer } from './postService.server';
-
 
 export async function createPost(postData: {
     userId: string;
@@ -23,7 +21,6 @@ export async function createPost(postData: {
 export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
     return await updatePostServer(postId, data);
 }
-
 
 export async function addComment(postId: string, commentData: { userId: string, text: string }) {
     await addCommentServer(postId, commentData);
