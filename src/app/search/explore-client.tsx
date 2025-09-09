@@ -47,9 +47,9 @@ function UserSearchResult({ user, currentUserId, onFollowToggle }: { user: User,
     const isCurrentUser = user.id === currentUserId;
 
     return (
-        <div className="flex items-center justify-between p-3 transition-colors hover:bg-secondary/50 rounded-lg">
+        <div className="flex items-center justify-between p-3 transition-colors hover:bg-secondary/50 rounded-lg -mx-3">
             <Link href={`/profile/${user.username}`} className="flex items-center gap-4 cursor-pointer">
-                <Avatar>
+                <Avatar className="h-12 w-12">
                     <AvatarImage src={user.avatar} alt={user.name} />
                     <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                 </Avatar>
@@ -85,16 +85,21 @@ function ExploreGrid({ posts }: { posts: Post[] }) {
         <div className="grid grid-cols-3 gap-1">
             {posts.map((post) => (
                 <Link href="#" key={post.id}>
-                    <div className="relative aspect-square w-full overflow-hidden group rounded-md">
-                    <Image
-                        src={post.contentUrl}
-                        alt={post.caption}
-                        fill
-                        className="object-cover transition-all duration-300 group-hover:opacity-80"
-                    />
-                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                        <Icons.like className="h-5 w-5 fill-white" />
-                    </div>
+                    <div className="relative aspect-square w-full overflow-hidden group">
+                        <Image
+                            src={post.contentUrl}
+                            alt={post.caption}
+                            fill
+                            className="object-cover transition-all duration-300 group-hover:opacity-80"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white">
+                            <div className="flex items-center gap-1 font-bold text-sm">
+                                <Icons.like className="h-5 w-5 fill-white" /> {post.likes}
+                            </div>
+                            <div className="flex items-center gap-1 font-bold text-sm">
+                                <Icons.comment className="h-5 w-5 fill-white" /> {post.comments.length}
+                            </div>
+                        </div>
                     </div>
                 </Link>
             ))}
@@ -118,7 +123,8 @@ export function ExploreClient() {
   useEffect(() => {
     async function fetchInitialPosts() {
         const posts = await getPosts();
-        setExplorePosts(posts);
+        // Shuffle posts for a more dynamic explore feed
+        setExplorePosts(posts.sort(() => 0.5 - Math.random()));
     }
     fetchInitialPosts();
   }, []);
@@ -141,10 +147,11 @@ export function ExploreClient() {
       } else {
         setUserResults([]);
         setPostResults([]);
-        setIsSearching(false);
       }
     };
-    performSearch();
+    if (debouncedQuery) {
+        performSearch();
+    }
   }, [debouncedQuery]);
   
   const handleFollowToggle = (userId: string, isFollowing: boolean) => {
@@ -163,7 +170,7 @@ export function ExploreClient() {
     }));
   };
 
-  const showSearchResults = debouncedQuery && !isLoading;
+  const showSearchResults = debouncedQuery.length > 0;
 
   return (
     <div>
@@ -171,67 +178,70 @@ export function ExploreClient() {
         <Icons.search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Search for posts, users, tags..."
-          className="w-full pl-10"
+          placeholder="Search for posts, users..."
+          className="w-full pl-10 pr-10"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         {isLoading && <Icons.spinner className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin" />}
       </div>
 
-      <div className="mt-6 space-y-8">
+      <div className="mt-6">
         {showSearchResults ? (
-             <>
-            {userResults.length > 0 && (
-                <div className="space-y-4">
-                    <h2 className="text-lg font-bold">Users</h2>
-                    <div className="flex flex-col gap-2">
-                        {userResults.map((user) => (
-                        <UserSearchResult 
-                            key={user.id} 
-                            user={user} 
-                            currentUserId={authUser?.uid || null}
-                            onFollowToggle={handleFollowToggle} 
-                        />
-                        ))}
+             <div className="space-y-8">
+                {isLoading && (
+                    <>
+                        <PostResultsSkeleton />
+                    </>
+                )}
+                {!isLoading && userResults.length > 0 && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-bold">Users</h2>
+                        <div className="flex flex-col gap-2">
+                            {userResults.map((user) => (
+                            <UserSearchResult 
+                                key={user.id} 
+                                user={user} 
+                                currentUserId={authUser?.uid || null}
+                                onFollowToggle={handleFollowToggle} 
+                            />
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
-            
-            {postResults.length > 0 && (
-                <div className="space-y-4">
-                     <h2 className="text-lg font-bold">Posts</h2>
-                     <div className="grid grid-cols-3 gap-1">
-                        {postResults.map((post) => (
-                            <Link href="#" key={post.id}>
-                                <div className="relative aspect-square w-full overflow-hidden group rounded-md">
-                                <Image
-                                    src={post.contentUrl}
-                                    alt={post.caption}
-                                    fill
-                                    className="object-cover transition-all duration-300 group-hover:opacity-80"
-                                />
-                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                    <Icons.like className="h-5 w-5 fill-white" />
-                                </div>
-                                </div>
-                            </Link>
-                        ))}
-                     </div>
-                </div>
-            )}
+                )}
+                
+                {!isLoading && postResults.length > 0 && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-bold">Posts</h2>
+                        <div className="grid grid-cols-3 gap-1">
+                            {postResults.map((post) => (
+                                <Link href="#" key={post.id}>
+                                    <div className="relative aspect-square w-full overflow-hidden group">
+                                    <Image
+                                        src={post.contentUrl}
+                                        alt={post.caption}
+                                        fill
+                                        className="object-cover transition-all duration-300 group-hover:opacity-80"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                        <Icons.like className="h-5 w-5 fill-white" />
+                                    </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
-            {userResults.length === 0 && postResults.length === 0 && (
-                 <div className="text-center text-muted-foreground py-10">
-                    <p>No results found for "{debouncedQuery}"</p>
-                    <p className="text-sm">Try searching for something else.</p>
-                </div>
-            )}
-            </>
-        ) : !debouncedQuery ? (
-            <ExploreGrid posts={explorePosts} />
+                {!isLoading && userResults.length === 0 && postResults.length === 0 && (
+                    <div className="text-center text-muted-foreground py-10">
+                        <p>No results found for "{debouncedQuery}"</p>
+                        <p className="text-sm">Try searching for something else.</p>
+                    </div>
+                )}
+            </div>
         ) : (
-           <PostResultsSkeleton />
+            <ExploreGrid posts={explorePosts} />
         )}
       </div>
     </div>
