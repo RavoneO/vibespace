@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import type { Post } from '@/lib/types';
+import type { Post, PostTag } from '@/lib/types';
 
 
 // This is a client-side function to create a post shell in Firestore
@@ -13,10 +13,10 @@ export async function createPost(postData: {
     type: 'image' | 'video';
     caption: string;
     hashtags: string[];
-    tags?: any[];
+    tags?: PostTag[];
     collaboratorIds?: string[];
 }) {
-    // This should call an API route to handle post creation securely.
+    // This calls our new API route to handle post creation securely.
     const response = await fetch('/api/posts/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

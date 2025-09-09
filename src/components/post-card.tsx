@@ -119,10 +119,10 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
     }
   
     try {
-      const response = await fetch(`/api/posts/${post.id}/like`, {
+      const response = await fetch(`/api/posts/${post.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userProfile.id })
+        body: JSON.stringify({ userId: userProfile.id, action: 'like' })
       });
   
       if (!response.ok) {
@@ -149,10 +149,10 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
     setIsBookmarked(!originalIsBookmarked);
 
     try {
-        const response = await fetch(`/api/posts/${post.id}/bookmark`, {
+        const response = await fetch(`/api/posts/${post.id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: userProfile.id })
+            body: JSON.stringify({ userId: userProfile.id, action: 'bookmark' })
         });
         if (!response.ok) throw new Error('Failed to toggle bookmark');
         
