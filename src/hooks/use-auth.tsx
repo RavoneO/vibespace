@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         let profile = await getUserById(firebaseUser.uid);
         if (!profile) {
           // If profile doesn't exist, create it.
-          const username = firebaseUser.email?.split('@')[0] || `user${Date.now()}`;
+          const username = firebaseUser.email?.split('@')[0].toLowerCase() || `user${Date.now()}`;
           const newProfileData = {
             name: firebaseUser.displayName || "New User",
             username: username,

@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, arrayRemove, runTransaction, startAt, endAt, orderBy, setDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { uploadFile } from './storageService';
+import { auth as adminAuth } from '@/lib/firebase-admin';
 
 
 export async function getUserById(userId: string): Promise<User | null> {
@@ -13,7 +14,18 @@ export async function getUserById(userId: string): Promise<User | null> {
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
     if (userDoc.exists()) {
-      return { id: userDoc.id, ...userDoc.data() } as User;
+      // Get Firebase Auth user data
+      try {
+        const authUser = await adminAuth.getUser(userId);
+        return { 
+          id: userDoc.id, 
+          ...userDoc.data(),
+          email: authUser.email,
+        } as User;
+      } catch (authError) {
+        console.warn(`Could not fetch auth data for user ${userId}, returning firestore data only.`, authError);
+        return { id: userDoc.id, ...userDoc.data() } as User;
+      }
     }
     return null;
   } catch (error) {
@@ -29,7 +41,7 @@ export async function getUserByUsername(username: string): Promise<User | null> 
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
-        return { id: userDoc.id, ...userDoc.data() } as User;
+        return await getUserById(userDoc.id);
       }
       return null;
     } catch (error) {
@@ -51,7 +63,9 @@ export async function searchUsers(searchText: string): Promise<User[]> {
         );
             
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+        const userPromises = querySnapshot.docs.map(doc => getUserById(doc.id));
+        const users = (await Promise.all(userPromises)).filter((u): u is User => u !== null);
+        return users;
     } catch (error) {
         console.error("Error searching users:", error);
         return [];
@@ -63,8 +77,7 @@ export async function createUserProfile(userId: string, data: { name: string; us
     const nameForAvatar = data.name.split(' ').join('+');
     await setDoc(userRef, {
         name: data.name,
-        username: data.username,
-        email: data.email,
+        username: data.username.toLowerCase(), // Store username in lowercase for case-insensitive queries
         avatar: `https://ui-avatars.com/api/?name=${nameForAvatar}&background=random`,
         bio: "Welcome to Vibespace!",
         followers: [],

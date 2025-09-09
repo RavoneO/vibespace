@@ -1,0 +1,19 @@
+import * as admin from 'firebase-admin';
+
+// This env var should be set in `apphosting.yaml` for production
+// and in `.env.local` for local development.
+const serviceAccount = JSON.parse(
+  (process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}') as string
+);
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
+
+const firestore = admin.firestore();
+const auth = admin.auth();
+const storage = admin.storage();
+
+export { firestore, auth, storage };
