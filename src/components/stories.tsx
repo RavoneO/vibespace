@@ -1,6 +1,8 @@
+
 "use client"
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import type { Story, User as UserType } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Icons } from "./icons";
@@ -9,7 +11,6 @@ import { Skeleton } from "./ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { createStory, updateStory } from "@/services/storyService";
-import { getStories } from "@/services/storyService.server";
 import { uploadFile } from "@/services/storageService";
 import Link from "next/link";
 import { Button } from "./ui/button";
@@ -21,30 +22,18 @@ interface StoriesProps {
 }
 
 export function Stories({ stories: initialStories }: StoriesProps) {
-    const { user: authUser, isGuest } = useAuth();
+    const { userProfile, isGuest } = useAuth();
     const { toast } = useToast();
+    const router = useRouter();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [viewerOpen, setViewerOpen] = React.useState(false);
     const [selectedStoryIndex, setSelectedStoryIndex] = React.useState(0);
-    const [loading, setLoading] = React.useState(true);
     const [isUploading, setIsUploading] = React.useState(false);
     const [stories, setStories] = React.useState(initialStories);
-    const [currentUserProfile, setCurrentUserProfile] = React.useState<UserType | null>(null);
-
+    
     React.useEffect(() => {
         setStories(initialStories);
-        setLoading(false);
     }, [initialStories]);
-
-    React.useEffect(() => {
-        const fetchUserProfile = async () => {
-            if (authUser && !isGuest) {
-                const profile = await getUserById(authUser.uid);
-                setCurrentUserProfile(profile);
-            }
-        };
-        fetchUserProfile();
-    }, [authUser, isGuest]);
 
     const openStory = (index: number) => {
         setSelectedStoryIndex(index);
@@ -52,7 +41,7 @@ export function Stories({ stories: initialStories }: StoriesProps) {
     }
     
     const handleAddStoryClick = () => {
-        if (!authUser || isGuest) {
+        if (!userProfile || isGuest) {
             toast({ 
                 title: "Log in or sign up to add a story.", 
                 variant: "destructive",
@@ -65,7 +54,7 @@ export function Stories({ stories: initialStories }: StoriesProps) {
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file || !authUser) return;
+        if (!file || !userProfile) return;
     
         setIsUploading(true);
         toast({ title: "Uploading your story..." });
@@ -76,12 +65,12 @@ export function Stories({ stories: initialStories }: StoriesProps) {
             const fileType = file.type.startsWith('image') ? 'image' : 'video';
             
             storyId = await createStory({
-              userId: authUser.uid,
+              userId: userProfile.id,
               type: fileType,
               duration: fileType === 'video' ? 15 : 5, // Example duration
             });
 
-            const contentUrl = await uploadFile(file, `stories/${authUser.uid}/${storyId}_${file.name}`);
+            const contentUrl = await uploadFile(file, `stories/${userProfile.id}/${storyId}_${file.name}`);
     
             await updateStory(storyId, {
               contentUrl,
@@ -89,8 +78,7 @@ export function Stories({ stories: initialStories }: StoriesProps) {
             });
     
             toast({ title: "Story posted successfully!" });
-            const updatedStories = await getStories();
-            setStories(updatedStories);
+            router.refresh();
           } catch (error) {
             console.error("Error creating story:", error);
             if (storyId) {
@@ -112,23 +100,8 @@ export function Stories({ stories: initialStories }: StoriesProps) {
         backgroundUpload();
     };
     
-    const currentUserStory = stories.find(s => s.user.id === authUser?.uid);
-    const otherUserStories = stories.filter(s => s.user.id !== authUser?.uid);
-
-    if (loading) {
-        return (
-            <div className="relative p-4">
-                <div className="flex space-x-4">
-                    {[...Array(5)].map((_, i) => (
-                        <div key={i} className="flex-shrink-0 w-20 text-center space-y-1.5">
-                            <Skeleton className="w-16 h-16 mx-auto rounded-full" />
-                            <Skeleton className="h-3 w-16 mx-auto" />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )
-    }
+    const currentUserStory = stories.find(s => s.user.id === userProfile?.id);
+    const otherUserStories = stories.filter(s => s.user.id !== userProfile?.id);
 
     return (
         <>
