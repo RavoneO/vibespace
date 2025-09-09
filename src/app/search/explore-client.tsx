@@ -139,6 +139,7 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
       if (debouncedQuery) {
         setIsSearching(true);
         startTransition(async () => {
+          try {
             const userPromise = searchUsers(debouncedQuery);
             const postPromise = searchPosts(debouncedQuery);
             
@@ -147,7 +148,11 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
             setUserResults(users);
             setPostResults(searchResult.results || []);
 
+          } catch (error) {
+             console.error("Search failed", error);
+          } finally {
             setIsSearching(false);
+          }
         });
       } else {
         setUserResults([]);

@@ -6,8 +6,6 @@ import type { Post, User, Comment, PostTag } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService.server';
 import { createActivity } from './activityService.server';
 import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
-import { semanticSearch as semanticSearchFlow } from '@/ai/flows/ai-semantic-search';
-import type { SemanticSearchInput, SemanticSearchOutput } from '@/ai/flows/ai-semantic-search';
 
 const userCache = new Map<string, User>();
 async function getFullUser(userId: string): Promise<User> {
@@ -341,8 +339,4 @@ export async function toggleLike(postId: string, userId: string) {
         }
         return isLiked;
     });
-}
-
-export async function semanticSearch(input: SemanticSearchInput): Promise<SemanticSearchOutput> {
-  return semanticSearchFlow(input);
 }
