@@ -15,7 +15,7 @@ import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { AdCard } from "@/components/ad-placeholder";
+import { AdCard } from "@/components/ad-card";
 
 function FeedSkeleton() {
   return (
