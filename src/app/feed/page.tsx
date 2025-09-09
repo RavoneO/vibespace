@@ -15,7 +15,7 @@ import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { AdPlaceholder } from "@/components/ad-placeholder";
+import { AdCard } from "@/components/ad-placeholder";
 
 function FeedSkeleton() {
   return (
@@ -188,12 +188,20 @@ export default function FeedPage() {
             </div>
            ) : (
              <div className="space-y-1">
-                {posts.map((post, index) => (
-                  <>
-                    <PostCard key={post.id} post={post} />
-                    {(index + 1) % 4 === 0 && <AdPlaceholder key={`ad-${index}`} />}
-                  </>
-                ))}
+                {posts.map((post, index) => {
+                  const adIndex = index + 1;
+                  const showAd = adIndex % 4 === 0;
+                  
+                  // Get captions from the last 3 posts for context
+                  const recentCaptions = posts.slice(Math.max(0, index - 3), index).map(p => p.caption);
+
+                  return (
+                    <>
+                      <PostCard key={post.id} post={post} />
+                      {showAd && <AdCard key={`ad-${index}`} recentCaptions={recentCaptions} />}
+                    </>
+                  )
+                })}
               </div>
            )}
       </main>
