@@ -10,15 +10,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { searchUsers, toggleFollow } from "@/services/userService";
-import { semanticSearch, SemanticSearchOutput } from "@/ai/flows/ai-semantic-search";
+import { searchPostsAndUsers } from "./actions";
+import type { SemanticSearchOutput } from "@/ai/flows/ai-semantic-search";
 import type { User, Post } from "@/lib/types";
-import { useAuth } from "@/hooks/use-auth";
+import { useSession } from "next-auth/react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function UserSearchResult({ user, currentUserId, onFollowToggle }: { user: User, currentUserId: string | null, onFollowToggle: (userId: string, isFollowing: boolean) => void }) {
     const { toast } = useToast();
-    const { isGuest } = useAuth();
+    const { data: session } = useSession();
+    const isGuest = !session;
     const [isFollowing, setIsFollowing] = useState(user.followers?.includes(currentUserId || '') || false);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -107,7 +109,8 @@ function ExploreGrid({ posts }: { posts: Post[] }) {
 }
 
 export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Post[] }) {
-  const { user: authUser } = useAuth();
+  const { data: session } = useSession();
+  const authUser = session?.user;
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebounce(query, 500);
   const [userResults, setUserResults] = useState<User[]>([]);
@@ -123,12 +126,12 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
         setIsSearching(true);
         startTransition(async () => {
             const userPromise = searchUsers(debouncedQuery);
-            const postPromise = semanticSearch({ query: debouncedQuery });
+            const postPromise = searchPostsAndUsers(debouncedQuery);
             
-            const [users, posts] = await Promise.all([userPromise, postPromise]);
+            const [users, searchResult] = await Promise.all([userPromise, postPromise]);
             
             setUserResults(users);
-            setPostResults(posts.results || []);
+            setPostResults(searchResult.posts || []);
 
             setIsSearching(false);
         });
@@ -148,9 +151,9 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
             const currentFollowers = user.followers || [];
             let newFollowers;
             if (isFollowing) {
-                newFollowers = [...currentFollowers, authUser.uid];
+                newFollowers = [...currentFollowers, authUser.email!];
             } else {
-                newFollowers = currentFollowers.filter(id => id !== authUser.uid);
+                newFollowers = currentFollowers.filter(id => id !== authUser.email);
             }
             return { ...user, followers: newFollowers };
         }
@@ -190,7 +193,7 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
                             <UserSearchResult 
                                 key={user.id} 
                                 user={user} 
-                                currentUserId={authUser?.uid || null}
+                                currentUserId={authUser?.email || null}
                                 onFollowToggle={handleFollowToggle} 
                             />
                             ))}

@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import { getUserByUsername } from "@/services/userService.server";
 import { getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/postService.server";
-import { generateVibe } from "@/services/userService";
+import { generateVibe } from "@/services/userService.server";
 import { ProfileClientPage } from "./profile-client-page";
 import type { Post } from "@/lib/types";
 

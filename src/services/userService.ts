@@ -6,7 +6,6 @@ import { collection, doc, getDoc, getDocs, query, where, updateDoc, arrayUnion, 
 import type { User } from '@/lib/types';
 import { createActivity } from './activityService';
 import { uploadFile } from './storageService';
-import { generateVibe as generateVibeServer } from '@/ai/flows/ai-profile-vibe';
 
 export async function getUserById(userId: string): Promise<User | null> {
   if (!userId) return null;
@@ -165,8 +164,4 @@ export async function updateUserProfile(userId: string, data: { name: string; bi
     }
 
     await updateDoc(userRef, updateData);
-}
-
-export async function generateVibe(captions: string[]) {
-    return generateVibeServer({ captions });
 }

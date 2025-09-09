@@ -1,10 +1,13 @@
 
+
 import { firestore as adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import type { Post, User, Comment, PostTag } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService.server';
 import { createActivity } from './activityService.server';
-import { analyzeContent } from './aiService';
+import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
+import { semanticSearch as semanticSearchFlow } from '@/ai/flows/ai-semantic-search';
+import type { SemanticSearchInput, SemanticSearchOutput } from '@/ai/flows/ai-semantic-search';
 
 const userCache = new Map<string, User>();
 async function getFullUser(userId: string): Promise<User> {
@@ -302,40 +305,44 @@ export async function deletePost(postId: string) {
 export async function toggleLike(postId: string, userId: string) {
     const postRef = adminDb.collection('posts').doc(postId);
     
-    const postDoc = await postRef.get();
-    if (!postDoc.exists) {
-        throw new Error("Post not found");
-    }
-
-    const postData = postDoc.data()!;
-    const likedBy = postData.likedBy || [];
-    let isLiked;
-
-    if (likedBy.includes(userId)) {
-        // Unlike
-        await postRef.update({
-            likedBy: admin.firestore.FieldValue.arrayRemove(userId),
-            likes: admin.firestore.FieldValue.increment(-1)
-        });
-        isLiked = false;
-    } else {
-        // Like
-        await postRef.update({
-            likedBy: admin.firestore.FieldValue.arrayUnion(userId),
-            likes: admin.firestore.FieldValue.increment(1)
-        });
-        isLiked = true;
-
-        if (postData.userId !== userId) {
-             await createActivity({
-                type: 'like',
-                actorId: userId,
-                notifiedUserId: postData.userId,
-                postId: postId
-            });
+    return adminDb.runTransaction(async (transaction) => {
+        const postDoc = await transaction.get(postRef);
+        if (!postDoc.exists) {
+            throw new Error("Post not found");
         }
-    }
-    return isLiked;
+
+        const postData = postDoc.data()!;
+        const likedBy = postData.likedBy || [];
+        let isLiked;
+
+        if (likedBy.includes(userId)) {
+            // Unlike
+            transaction.update(postRef, {
+                likedBy: admin.firestore.FieldValue.arrayRemove(userId),
+                likes: admin.firestore.FieldValue.increment(-1)
+            });
+            isLiked = false;
+        } else {
+            // Like
+            transaction.update(postRef, {
+                likedBy: admin.firestore.FieldValue.arrayUnion(userId),
+                likes: admin.firestore.FieldValue.increment(1)
+            });
+            isLiked = true;
+
+            if (postData.userId !== userId) {
+                await createActivity({
+                    type: 'like',
+                    actorId: userId,
+                    notifiedUserId: postData.userId,
+                    postId: postId
+                });
+            }
+        }
+        return isLiked;
+    });
 }
 
-    
+export async function semanticSearch(input: SemanticSearchInput): Promise<SemanticSearchOutput> {
+  return semanticSearchFlow(input);
+}

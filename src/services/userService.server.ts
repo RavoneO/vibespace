@@ -1,7 +1,10 @@
 
+'use server';
+
 import { firestore as adminDb } from '@/lib/firebase-admin';
 import type { User } from '@/lib/types';
 import { uploadFile } from './storageService'; // Assuming storageService is client-safe or you have a .server version
+import { generateVibe as generateVibeServer } from '@/ai/flows/ai-profile-vibe';
 
 export async function getUserById(userId: string): Promise<User | null> {
   if (!userId) return null;
@@ -93,4 +96,8 @@ export async function updateUserProfile(userId: string, data: { name: string; bi
 
 
     await userRef.update(updateData);
+}
+
+export async function generateVibe(captions: string[]) {
+    return generateVibeServer({ captions });
 }
