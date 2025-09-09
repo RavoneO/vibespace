@@ -15,6 +15,8 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTheme } from "@/hooks/use-theme";
+import { cn } from "@/lib/utils";
 
 interface SettingsItemProps {
   label: string;
@@ -90,11 +92,11 @@ function SettingsGroup({ title, children }: SettingsGroupProps) {
 function SettingsSkeleton() {
     return (
         <div className="p-4 space-y-6">
-            {[...Array(2)].map((_, i) => (
+            {[...Array(3)].map((_, i) => (
                  <div key={i}>
                     <Skeleton className="h-6 w-32 mb-2" />
                     <div className="bg-secondary rounded-lg p-4 space-y-4">
-                        {[...Array(3)].map((_, j) => (
+                        {[...Array(2)].map((_, j) => (
                             <div key={j} className="flex justify-between items-center">
                                 <Skeleton className="h-5 w-24" />
                                 <Skeleton className="h-5 w-16" />
@@ -109,6 +111,7 @@ function SettingsSkeleton() {
 
 export default function SettingsPage() {
     const { user: authUser, userProfile, isGuest, loading } = useAuth();
+    const { theme, setTheme } = useTheme();
     const { toast } = useToast();
     const [settings, setSettings] = useState({
         isPrivate: userProfile?.isPrivate || false,
@@ -183,6 +186,13 @@ export default function SettingsPage() {
                     <SettingsItem label="Password" value="Change" onClick={handlePasswordChange} disabled={isDisabled} />
                 </SettingsGroup>
 
+                <SettingsGroup title="Appearance">
+                    <div className="p-4 flex justify-around">
+                        <Button variant={theme === 'default' ? 'default' : 'outline'} onClick={() => setTheme('default')}>Default</Button>
+                        <Button variant={theme === 'vibrant' ? 'default' : 'outline'} onClick={() => setTheme('vibrant')}>Vibrant</Button>
+                    </div>
+                </SettingsGroup>
+
                 <SettingsGroup title="Privacy">
                     <SettingsItem 
                         label="Private Account" 
@@ -216,5 +226,3 @@ export default function SettingsPage() {
     </AppLayout>
   );
 }
-
-    

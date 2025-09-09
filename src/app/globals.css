@@ -60,6 +60,53 @@
     --chart-5: 340 75% 55%;
     --page-background: 224 71.4% 4.1%;
   }
+
+  .theme-vibrant {
+    --background: 270 60% 97%; /* Light lavender */
+    --foreground: 275 30% 15%; /* Dark purple */
+    --card: 270 60% 100%;
+    --card-foreground: 275 30% 15%;
+    --popover: 270 60% 100%;
+    --popover-foreground: 275 30% 15%;
+    --primary: 320 80% 55%; /* Vibrant pink */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 50% 93%; /* Lighter lavender */
+    --secondary-foreground: 320 80% 25%;
+    --muted: 270 50% 93%;
+    --muted-foreground: 275 30% 45%;
+    --accent: 180 70% 45%; /* Bright cyan */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 270 30% 88%;
+    --input: 270 30% 90%;
+    --ring: 320 80% 55%;
+    --page-background: 270 60% 97%;
+  }
+
+  .dark.theme-vibrant {
+    --background: 275 15% 10%; /* Very dark purple */
+    --foreground: 270 60% 97%; /* Light lavender */
+    --card: 275 15% 15%;
+    --card-foreground: 270 60% 97%;
+    --popover: 275 15% 10%;
+    --popover-foreground: 270 60% 97%;
+    --primary: 320 80% 65%; /* Bright pink */
+    --primary-foreground: 275 15% 10%;
+    --secondary: 275 15% 20%;
+    --secondary-foreground: 270 60% 97%;
+    --muted: 275 15% 20%;
+    --muted-foreground: 270 30% 70%;
+    --accent: 180 70% 55%; /* Bright cyan */
+    --accent-foreground: 275 15% 10%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 275 15% 25%;
+    --input: 275 15% 25%;
+    --ring: 320 80% 65%;
+    --page-background: 275 15% 8%;
+  }
+
 }
 
 @layer base {
