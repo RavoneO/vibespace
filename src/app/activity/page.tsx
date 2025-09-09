@@ -1,11 +1,10 @@
 
 import AppLayout from "@/components/app-layout";
-import { ActivityFeed } from "./activity-feed";
+import { ActivityFeed } from "@/app/activity/activity-feed";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getActivity, markAllActivitiesAsRead } from "@/services/activityService";
+import { getActivity, markAllActivitiesAsRead } from "@/services/activityService.server";
 import { headers } from 'next/headers';
-import { redirect } from "next/navigation";
 
 
 function ActivitySkeleton() {

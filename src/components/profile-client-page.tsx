@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { useEffect, useState, useCallback, Suspense } from "react";
-import { findOrCreateConversation } from "@/services/messageService.server";
 import type { User, Post } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -182,8 +181,18 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
     }
     setIsMessageLoading(true);
     try {
-        const conversationId = await findOrCreateConversation(userProfile.id, user.id);
-        router.push(`/messages/chat?id=${conversationId}`);
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId: userProfile.id, targetUserId: user.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start conversation');
+      }
+
+      const { conversationId } = await response.json();
+      router.push(`/messages/chat?id=${conversationId}`);
     } catch (error) {
         console.error("Failed to start conversation", error);
         toast({ title: "Could not start conversation.", variant: "destructive" });

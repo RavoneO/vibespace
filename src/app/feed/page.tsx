@@ -51,7 +51,6 @@ export default async function FeedPage() {
     postsWithAds.push(posts[i]);
     const adIndex = i + 1;
     if(adIndex % 4 === 0 && availableAds.length > 0) {
-      // Ad selection logic remains, but it's now called from a client-compatible service
       const recentCaptions = posts.slice(Math.max(0, i - 3), i).map(p => p.caption);
       const ad = await selectAd(availableAds, recentCaptions);
       postsWithAds.push({ type: 'ad', ad });
