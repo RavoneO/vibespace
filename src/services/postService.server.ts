@@ -6,6 +6,8 @@ import type { Post, User, Comment, PostTag } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService.server';
 import { createActivity } from './activityService.server';
 import { analyzeContent } from '@/ai/flows/ai-content-analyzer';
+import { selectAd as selectAdFlow } from '@/ai/flows/ai-ad-selector';
+import type { Ad } from './adService';
 
 const userCache = new Map<string, User>();
 async function getFullUser(userId: string): Promise<User> {
@@ -339,4 +341,14 @@ export async function toggleLike(postId: string, userId: string) {
         }
         return isLiked;
     });
+}
+
+export async function selectAd(availableAds: Ad[], recentCaptions: string[]): Promise<Ad> {
+    try {
+        const ad = await selectAdFlow({ availableAds, recentCaptions });
+        return ad;
+    } catch (e) {
+        console.error("AI ad selection failed, falling back to random.", e);
+        return availableAds[Math.floor(Math.random() * availableAds.length)];
+    }
 }

@@ -1,4 +1,5 @@
 
+
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
@@ -8,14 +9,13 @@ import { PostCard } from "@/components/post-card";
 import { Stories } from "@/components/stories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getStories } from "@/services/storyService.server";
-import { getPosts } from "@/services/postService.server";
+import { getPosts, selectAd } from "@/services/postService.server";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AdCard } from "@/components/ad-card";
 import { Suspense } from "react";
 import { getAvailableAds } from "@/services/adService";
-import { selectAd } from "@/ai/flows/ai-ad-selector";
 import type { Ad } from "@/services/adService";
 
 function FeedSkeleton() {
@@ -63,14 +63,8 @@ export default async function FeedPage() {
     const adIndex = i + 1;
     if(adIndex % 4 === 0 && availableAds.length > 0) {
       const recentCaptions = posts.slice(Math.max(0, i - 3), i).map(p => p.caption);
-      try {
-        const ad = await selectAd({ availableAds, recentCaptions });
-        postsWithAds.push({ type: 'ad', ad });
-      } catch (e) {
-        // AI might fail, pick a random ad
-        const ad = availableAds[Math.floor(Math.random() * availableAds.length)];
-        postsWithAds.push({ type: 'ad', ad });
-      }
+      const ad = await selectAd(availableAds, recentCaptions);
+      postsWithAds.push({ type: 'ad', ad });
     }
   }
 
