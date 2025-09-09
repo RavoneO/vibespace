@@ -1,5 +1,4 @@
 
-'use server';
 
 import { db, storage } from '@/lib/firebase';
 import { collection, doc, updateDoc, arrayUnion, addDoc, serverTimestamp, increment, arrayRemove, deleteDoc, getDoc } from 'firebase/firestore';
@@ -64,6 +63,7 @@ export async function updatePost(postId: string, data: Partial<{ caption: string
 
 
 export async function addComment(postId: string, commentData: { userId: string, text: string }) {
+    'use server';
     try {
         const moderationResult = await analyzeContent({ text: commentData.text });
         if (!moderationResult.isAllowed) {
