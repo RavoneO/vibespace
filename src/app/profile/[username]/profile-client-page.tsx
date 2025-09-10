@@ -112,8 +112,7 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
         }
       }
     }
-    // Temporarily disable AI vibe generation to avoid potential issues
-    // generateVibe();
+    generateVibe();
   }, [initialPosts]);
 
   const showLoginToast = useCallback(() => {
