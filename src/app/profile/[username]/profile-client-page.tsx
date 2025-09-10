@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { UserPosts, PostGridSkeleton } from "./user-posts";
+import { UserPosts, PostGridSkeleton } from "@/components/user-posts";
 
 interface ProfileClientPageProps {
   user: User;
@@ -370,3 +370,5 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
     </AppLayout>
   );
 }
+
+    

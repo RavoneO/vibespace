@@ -1,4 +1,5 @@
-import { CreatePostForm } from "./create-post-form";
+
+import { CreatePostForm } from "@/components/create-post-form";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
@@ -24,3 +25,5 @@ export default function CreatePostPage() {
     </div>
   );
 }
+
+    

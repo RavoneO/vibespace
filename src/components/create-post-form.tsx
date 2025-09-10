@@ -297,7 +297,7 @@ export function CreatePostForm() {
     const backgroundUpload = async () => {
         try {
             const file = values.file as File;
-            const hashtags = values.caption.match(/#\w+/g) || [];
+            const hashtags = values.caption.match(/#\\w+/g) || [];
     
             const postId = await createPost({
                 userId: userProfile.id,
@@ -585,3 +585,5 @@ export function CreatePostForm() {
     </div>
   );
 }
+
+    
