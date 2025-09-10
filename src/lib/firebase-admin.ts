@@ -37,7 +37,8 @@ function getFirebaseAdminApp() {
 
     let serviceAccount;
     try {
-        serviceAccount = JSON.parse(keyRaw);
+        const decodedKey = Buffer.from(keyRaw, 'base64').toString('utf-8');
+        serviceAccount = JSON.parse(decodedKey);
     } catch (err: any) {
         throw new Error(
         `Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY JSON: ${err.message}. ` +
