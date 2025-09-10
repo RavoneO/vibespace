@@ -106,7 +106,7 @@ export function UploadReelForm() {
     
     const backgroundUpload = async () => {
         const file = values.file as File;
-        const hashtags = values.caption.match(/#\w+/g) || [];
+        const hashtags = values.caption.match(/#\\w+/g) || [];
         let postId = '';
         try {
             postId = await createPost({

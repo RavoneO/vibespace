@@ -24,7 +24,8 @@ export async function createPost(postData: {
     });
 
     if (!response.ok) {
-        throw new Error("Failed to create post");
+        const errorBody = await response.json().catch(() => ({ error: 'Failed to create post' }));
+        throw new Error(errorBody.error);
     }
     
     const { postId } = await response.json();
