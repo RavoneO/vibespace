@@ -1,6 +1,6 @@
 
 import AppLayout from "@/components/app-layout";
-import { ActivityFeed } from "@/app/activity/activity-feed";
+import { ActivityFeed } from "@/components/activity-feed";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getActivity, markAllActivitiesAsRead } from "@/services/activityService.server";

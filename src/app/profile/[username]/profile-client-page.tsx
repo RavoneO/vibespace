@@ -4,7 +4,6 @@ import AppLayout from "@/components/app-layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Icons } from "@/components/icons";
 import Link from "next/link";
@@ -15,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UserPosts, PostGridSkeleton } from "@/components/user-posts";
+import { PostGrid } from "@/components/post-grid";
 
 interface ProfileClientPageProps {
   user: User;
@@ -141,7 +141,6 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
     setIsFollowLoading(true);
     const originalIsFollowing = isFollowing;
     
-    // Optimistic update
     setIsFollowing(!originalIsFollowing);
     setFollowCount(prev => ({
         ...prev,
@@ -160,11 +159,9 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
       }
 
       const { isFollowing: newIsFollowing } = await response.json();
-      // Sync with server state
       setIsFollowing(newIsFollowing);
 
     } catch (error) {
-        // Revert on error
         setIsFollowing(originalIsFollowing);
         setFollowCount(prev => ({
             ...prev,
@@ -184,21 +181,18 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
     }
     setIsMessageLoading(true);
     try {
-        const response = await fetch('/api/conversations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                currentUserId: userProfile.id,
-                targetUserId: user.id
-            })
-        });
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId: userProfile.id, targetUserId: user.id }),
+      });
 
-        if (!response.ok) {
-            throw new Error('Failed to start conversation');
-        }
+      if (!response.ok) {
+        throw new Error('Failed to start conversation');
+      }
 
-        const { conversationId } = await response.json();
-        router.push(`/messages/chat?id=${conversationId}`);
+      const { conversationId } = await response.json();
+      router.push(`/messages/chat?id=${conversationId}`);
     } catch (error) {
         console.error("Failed to start conversation", error);
         toast({ title: "Could not start conversation.", variant: "destructive" });
@@ -311,27 +305,14 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
             </Suspense>
             <TabsContent value="saved" className="mt-0">
                {isCurrentUserProfile ? (
-                 initialSavedPosts.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-0.5">
-                      {initialSavedPosts.map((post) => (
-                        <div key={post.id} className="relative aspect-square w-full overflow-hidden group">
-                           <Image
-                                src={post.contentUrl}
-                                alt={post.caption}
-                                fill
-                                className="object-cover transition-all duration-300 group-hover:opacity-80"
-                                data-ai-hint={post.dataAiHint}
-                            />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center text-muted-foreground py-24">
-                        <Icons.bookmark className="mx-auto h-12 w-12" />
-                        <p className="mt-4 font-semibold">No saved posts</p>
-                        <p className="text-sm">Save posts to see them here.</p>
-                    </div>
-                  )
+                  <PostGrid 
+                    posts={initialSavedPosts} 
+                    noPostsMessage={{
+                        icon: Icons.bookmark,
+                        title: "No saved posts",
+                        text: "Save posts to see them here."
+                    }}
+                  />
                ) : (
                 <div className="text-center text-muted-foreground py-24">
                     <Icons.lock className="mx-auto h-12 w-12" />
@@ -341,27 +322,14 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
             </TabsContent>
             {isCurrentUserProfile && (
                 <TabsContent value="likes" className="mt-0">
-                    {initialLikedPosts.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-0.5">
-                            {initialLikedPosts.map((post) => (
-                                <div key={post.id} className="relative aspect-square w-full overflow-hidden group">
-                                    <Image
-                                        src={post.contentUrl}
-                                        alt={post.caption}
-                                        fill
-                                        className="object-cover transition-all duration-300 group-hover:opacity-80"
-                                        data-ai-hint={post.dataAiHint}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center text-muted-foreground py-24">
-                            <Icons.liked className="mx-auto h-12 w-12" />
-                            <p className="mt-4 font-semibold">No liked posts yet</p>
-                            <p className="text-sm">Posts you like will appear here.</p>
-                        </div>
-                    )}
+                    <PostGrid 
+                        posts={initialLikedPosts}
+                        noPostsMessage={{
+                            icon: Icons.liked,
+                            title: "No liked posts yet",
+                            text: "Posts you like will appear here."
+                        }}
+                    />
                 </TabsContent>
             )}
           </Tabs>
