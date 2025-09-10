@@ -1,4 +1,4 @@
-import { UploadReelForm } from "./upload-reel-form";
+import { UploadReelForm } from "@/components/upload-reel-form";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
