@@ -1,0 +1,45 @@
+
+import { notFound } from "next/navigation";
+import { getUserByUsername, getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/userService.server";
+import { ProfileClientPage } from "./profile-client-page";
+import type { Post } from "@/lib/types";
+
+export default async function UserProfilePage(props: any) {
+  const { username } = props.params;
+
+  const fetchedUser = await getUserByUsername(username);
+
+  if (!fetchedUser) {
+    notFound();
+  }
+
+  // --- Start Parallel Data Fetching ---
+  
+  // 1. Fetch the user's own posts
+  const postsPromise = getPostsByUserId(fetchedUser.id);
+  
+  // 2. Fetch saved and liked posts
+  const savedPostsPromise = getSavedPosts(fetchedUser.savedPosts || []);
+  const likedPostsPromise = getLikedPostsByUserId(fetchedUser.id);
+
+  // Await all fetches concurrently
+  const [
+    userPosts, 
+    savedPosts,
+    likedPosts
+  ] = await Promise.all([
+    postsPromise,
+    savedPostsPromise,
+    likedPostsPromise,
+  ]);
+  // --- End Parallel Data Fetching ---
+
+  return (
+    <ProfileClientPage
+      user={fetchedUser}
+      initialPosts={userPosts}
+      initialSavedPosts={savedPosts}
+      initialLikedPosts={likedPosts}
+    />
+  );
+}
