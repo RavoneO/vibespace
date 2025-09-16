@@ -1,12 +1,11 @@
 
 import { notFound } from "next/navigation";
-import { getUserByUsername } from "@/services/userService.server";
-import { getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/postService.server";
+import { getUserByUsername, getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from "@/services/userService.server";
 import { ProfileClientPage } from "./profile-client-page";
 import type { Post } from "@/lib/types";
 
-export default async function UserProfilePage({ params }: { params: { username: string }}) {
-  const { username } = params;
+export default async function UserProfilePage(props: any) {
+  const { username } = props.params;
 
   const fetchedUser = await getUserByUsername(username);
 

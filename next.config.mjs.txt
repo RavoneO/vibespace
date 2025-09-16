@@ -2,10 +2,7 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    // This is the essential fix for stubborn CJS/ESM issues.
-    serverComponentsExternalPackages: ['firebase-admin'],
-  },
+  serverExternalPackages: ['firebase-admin'],
   images: {
     unoptimized: true,
     remotePatterns: [
