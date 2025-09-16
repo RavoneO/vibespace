@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/icons";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,7 +11,8 @@ import { SplashAd } from "@/components/splash-ad";
 import type { Ad } from "@/services/adService.server";
 
 export function WelcomeClient({ initialSplashAd }: { initialSplashAd: Ad | null }) {
-    const { user, loading, setAsGuest } = useAuth();
+    const router = useRouter();
+    const { user, loading, isGuest, setAsGuest } = useAuth();
     const [isSplashAdOpen, setIsSplashAdOpen] = useState(false);
 
     useEffect(() => {
@@ -25,7 +27,15 @@ export function WelcomeClient({ initialSplashAd }: { initialSplashAd: Ad | null 
 
     const handleGuestLogin = () => {
         setAsGuest();
+        router.push("/feed");
     };
+
+    // If the user is a guest, redirect them to the feed immediately.
+    useEffect(() => {
+        if (isGuest) {
+            router.push("/feed");
+        }
+    }, [isGuest, router]);
 
     return (
         <>
@@ -48,7 +58,7 @@ export function WelcomeClient({ initialSplashAd }: { initialSplashAd: Ad | null 
                             <Icons.spinner className="animate-spin mr-2" />
                             Loading...
                         </Button>
-                    ) : user ? (
+                    ) : user || isGuest ? (
                         <Button asChild size="lg">
                             <Link href="/feed">Go to Your Feed</Link>
                         </Button>
@@ -63,7 +73,7 @@ export function WelcomeClient({ initialSplashAd }: { initialSplashAd: Ad | null 
                         </>
                     )}
                 </div>
-                {!user && !loading && (
+                {!user && !loading && !isGuest && (
                     <Button variant="link" className="mt-4" onClick={handleGuestLogin}>
                         Continue as Guest
                     </Button>

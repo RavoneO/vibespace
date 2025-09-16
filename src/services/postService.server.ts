@@ -40,6 +40,13 @@ async function getFullUser(userId: string): Promise<User | null> {
     return user;
 }
 
+// Helper to serialize any kind of timestamp (Firestore Timestamp, JS Date, or number)
+function serializeTimestamp(ts: any): number | null {
+    if (!ts) return null;
+    if (typeof ts.toMillis === 'function') return ts.toMillis(); // Firestore Timestamp
+    if (typeof ts.getTime === 'function') return ts.getTime(); // JavaScript Date
+    return ts; // Already a number
+}
 
 async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): Promise<Post | null> {
     const data = docSnapshot.data();
@@ -52,7 +59,8 @@ async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): 
     
     const commentsWithUsers = data.comments ? await Promise.all(data.comments.map(async (comment: any) => {
         const commentUser = await getFullUser(comment.userId);
-        return commentUser ? { ...comment, user: commentUser } : null;
+        if (!commentUser) return null;
+        return { ...comment, user: commentUser, timestamp: serializeTimestamp(comment.timestamp) };
     })) : [];
 
     return {
@@ -67,7 +75,7 @@ async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): 
         likes: data.likes || 0,
         likedBy: data.likedBy || [],
         comments: commentsWithUsers.filter(Boolean),
-        timestamp: data.timestamp,
+        timestamp: serializeTimestamp(data.timestamp),
         status: data.status,
         dataAiHint: data.dataAiHint,
     } as Post;
@@ -177,8 +185,8 @@ export async function addComment(postId: string, comment: { userId: string, text
   
   const newComment = {
     ...comment,
-    timestamp: new Date(),
-    id: adminDb.collection('tmp').doc().id // Generate a unique ID for the comment
+    timestamp: new Date(), // This becomes a Firestore Timestamp in the DB
+    id: adminDb.collection('tmp').doc().id
   };
 
   await postRef.update({
@@ -201,7 +209,16 @@ export async function addComment(postId: string, comment: { userId: string, text
   const user = await getUserById(comment.userId);
   if(!user) throw new Error("Comment user not found");
 
-  return { ...newComment, user };
+  // Explicitly build the final object to return to the client
+  const finalComment: Comment = {
+      id: newComment.id,
+      text: newComment.text,
+      userId: newComment.userId,
+      user: user,
+      timestamp: newComment.timestamp.getTime() // Ensure it's a number
+  };
+
+  return finalComment;
 }
 
 export async function getPostsByHashtag(tag: string): Promise<Post[]> {

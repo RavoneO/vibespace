@@ -14,7 +14,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: "Vibespace",
-  description: "A modern social content sharing app.
+  description: "A modern social content sharing app.",
   manifest: "/manifest.json",
 };
 
