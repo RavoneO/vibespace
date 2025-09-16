@@ -9,22 +9,20 @@ import {
   useEffect,
   useCallback,
 } from "react";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged, User as FirebaseUser, getRedirectResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import type { User as AppUser } from "@/lib/types";
 
 export const AuthContext = createContext<{
   user: FirebaseUser | null;
   userProfile: AppUser | null;
-  loading: boolean; // This will now represent authLoading
-  profileLoading: boolean;
+  loading: boolean;
   isGuest: boolean;
   setAsGuest: () => void;
 }>({
   user: null,
   userProfile: null,
   loading: true,
-  profileLoading: true,
   isGuest: false,
   setAsGuest: () => {},
 });
@@ -39,75 +37,74 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(true);
   const [isGuest, setIsGuestState] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const processRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          const response = await fetch('/api/user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                userId: result.user.uid,
+                displayName: result.user.displayName,
+                email: result.user.email,
+                photoURL: result.user.photoURL,
+            }),
+          });
+          if (!response.ok) throw new Error('Failed to create/update user profile');
+          const profile = await response.json();
+          setUserProfile(profile);
+        }
+      } catch (error) {
+        console.error("Error processing redirect result", error);
+      } 
+    };
+
+    processRedirect();
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
-      setLoading(false); // Auth state is now known, unblock UI immediately
-      
-      const guestStatus = sessionStorage.getItem('isGuest');
-      if (guestStatus === 'true' && !firebaseUser) {
-        setIsGuestState(true);
-        setProfileLoading(false);
-      } else {
+      if (firebaseUser) {
         setIsGuestState(false);
+        sessionStorage.removeItem('isGuest');
+        if (!userProfile) { // Fetch profile only if not already set by redirect
+          try {
+            const response = await fetch(`/api/user?userId=${firebaseUser.uid}`);
+            if (response.ok) {
+              const profile = await response.json();
+              setUserProfile(profile);
+            }
+          } catch (error) {
+            console.error("Error fetching user profile", error);
+          }
+        }
+      } else {
+        const guestStatus = sessionStorage.getItem('isGuest');
+        if (guestStatus === 'true') {
+          setIsGuestState(true);
+        }
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        setProfileLoading(true);
-        sessionStorage.removeItem('isGuest');
-        try {
-            const response = await fetch('/api/user', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    userId: user.uid,
-                    displayName: user.displayName,
-                    email: user.email,
-                    photoURL: user.photoURL,
-                }),
-            });
-            if (!response.ok) {
-                throw new Error('Failed to fetch user profile');
-            }
-            const profile = await response.json();
-            setUserProfile(profile);
-        } catch (e) {
-            console.error("Error fetching user profile", e);
-            setUserProfile(null);
-        } finally {
-            setProfileLoading(false);
-        }
-      } else {
-        setUserProfile(null);
-        if (!isGuest) {
-            setProfileLoading(false);
-        }
-      }
-    }
-    fetchProfile();
-  }, [user, isGuest]);
-  
   const setAsGuest = useCallback(() => {
     sessionStorage.setItem('isGuest', 'true');
     setIsGuestState(true);
     setUser(null);
+    setUserProfile(null);
+    setLoading(false);
   }, []);
-
 
   const value = {
     user,
     userProfile,
     loading,
-    profileLoading,
     isGuest,
     setAsGuest,
   };

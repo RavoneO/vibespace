@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
@@ -21,9 +20,7 @@ export default function SignupPage() {
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      toast({ title: "Welcome to Vibespace!" });
-      router.push("/feed");
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error("Google sign up error", error);
       toast({
@@ -39,25 +36,25 @@ export default function SignupPage() {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md mx-4">
         <CardHeader className="text-center">
-          <div className="flex justify-center items-center mb-4">
-              <Icons.sparkles className="h-8 w-8 text-primary" />
-          </div>
+            <div className="flex justify-center items-center mb-4">
+                <Icons.sparkles className="h-8 w-8 text-primary" />
+            </div>
           <CardTitle className="text-2xl">Create your Vibespace Account</CardTitle>
-          <CardDescription>Join the community and start sharing your vibes</CardDescription>
+          <CardDescription>Join the community and start sharing your vibes.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-           <Button onClick={handleGoogleSignUp} disabled={isLoading} className="w-full">
+          <Button onClick={handleGoogleSignUp} disabled={isLoading} className="w-full">
             {isLoading && <Icons.spinner className="animate-spin mr-2" />}
             Sign Up with Google
           </Button>
           <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>
-              Already have an account?{" "}
+                Already have an account?{" "}
               <Link href="/login" className="font-semibold text-primary hover:underline">
-                Log in
+                Log In
               </Link>
             </p>
-             <p className="mt-2">
+            <p className="mt-2">
               Back to{" "}
               <Link href="/" className="font-semibold text-primary hover:underline">
                 welcome page

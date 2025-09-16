@@ -3,7 +3,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,7 @@ export default function LoginPage() {
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      toast({ title: "Successfully signed in!" });
-      router.push("/feed");
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error("Google sign in error", error);
       toast({
