@@ -41,6 +41,7 @@ async function getFullUser(userId: string): Promise<User | null> {
 }
 
 // Helper to serialize any kind of timestamp (Firestore Timestamp, JS Date, or number)
+// This is critical to prevent serialization errors on the client (processBinaryChunk).
 function serializeTimestamp(ts: any): number | null {
     if (!ts) return null;
     if (typeof ts.toMillis === 'function') return ts.toMillis(); // Firestore Timestamp
@@ -60,6 +61,7 @@ async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): 
     const commentsWithUsers = data.comments ? await Promise.all(data.comments.map(async (comment: any) => {
         const commentUser = await getFullUser(comment.userId);
         if (!commentUser) return null;
+        // The comment timestamp is explicitly serialized to a number.
         return { ...comment, user: commentUser, timestamp: serializeTimestamp(comment.timestamp) };
     })) : [];
 
@@ -75,6 +77,7 @@ async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): 
         likes: data.likes || 0,
         likedBy: data.likedBy || [],
         comments: commentsWithUsers.filter(Boolean),
+        // The main post timestamp is explicitly serialized to a number.
         timestamp: serializeTimestamp(data.timestamp),
         status: data.status,
         dataAiHint: data.dataAiHint,
