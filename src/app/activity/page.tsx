@@ -24,7 +24,7 @@ function ActivitySkeleton() {
 }
 
 export default async function ActivityPage() {
-    const headersList = headers();
+    const headersList = await headers();
     // This is a workaround to get user in server component without a full auth library like next-auth
     const userHeader = headersList.get('x-user-id');
     const userId = userHeader; // In a real app, you'd get this from a session
