@@ -1,14 +1,16 @@
-'use server';
 /**
  * @fileOverview Centralized Genkit AI initialization.
  */
 
 import {genkit} from 'genkit';
-import {googleAI} from 'genkit/googleai';
+import {googleAI} from '@genkit-ai/google-genai';
+import {logger} from 'genkit/logging';
+
+logger.setLogLevel('debug');
 
 const googleApiKey = process.env.GOOGLE_API_KEY;
 if (!googleApiKey) {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.npm_lifecycle_event !== 'build') {
     // In production, we should fail hard if the key is not set.
     throw new Error('GOOGLE_API_KEY is not set in the environment.');
   } else {
@@ -25,6 +27,4 @@ export const ai = genkit({
       apiKey: googleApiKey,
     }),
   ],
-  logLevel: 'debug',
-  enableTracingAndMetrics: true,
 });

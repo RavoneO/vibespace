@@ -559,8 +559,8 @@ const SidebarMenuButton = React.forwardRef<
           if (React.isValidElement(child) && child.type === 'span' && state === 'collapsed') {
             return null;
           }
-          if (React.isValidElement(child) && child.props.className?.includes('size-5')) {
-             return React.cloneElement(child, { className: cn(child.props.className, state === 'collapsed' ? 'size-6' : 'size-5') });
+          if (React.isValidElement(child) && (child.props as any).className?.includes('size-5')) {
+             return React.cloneElement(child as any, { className: cn((child.props as any).className, state === 'collapsed' ? 'size-6' : 'size-5') });
           }
           return child;
         })}

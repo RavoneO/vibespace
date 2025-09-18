@@ -56,14 +56,14 @@ export function AppSidebar() {
         <SidebarMenu>
           {menuItems.map((item) => {
              const finalHref = item.href === '/profile' && userProfile ? `/profile/${userProfile.username}` : item.href;
-             const isActive = (item.href === "/feed" && pathname === item.href) || (item.href !== "/feed" && pathname.startsWith(item.href) && item.href !== "/profile") || (item.href === "/profile" && userProfile && pathname.startsWith(`/profile/${userProfile.username}`));
+             const isActive = !!((item.href === "/feed" && pathname === item.href) || (item.href !== "/feed" && pathname.startsWith(item.href) && item.href !== "/profile") || (item.href === "/profile" && userProfile && pathname.startsWith(`/profile/${userProfile.username}`)));
              
              return (
                  <SidebarMenuItem key={item.label}>
                     <Link href={finalHref} className="w-full">
                         <SidebarMenuButton
                         className="w-full justify-start relative"
-                        variant="ghost"
+                        variant="default"
                         size="lg"
                         isActive={isActive}
                         tooltip={item.label}

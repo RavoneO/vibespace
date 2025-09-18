@@ -1,6 +1,6 @@
 "use client";
 
-import type { Ad } from "@/services/adService";
+import type { Ad } from "@/lib/types";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";

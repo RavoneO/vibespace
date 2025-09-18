@@ -6,6 +6,7 @@ export const users: User[] = [
     id: "user1",
     name: "Vibe Dog",
     username: "vibedog",
+    email: "vibedog@example.com",
     avatar: "https://picsum.photos/id/237/100/100",
     bio: "Just a happy dog sharing my daily adventures. 🐾",
   },
@@ -13,6 +14,7 @@ export const users: User[] = [
     id: "user2",
     name: "Creative Cat",
     username: "creativecat",
+    email: "creativecat@example.com",
     avatar: "https://picsum.photos/id/1074/100/100",
     bio: "Designer & artist. Turning caffeine into art. 🎨",
   },
@@ -20,6 +22,7 @@ export const users: User[] = [
     id: "user3",
     name: "Travel Explorer",
     username: "travelexplorer",
+    email: "travelexplorer@example.com",
     avatar: "https://picsum.photos/id/1015/100/100",
     bio: "Wandering the globe one city at a time. ✈️",
   },
@@ -27,18 +30,22 @@ export const users: User[] = [
 
 export const currentUser = users[0];
 
+const now = Date.now();
+
 const comments: Comment[] = [
     {
         id: "comment1",
         text: "This looks amazing! 🔥",
         user: users[1],
-        timestamp: "2h ago",
+        userId: users[1].id,
+        timestamp: now - 2 * 60 * 60 * 1000,
     },
     {
         id: "comment2",
         text: "So cute!",
         user: users[2],
-        timestamp: "1h ago",
+        userId: users[2].id,
+        timestamp: now - 1 * 60 * 60 * 1000,
     },
 ];
 
@@ -52,8 +59,9 @@ export const posts: Post[] = [
     caption: "Enjoying a beautiful day out in the park! The weather is perfect for a long walk.",
     hashtags: ["#doglife", "#goodboy", "#parkdays", "#vibes"],
     likes: 128,
+    likedBy: [],
     comments: comments,
-    timestamp: "3h ago",
+    timestamp: now - 3 * 60 * 60 * 1000,
   },
   {
     id: "post2",
@@ -64,8 +72,9 @@ export const posts: Post[] = [
     caption: "Morning hike views. There's nothing like watching the sunrise from the top of a mountain.",
     hashtags: ["#hikingadventures", "#sunrise", "#naturelover", "#getoutside"],
     likes: 256,
+    likedBy: [],
     comments: [],
-    timestamp: "5h ago",
+    timestamp: now - 5 * 60 * 60 * 1000,
   },
   {
     id: "post3",
@@ -76,8 +85,9 @@ export const posts: Post[] = [
     caption: "Meet the newest member of the family! Everyone, say hi to Buddy.",
     hashtags: ["#puppylove", "#newfriend", "#dogsofinstagram"],
     likes: 512,
+    likedBy: [],
     comments: comments.slice(0, 1),
-    timestamp: "1d ago",
+    timestamp: now - 24 * 60 * 60 * 1000,
   },
     {
     id: "post4",
@@ -88,8 +98,9 @@ export const posts: Post[] = [
     caption: "Lost in the right direction.",
     hashtags: ["#forest", "#path", "#nature"],
     likes: 98,
+    likedBy: [],
     comments: [],
-    timestamp: "2d ago",
+    timestamp: now - 2 * 24 * 60 * 60 * 1000,
   },
 ];
 
@@ -100,7 +111,7 @@ export const stories: Story[] = [
         type: 'image',
         contentUrl: 'https://picsum.photos/id/433/450/800',
         duration: 5,
-        timestamp: '15m ago',
+        timestamp: now - 15 * 60 * 1000,
         dataAiHint: 'city skyline',
     },
     ...users.filter(u => u.id !== currentUser.id).map((user, index) => ({
@@ -109,7 +120,7 @@ export const stories: Story[] = [
         type: 'image' as 'image',
         contentUrl: `https://picsum.photos/id/${10 + index * 5}/450/800`,
         duration: 5,
-        timestamp: `${(index + 1) * 2}h ago`,
+        timestamp: now - (index + 1) * 2 * 60 * 60 * 1000,
         dataAiHint: 'nature portrait',
     }))
 ];

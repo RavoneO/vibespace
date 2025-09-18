@@ -7,12 +7,14 @@ const SuggestHashtagsInputSchema = z.object({
   mediaDataUri: z.string().describe('The media to suggest hashtags for, as a data uri.'),
   description: z.string().optional().describe('An optional user-provided description of the media.'),
 });
+export type SuggestHashtagsInput = z.infer<typeof SuggestHashtagsInputSchema>;
 
 const SuggestHashtagsOutputSchema = z.object({
     hashtags: z.array(z.string()).describe('A list of 5-10 relevant hashtags, each starting with #.')
 });
+export type SuggestHashtagsOutput = z.infer<typeof SuggestHashtagsOutputSchema>;
 
-export const suggestHashtags = ai.defineFlow(
+const suggestHashtagsFlow = ai.defineFlow(
   {
     name: 'suggestHashtags',
     inputSchema: SuggestHashtagsInputSchema,
@@ -36,6 +38,14 @@ export const suggestHashtags = ai.defineFlow(
       },
     });
 
-    return llmResponse.output()!;
+    const output = llmResponse.output;
+    if (!output) {
+      throw new Error('Failed to suggest hashtags: output was null.');
+    }
+    return output;
   }
 );
+
+export async function suggestHashtags(input: SuggestHashtagsInput): Promise<SuggestHashtagsOutput> {
+    return suggestHashtagsFlow(input);
+}

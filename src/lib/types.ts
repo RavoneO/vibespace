@@ -19,7 +19,8 @@ export type Comment = {
   id: string;
   text: string;
   user: User;
-  timestamp: string | Timestamp;
+  timestamp: number;
+  userId: string;
 };
 
 export type PostTag = {
@@ -40,19 +41,19 @@ export type Post = {
   likedBy: string[];
   comments: Comment[];
   tags?: PostTag[];
-  timestamp: string | Timestamp;
-  status?: 'processing' | 'published';
+  timestamp: number | null;
+  status?: 'processing' | 'published' | 'failed';
   dataAiHint?: string;
 };
 
 export type Story = {
-    id: string;
+    id:string;
     user: User;
     type: 'image' | 'video';
     contentUrl: string;
     duration: number; // in seconds
-    timestamp: string | Timestamp;
-    status?: 'processing' | 'published';
+    timestamp: number | null;
+    status?: 'processing' | 'published' | 'failed';
     dataAiHint?: string;
     viewed?: boolean;
 }
@@ -61,7 +62,7 @@ export type Message = {
     id: string;
     senderId: string;
     text: string;
-    timestamp: Timestamp | Date;
+    timestamp: number;
 }
 
 export type Conversation = {
@@ -69,7 +70,7 @@ export type Conversation = {
     userIds: string[];
     users: User[];
     lastMessage: Message | null;
-    timestamp: Timestamp | Date;
+    timestamp: number;
 }
 
 export type Activity = {
@@ -77,7 +78,7 @@ export type Activity = {
     type: 'like' | 'comment' | 'follow' | 'mention';
     actor: User; // The user who performed the action
     targetPost?: { id: string; contentUrl: string; type: 'image' | 'video' };
-    timestamp: Timestamp;
+    timestamp: number;
 };
 
 export interface Ad {
