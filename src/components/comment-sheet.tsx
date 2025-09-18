@@ -36,7 +36,7 @@ const CommentItem = memo(({ comment }: { comment: Comment }) => {
     const getCommentTimestamp = useCallback((comment: Comment) => {
         if (!comment.timestamp) return "";
         try {
-            const date = (comment.timestamp as any).toDate ? (comment.timestamp as any).toDate() : new Date(comment.timestamp as string);
+            const date = new Date(comment.timestamp);
             return formatDistanceToNowStrict(date, { addSuffix: true });
         } catch (e) {
             return "just now";
@@ -119,7 +119,7 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
         <Separator />
         <ScrollArea className="flex-1 -mx-6">
           <div className="px-6 space-y-6 py-4">
-            {post.comments.sort((a,b) => (b.timestamp as any)?.seconds - (a.timestamp as any)?.seconds).map((comment) => (
+            {post.comments.sort((a,b) => b.timestamp - a.timestamp).map((comment) => (
               <CommentItem key={comment.id} comment={comment} />
             ))}
              {post.comments.length === 0 && (

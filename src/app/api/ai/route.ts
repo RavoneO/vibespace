@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         return NextResponse.json(detectionResult);
       
       case 'semantic-search':
-        const searchResult = await semanticSearch(payload.query);
+        const searchResult = await semanticSearch(payload);
         return NextResponse.json(searchResult);
 
       default:

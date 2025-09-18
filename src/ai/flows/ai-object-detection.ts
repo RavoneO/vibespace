@@ -42,7 +42,11 @@ const detectObjectsFlow = ai.defineFlow(
     outputSchema: DetectObjectsOutputSchema,
   },
   async input => {
-    const { output } = await prompt(input);
-    return output!;
+    const result = await prompt(input);
+    const output = result.output;
+    if (!output) {
+      throw new Error('Failed to detect objects: output was null.');
+    }
+    return output;
   }
 );

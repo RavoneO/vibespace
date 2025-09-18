@@ -6,12 +6,14 @@ import { z } from 'zod';
 const GenerateVibeInputSchema = z.object({
   captions: z.array(z.string()).describe('A list of post captions from a user.'),
 });
+export type GenerateVibeInput = z.infer<typeof GenerateVibeInputSchema>;
 
 const GenerateVibeOutputSchema = z.object({
   vibe: z.string().describe("A short, fun, emoji-filled vibe that summarizes the user's personality based on their post captions."),
 });
+export type GenerateVibeOutput = z.infer<typeof GenerateVibeOutputSchema>;
 
-export const generateVibe = ai.defineFlow(
+const generateVibeFlow = ai.defineFlow(
   {
     name: 'generateVibe',
     inputSchema: GenerateVibeInputSchema,
@@ -36,6 +38,14 @@ export const generateVibe = ai.defineFlow(
       },
     });
 
-    return llmResponse.output()!;
+    const output = llmResponse.output;
+    if (!output) {
+      throw new Error('Failed to generate vibe: output was null.');
+    }
+    return output;
   }
 );
+
+export async function generateVibe(input: GenerateVibeInput): Promise<GenerateVibeOutput> {
+    return generateVibeFlow(input);
+}

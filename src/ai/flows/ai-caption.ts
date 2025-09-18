@@ -6,12 +6,14 @@ import { z } from 'zod';
 const GenerateCaptionInputSchema = z.object({
   mediaDataUri: z.string().describe('The media to generate a caption for, as a data uri.'),
 });
+export type GenerateCaptionInput = z.infer<typeof GenerateCaptionInputSchema>;
 
 const GenerateCaptionOutputSchema = z.object({
   captions: z.array(z.string()).describe('A list of 3-5 suggested captions for the media.'),
 });
+export type GenerateCaptionOutput = z.infer<typeof GenerateCaptionOutputSchema>;
 
-export const generateCaption = ai.defineFlow(
+const generateCaptionFlow = ai.defineFlow(
   {
     name: 'generateCaption',
     inputSchema: GenerateCaptionInputSchema,
@@ -29,6 +31,14 @@ export const generateCaption = ai.defineFlow(
       },
     });
 
-    return llmResponse.output()!;
+    const output = llmResponse.output;
+    if (!output) {
+      throw new Error('Failed to generate caption: output was null.');
+    }
+    return output;
   }
 );
+
+export async function generateCaption(input: GenerateCaptionInput): Promise<GenerateCaptionOutput> {
+    return generateCaptionFlow(input);
+}

@@ -10,7 +10,7 @@ const Slider = React.forwardRef<
   React.ComponentProps<typeof ReactSlider>
 >(({ className, ...props }, ref) => (
   <ReactSlider
-    ref={ref}
+    ref={ref as any}
     className={cn(
       "relative flex w-full touch-none select-none items-center",
       className
@@ -29,7 +29,7 @@ const Slider = React.forwardRef<
       >
         <div
           className="absolute h-full bg-primary"
-          style={{ width: `${state.valueNow}%` }}
+          style={{ width: `${state.value}%` }}
         />
       </div>
     )}
