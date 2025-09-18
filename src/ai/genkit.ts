@@ -3,8 +3,8 @@
  * @fileOverview Centralized Genkit AI initialization.
  */
 
-import {genkit} from 'genkit';
-import {googleAI} from 'genkit/googleai';
+import {configureGenkit} from '@genkit-ai/core';
+import {googleAI} from '@genkit-ai/googleai';
 
 const googleApiKey = process.env.GOOGLE_API_KEY;
 if (!googleApiKey) {
@@ -19,7 +19,7 @@ if (!googleApiKey) {
   }
 }
 
-export const ai = genkit({
+export const genkit = configureGenkit({
   plugins: [
     googleAI({
       apiKey: googleApiKey,

@@ -4,7 +4,6 @@ import { generateVibe } from '@/ai/flows/ai-vibe';
 import { generateCaption } from '@/ai/flows/ai-caption';
 import { suggestHashtags } from '@/ai/flows/ai-hashtags';
 import { detectObjects } from '@/ai/flows/ai-object-detection';
-import { semanticSearch } from '@/ai/flows/ai-semantic-search';
 
 export async function POST(request: Request) {
   try {
@@ -27,10 +26,6 @@ export async function POST(request: Request) {
         const detectionResult = await detectObjects(payload);
         return NextResponse.json(detectionResult);
       
-      case 'semantic-search':
-        const searchResult = await semanticSearch(payload.query);
-        return NextResponse.json(searchResult);
-
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
