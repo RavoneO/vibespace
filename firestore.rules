@@ -1,71 +1,9 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Default deny all
     match /{document=**} {
       allow read, write: if false;
-    }
-
-    // Users collection
-    match /users/{userId} {
-      // Anyone can read user profiles
-      allow read: if true;
-      // Only the user themselves can create or update their profile
-      allow create, update: if isOwner(userId);
-    }
-    
-    // Posts collection
-    match /posts/{postId} {
-      // Anyone can read published posts
-      allow read: if resource.data.status == 'published';
-      // Signed-in users can create posts
-      allow create: if isSignedIn();
-      // Only the owner or a collaborator can update or delete a post
-      allow update, delete: if isSignedIn() && (isOwner(resource.data.userId) || request.auth.uid in resource.data.collaboratorIds);
-    }
-
-    // Stories collection
-    match /stories/{storyId} {
-      // Anyone can read published stories
-      allow read: if resource.data.status == 'published';
-      // Signed-in users can create stories
-      allow create: if isSignedIn();
-      // Only the owner can update or delete
-      allow update, delete: if isSignedIn() && isOwner(resource.data.userId);
-    }
-
-    // Conversations & Messages
-    match /conversations/{conversationId} {
-      // Users can only access conversations they are a part of
-      allow read, create: if isSignedIn() && request.auth.uid in resource.data.userIds;
-      allow update: if isSignedIn() && request.auth.uid in resource.data.userIds;
-
-      match /messages/{messageId} {
-        // Users can only read/write messages in conversations they are a part of
-        allow read, create: if isSignedIn() && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userIds.hasAny([request.auth.uid]);
-      }
-    }
-    
-    // Activity Feed
-    match /activity/{activityId} {
-        // A user can only read their own activity feed
-        allow read: if isSignedIn() && isOwner(resource.data.notifiedUserId);
-        // Any signed-in user can create an activity (like, comment, follow)
-        allow create: if isSignedIn();
-        // Allow updating the 'read' status
-        allow update: if isSignedIn() && isOwner(resource.data.notifiedUserId);
     }
   }
 }
