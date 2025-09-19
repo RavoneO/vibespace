@@ -315,7 +315,7 @@ export function ProfileClientPage({ user, initialPosts, initialSavedPosts, initi
                   />
                ) : (
                 <div className="text-center text-muted-foreground py-24">
-                    <Icons.lock className="mx-auto h-12 w-12" />
+                    <Icons.accountPrivacy className="mx-auto h-12 w-12" />
                     <p className="mt-4 font-semibold">Saved Posts are Private</p>
                 </div>
                )}

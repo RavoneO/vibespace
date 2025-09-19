@@ -129,7 +129,7 @@ export async function toggleFollow(currentUserId: string, targetUserId: string):
     await adminDb.runTransaction(async (transaction) => {
         const currentUserDoc = await transaction.get(currentUserRef);
         
-        if (!currentUserDoc.exists()) {
+        if (!currentUserDoc.exists) {
             throw new Error("Current user does not exist!");
         }
 

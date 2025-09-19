@@ -1,21 +1,22 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { toggleFollow as toggleFollowService } from '@/services/userService.server';
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const { currentUserId } = await request.json();
     if (!currentUserId) {
         return NextResponse.json({ error: 'currentUserId is required' }, { status: 400 });
     }
     
-    const isFollowing = await toggleFollowService(currentUserId, params.id);
+    const isFollowing = await toggleFollowService(currentUserId, id);
     
     return NextResponse.json({ isFollowing });
   } catch (error) {
-    console.error(`Error toggling follow for user ${params.id}:`, error);
+    console.error(`Error toggling follow for user`, error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 function ActivityItem({ activity }: { activity: Activity }) {
     const { actor, type, targetPost, timestamp } = activity;
 
-    const formattedTimestamp = formatDistanceToNowStrict(timestamp.toDate(), { addSuffix: true });
+    const formattedTimestamp = formatDistanceToNowStrict(timestamp, { addSuffix: true });
 
     let message = "";
     switch (type) {

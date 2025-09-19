@@ -1,12 +1,12 @@
 
 // src/app/api/posts/[postId]/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { deletePost as deletePostService, updatePost as updatePostService, addComment as addCommentService } from '@/services/postService.server';
 import { toggleLike, toggleBookmark } from '@/services/userService.server';
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   context: { params: { postId: string } }
 ) {
   try {
@@ -22,7 +22,7 @@ export async function DELETE(
 }
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   context: { params: { postId: string } }
 ) {
     try {
@@ -40,7 +40,7 @@ export async function PATCH(
 }
 
 export async function POST(
-    request: Request,
+    request: NextRequest,
     context: { params: { postId: string } }
   ) {
       try {
