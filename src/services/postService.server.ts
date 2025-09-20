@@ -372,7 +372,7 @@ export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
     try {
       const postsCollection = adminDb.collection('posts');
       const q = postsCollection
-          .where('likedBy', 'array-contains', 'userId')
+          .where('likedBy', 'array-contains', userId)
           .where('status', '==', 'published')
           .orderBy('timestamp', 'desc');
       const querySnapshot = await q.get();

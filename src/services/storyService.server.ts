@@ -11,6 +11,13 @@ async function getFullUser(userId: string): Promise<User | null> {
     return user;
 }
 
+function serializeTimestamp(ts: any): number | null {
+    if (!ts) return null;
+    if (typeof ts.toMillis === 'function') return ts.toMillis();
+    if (typeof ts.getTime === 'function') return ts.getTime();
+    return ts;
+}
+
 export async function getStories(): Promise<Story[]> {
   try {
     const storiesCollection = adminDb.collection('stories');
@@ -38,7 +45,7 @@ export async function getStories(): Promise<Story[]> {
         type: data.type,
         contentUrl: data.contentUrl,
         duration: data.duration,
-        timestamp: data.timestamp,
+        timestamp: serializeTimestamp(data.timestamp),
         dataAiHint: data.dataAiHint,
       } as Story;
     }));

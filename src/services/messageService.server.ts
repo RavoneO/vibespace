@@ -132,7 +132,7 @@ export async function findOrCreateConversation(currentUserId: string, targetUser
 }
 
 // Create a new group conversation
-export async function createGroupConversation(participantIds: string[], groupName: a string): Promise<string> {
+export async function createGroupConversation(participantIds: string[], groupName: string): Promise<string> {
     if (participantIds.length < 2) {
         throw new Error("A group must have at least two participants.");
     }
