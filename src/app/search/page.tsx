@@ -26,7 +26,6 @@ function ExplorePageSkeleton() {
 
 export default async function SearchPage() {
   const posts = await getPosts();
-  const explorePosts = posts.sort(() => 0.5 - Math.random());
 
   return (
     <AppLayout>
@@ -36,7 +35,7 @@ export default async function SearchPage() {
             Explore
           </h1>
           <Suspense fallback={<ExplorePageSkeleton />}>
-            <ExploreClient initialExplorePosts={explorePosts} />
+            <ExploreClient initialExplorePosts={posts} />
           </Suspense>
         </div>
       </main>

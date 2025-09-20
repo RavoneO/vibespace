@@ -44,6 +44,7 @@ export type Post = {
   timestamp: number | null;
   status?: 'processing' | 'published' | 'failed';
   dataAiHint?: string;
+  isSponsored?: boolean;
 };
 
 export type Story = {
@@ -61,8 +62,13 @@ export type Story = {
 export type Message = {
     id: string;
     senderId: string;
-    text: string;
     timestamp: number;
+    type: 'text' | 'image' | 'video' | 'file';
+    text?: string; 
+    contentUrl?: string; 
+    fileName?: string; 
+    fileSize?: number; 
+    readBy?: { [userId: string]: number };
 }
 
 export type Conversation = {
@@ -71,6 +77,9 @@ export type Conversation = {
     users: User[];
     lastMessage: Message | null;
     timestamp: number;
+    isGroup?: boolean;
+    groupName?: string;
+    groupAvatar?: string;
 }
 
 export type Activity = {
@@ -88,3 +97,14 @@ export interface Ad {
     imageUrl: string;
     keywords: string[];
 }
+
+export type Tip = {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  postId: string;
+  amount: number; // in cents
+  timestamp: number;
+};
+
+export type FeedItem = (Post & { type: 'post' }) | (Ad & { type: 'ad' });

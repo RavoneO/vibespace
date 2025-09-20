@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       case 'detect-objects':
         const detectionResult = await detectObjects(payload);
         return NextResponse.json(detectionResult);
-      
+
       case 'semantic-search':
         const searchResult = await semanticSearch(payload);
         return NextResponse.json(searchResult);
@@ -39,5 +39,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message || 'An unexpected error occurred' }, { status: 500 });
   }
 }
-
-    

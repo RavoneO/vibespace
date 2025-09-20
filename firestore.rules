@@ -2,8 +2,66 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    // Helper functions
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isFollower(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId)/followers/$(request.auth.uid));
+    }
+
+    // USER DATA
+    match /users/{userId} {
+      // A user can read a profile if it's public, if they are the owner, or if they follow the user.
+      allow read: if request.auth != null && (resource.data.isPrivate == false || isOwner(userId) || isFollower(userId));
+      
+      // A user can only update their own profile.
+      allow write: if isOwner(userId);
+
+      // Followers subcollection: Who follows the user `userId`
+      match /followers/{followerId} {
+        // The profile owner can see their followers. The follower can see their own entry.
+        allow read: if isOwner(userId) || isOwner(followerId);
+        // A user can add/remove themselves from a followers list.
+        allow write: if isOwner(followerId);
+      }
+
+      // Following subcollection: Who the user `userId` follows
+      match /following/{followingId} {
+        // The profile owner can see who they follow.
+        allow read: if isOwner(userId);
+        // A user can manage their own list of who they follow.
+        allow write: if isOwner(userId);
+      }
+    }
+
+    // POSTS
+    match /posts/{postId} {
+      let post = resource.data;
+      let authorId = post.authorId;
+      
+      // A user can read a post if it's not private, if they are the author, or if they follow the author.
+      // Assumes `isPrivate` is denormalized onto the post document for security and efficiency.
+      allow read: if request.auth != null && (post.isPrivate == false || isOwner(authorId) || isFollower(authorId));
+      
+      // A user can create a post and must be the author.
+      allow create: if request.auth != null && isOwner(request.resource.data.authorId);
+      
+      // The author of a post can update or delete it.
+      allow update, delete: if request.auth != null && isOwner(authorId);
+    }
+    
+    // CONVERSATIONS & MESSAGES
+    match /conversations/{convoId} {
+      // A user can access a conversation if they are a participant.
+      allow read, write: if request.auth.uid in resource.data.participants;
+      
+      match /messages/{messageId} {
+        // A user can access messages in a conversation if they are a participant.
+        allow read, write: if request.auth.uid in get(/databases/$(database)/documents/conversations/$(convoId)).data.participants;
+      }
     }
   }
 }

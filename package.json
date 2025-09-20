@@ -16,7 +16,8 @@
     "test": "jest",
     "postinstall": "patch-package",
     "export": "next export",
-    "capacitor:sync": "npm run build && npx cap sync"
+    "capacitor:sync": "npm run build && npx cap sync",
+    "predeploy": "npm run build"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.0",

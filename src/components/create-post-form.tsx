@@ -308,11 +308,16 @@ export function CreatePostForm() {
                 collaboratorIds: collaborators.map(c => c.id),
             });
     
-            const contentUrl = await uploadFile(file, `posts/${userProfile.id}/${postId}_${file.name}`);
+            const { downloadURL, caption } = await uploadFile(
+                file,
+                `posts/${userProfile.id}/${postId}_${file.name}`,
+                fileType === 'image'
+            );
             
             await updatePost(postId, {
-                contentUrl,
-                status: 'published'
+                contentUrl: downloadURL,
+                status: 'published',
+                ...(fileType === 'image' && caption && { dataAiHint: caption })
             });
 
         } catch (error) {

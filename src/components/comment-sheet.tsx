@@ -90,16 +90,19 @@ export function CommentSheet({ open, onOpenChange, post, onCommentPosted }: Comm
           body: JSON.stringify({ userId: userProfile.id, text: commentText })
       });
 
-      if (!response.ok) throw new Error('Failed to post comment');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to post comment');
+      }
 
       onCommentPosted(commentText);
       setCommentText("");
       toast({ title: "Comment posted!" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error posting comment:", error);
       toast({
         title: "Failed to post comment",
-        description: "Please try again later.",
+        description: error.message || "Please try again later.",
         variant: "destructive"
       });
     } finally {

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Icons } from "@/components/icons";
 import { useToast } from "@/hooks/use-toast";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
@@ -33,6 +34,7 @@ const formSchema = z.object({
 
 
 function GuestPrompt() {
+    const router = useRouter();
     return (
         <Card className="w-full max-w-lg mx-auto">
             <CardHeader>
@@ -41,12 +43,8 @@ function GuestPrompt() {
             <CardContent className="text-center space-y-4">
                 <p className="text-muted-foreground">You need to be logged in to upload a reel for the community to see.</p>
                 <div className="flex gap-4 justify-center">
-                    <Button asChild>
-                        <Link href="/login">Log In</Link>
-                    </Button>
-                    <Button asChild variant="secondary">
-                        <Link href="/signup">Sign Up</Link>
-                    </Button>
+                    <Button onClick={() => router.push('/login')}>Log In</Button>
+                    <Button onClick={() => router.push('/signup')} variant="secondary">Sign Up</Button>
                 </div>
             </CardContent>
         </Card>
@@ -56,9 +54,10 @@ function GuestPrompt() {
 export function UploadReelForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, isGuest } = useAuth();
+  const { user, userProfile, loading, isGuest } = useAuth();
   const [preview, setPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -77,19 +76,24 @@ export function UploadReelForm() {
         setPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-    } else {
+    } else if (file) {
       toast({
         title: "Invalid File Type",
         description: "Please upload a video file.",
         variant: "destructive",
       });
+      if(event.target) event.target.value = "";
       form.resetField("file");
       setPreview(null);
     }
   };
 
+  const handleUploadAreaClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!user) {
+    if (!user || !userProfile) {
         toast({ title: "Please log in to upload a reel.", variant: "destructive" });
         return;
     }
@@ -101,22 +105,22 @@ export function UploadReelForm() {
         description: "You can navigate away, the upload will continue in the background.",
     });
 
-    // Navigate away immediately.
     router.push("/reels");
     
     const backgroundUpload = async () => {
         const file = values.file as File;
-        const hashtags = values.caption.match(/#\\w+/g) || [];
+        const hashtags = values.caption.match(/#\w+/g) || [];
         let postId = '';
         try {
             postId = await createPost({
-                userId: user.uid,
+                userId: userProfile.id,
                 type: 'video',
                 caption: values.caption,
                 hashtags,
+                isReel: true,
             });
     
-            const contentUrl = await uploadFile(file, `reels/${user.uid}/${postId}_${file.name}`);
+            const contentUrl = await uploadFile(file, `reels/${userProfile.id}/${postId}_${file.name}`);
             
             await updatePost(postId, {
                 contentUrl,
@@ -131,8 +135,11 @@ export function UploadReelForm() {
         }
     };
 
-    // Start the background upload but don't wait for it to finish.
     backgroundUpload();
+  }
+
+  if (loading) {
+    return <Icons.spinner className="animate-spin h-8 w-8 mx-auto mt-24" />;
   }
 
   if (isGuest) {
@@ -141,19 +148,29 @@ export function UploadReelForm() {
 
   return (
     <div className="grid md:grid-cols-2 gap-8">
-      <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg">
+       <div 
+        className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg h-96 md:h-[500px] relative cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={handleUploadAreaClick}
+      >
         {preview ? (
-            <AspectRatio ratio={9 / 16} className="bg-muted rounded-md overflow-hidden">
-                <video
-                    src={preview}
-                    controls
-                    className="w-full h-full object-contain"
-                />
-            </AspectRatio>
+            <div className="relative w-full h-full">
+              <AspectRatio ratio={9 / 16} className="bg-black rounded-md overflow-hidden">
+                  <video
+                      src={preview}
+                      controls
+                      className="w-full h-full object-contain"
+                  />
+              </AspectRatio>
+              <div className="absolute bottom-4 right-4 z-10">
+                  <Button type="button" onClick={(e) => { e.stopPropagation(); handleUploadAreaClick(); }}>
+                      Change Video
+                  </Button>
+              </div>
+            </div>
         ) : (
           <div className="text-center text-muted-foreground h-full flex flex-col justify-center">
             <Icons.reels className="mx-auto h-12 w-12" />
-            <p className="mt-2">Upload a video</p>
+            <p className="mt-2">Click or drag to upload a video</p>
           </div>
         )}
       </div>
@@ -164,10 +181,15 @@ export function UploadReelForm() {
             control={form.control}
             name="file"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="hidden">
                 <FormLabel>Video File</FormLabel>
                 <FormControl>
-                  <input type="file" accept="video/*" onChange={handleFileChange} className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90" />
+                  <Input 
+                    type="file" 
+                    accept="video/*" 
+                    onChange={handleFileChange} 
+                    ref={fileInputRef} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

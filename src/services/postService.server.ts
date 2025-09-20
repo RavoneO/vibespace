@@ -5,24 +5,38 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { Post, PostTag, User, Comment } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService.server';
-import { createActivity } from './activityService.server';
+import { checkAndModerateContent } from './contentModerationService';
 
-async function processMentions(text: string, actorId: string, postId: string) {
+// Note: createActivity is removed as its logic is now inside batches.
+
+async function processMentions(
+    batch: FirebaseFirestore.WriteBatch,
+    text: string,
+    actorId: string,
+    postId: string,
+    notifiedUserIds: Set<string>
+) {
     const mentionRegex = /@(\w+)/g;
     const mentions = text.match(mentionRegex);
     if (!mentions) return;
 
     const mentionedUsernames = new Set(mentions.map(m => m.substring(1)));
+    const mentionedUsers = await Promise.all(
+        Array.from(mentionedUsernames).map(username => getUserByUsername(username))
+    );
 
-    for (const username of mentionedUsernames) {
-        const user = await getUserByUsername(username);
-        if (user && user.id !== actorId) {
-            await createActivity({
+    for (const user of mentionedUsers) {
+        if (user && user.id !== actorId && !notifiedUserIds.has(user.id)) {
+            const mentionActivityRef = adminDb.collection('activity').doc();
+            batch.set(mentionActivityRef, {
                 type: 'mention',
                 actorId: actorId,
                 notifiedUserId: user.id,
-                postId: postId
+                postId: postId,
+                timestamp: FieldValue.serverTimestamp(),
+                seen: false,
             });
+            notifiedUserIds.add(user.id);
         }
     }
 };
@@ -40,13 +54,11 @@ async function getFullUser(userId: string): Promise<User | null> {
     return user;
 }
 
-// Helper to serialize any kind of timestamp (Firestore Timestamp, JS Date, or number)
-// This is critical to prevent serialization errors on the client (processBinaryChunk).
 function serializeTimestamp(ts: any): number | null {
     if (!ts) return null;
-    if (typeof ts.toMillis === 'function') return ts.toMillis(); // Firestore Timestamp
-    if (typeof ts.getTime === 'function') return ts.getTime(); // JavaScript Date
-    return ts; // Already a number
+    if (typeof ts.toMillis === 'function') return ts.toMillis();
+    if (typeof ts.getTime === 'function') return ts.getTime();
+    return ts;
 }
 
 async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): Promise<Post | null> {
@@ -61,7 +73,6 @@ async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): 
     const commentsWithUsers = data.comments ? await Promise.all(data.comments.map(async (comment: any) => {
         const commentUser = await getFullUser(comment.userId);
         if (!commentUser) return null;
-        // The comment timestamp is explicitly serialized to a number.
         return { ...comment, user: commentUser, timestamp: serializeTimestamp(comment.timestamp) };
     })) : [];
 
@@ -77,7 +88,6 @@ async function processPostDoc(docSnapshot: FirebaseFirestore.DocumentSnapshot): 
         likes: data.likes || 0,
         likedBy: data.likedBy || [],
         comments: commentsWithUsers.filter(Boolean),
-        // The main post timestamp is explicitly serialized to a number.
         timestamp: serializeTimestamp(data.timestamp),
         status: data.status,
         dataAiHint: data.dataAiHint,
@@ -92,7 +102,15 @@ export async function createPost(postData: {
     tags?: PostTag[];
     collaboratorIds?: string[];
 }) {
-    const docRef = await adminDb.collection('posts').add({
+    const isHarmful = await checkAndModerateContent(postData.caption);
+    if (isHarmful) {
+        throw new Error('Your post has been flagged as harmful and cannot be published.');
+    }
+    
+    const batch = adminDb.batch();
+    const postRef = adminDb.collection('posts').doc();
+
+    batch.set(postRef, {
         userId: postData.userId,
         type: postData.type,
         caption: postData.caption,
@@ -107,21 +125,16 @@ export async function createPost(postData: {
         status: 'processing',
     });
     
-    await processMentions(postData.caption, postData.userId, docRef.id);
+    await processMentions(batch, postData.caption, postData.userId, postRef.id, new Set([postData.userId]));
+    
+    await batch.commit();
 
-    return docRef.id;
+    return postRef.id;
 }
 
 export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
     const postRef = adminDb.collection('posts').doc(postId);
     await postRef.update(data);
-
-    if (data.caption) {
-        const post = await getPostById(postId);
-        if (post) {
-            await processMentions(data.caption, post.user.id, postId);
-        }
-    }
 }
 
 export async function deletePost(postId: string) {
@@ -129,19 +142,155 @@ export async function deletePost(postId: string) {
     await postRef.delete();
 }
 
+export async function likePost(postId: string, userId: string) {
+    const postRef = adminDb.collection('posts').doc(postId);
+    const postDoc = await postRef.get();
+    if (!postDoc.exists) throw new Error("Post not found");
+
+    const postData = postDoc.data()!;
+    if (postData.likedBy.includes(userId)) return; // User already liked the post
+
+    const batch = adminDb.batch();
+
+    batch.update(postRef, {
+        likes: FieldValue.increment(1),
+        likedBy: FieldValue.arrayUnion(userId)
+    });
+
+    if (postData.userId !== userId) {
+        const activityRef = adminDb.collection('activity').doc();
+        batch.set(activityRef, {
+            type: 'like',
+            actorId: userId,
+            notifiedUserId: postData.userId,
+            postId: postId,
+            timestamp: FieldValue.serverTimestamp(),
+            seen: false,
+        });
+    }
+
+    await batch.commit();
+}
+
+export async function unlikePost(postId: string, userId: string) {
+    const postRef = adminDb.collection('posts').doc(postId);
+
+    await adminDb.runTransaction(async (transaction) => {
+        const postDoc = await transaction.get(postRef);
+        if (!postDoc.exists) throw new Error("Post not found");
+        const postData = postDoc.data()!;
+
+        if (!postData.likedBy.includes(userId)) return; // User hasn't liked the post
+
+        transaction.update(postRef, {
+            likes: FieldValue.increment(-1),
+            likedBy: FieldValue.arrayRemove(userId)
+        });
+        
+        // Note: We are not deleting the 'like' activity to keep the notification history.
+    });
+}
+
+
+export async function addComment(postId: string, comment: { userId: string, text: string }): Promise<Comment> {
+    const isHarmful = await checkAndModerateContent(comment.text);
+    if (isHarmful) {
+        throw new Error('Your comment has been flagged as harmful and cannot be published.');
+    }
+
+    const postRef = adminDb.collection('posts').doc(postId);
+    const user = await getUserById(comment.userId);
+    if (!user) throw new Error("Comment user not found");
+
+    let finalComment: Comment;
+
+    await adminDb.runTransaction(async (transaction) => {
+        const postDoc = await transaction.get(postRef);
+        if (!postDoc.exists) throw new Error("Post not found");
+        
+        const postData = postDoc.data()!;
+        const notifiedUserIds = new Set([comment.userId]);
+
+        const newComment = {
+            ...comment,
+            timestamp: new Date(),
+            id: adminDb.collection('tmp').doc().id
+        };
+
+        transaction.update(postRef, {
+            comments: FieldValue.arrayUnion(newComment)
+        });
+
+        if (postData.userId !== comment.userId) {
+            const activityRef = adminDb.collection('activity').doc();
+            transaction.set(activityRef, {
+                type: 'comment',
+                actorId: comment.userId,
+                notifiedUserId: postData.userId,
+                postId: postId,
+                timestamp: FieldValue.serverTimestamp(),
+                seen: false,
+            });
+            notifiedUserIds.add(postData.userId);
+        }
+
+        // Mentions are handled outside the transaction as they require async lookups
+        
+        finalComment = {
+            id: newComment.id,
+            text: newComment.text,
+            userId: newComment.userId,
+            user: user,
+            timestamp: newComment.timestamp.getTime()
+        };
+    });
+    
+    // Handle mentions after the main transaction. 
+    // It's a reasonable trade-off as comment/mention notifications are separate concerns.
+    const batch = adminDb.batch();
+    const postDoc = await postRef.get();
+    const postData = postDoc.data()!;
+    const notifiedUserIds = new Set([comment.userId, postData.userId]);
+    await processMentions(batch, comment.text, comment.userId, postId, notifiedUserIds);
+    await batch.commit();
+
+
+    return finalComment!;
+}
+
 
 export async function getPosts(): Promise<Post[]> {
   try {
     const postsCollection = adminDb.collection('posts');
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
     const q = postsCollection
         .where('status', '==', 'published')
-        .orderBy('timestamp', 'desc')
-        .limit(50);
+        .where('timestamp', '>=', sevenDaysAgo)
+        .orderBy('timestamp', 'desc');
     
     const querySnapshot = await q.get();
     userCache.clear();
     const posts = await Promise.all(querySnapshot.docs.map(processPostDoc));
-    return posts.filter((p): p is Post => p !== null);
+    const validPosts = posts.filter((p): p is Post => p !== null);
+
+    const sortedPosts = validPosts
+      .map(post => {
+        const commentCount = post.comments ? post.comments.length : 0;
+        const likeCount = post.likes || 0;
+        const score = likeCount + commentCount * 2;
+        return { ...post, score };
+      })
+      .sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return (b.timestamp || 0) - (a.timestamp || 0);
+      });
+
+    return sortedPosts.slice(0, 50);
+
   } catch (error) {
     console.error("Error fetching posts:", error);
     return [];
@@ -180,48 +329,6 @@ export async function getPostById(postId: string): Promise<Post | null> {
         console.error("Error fetching post by ID:", error);
         return null;
     }
-}
-
-
-export async function addComment(postId: string, comment: { userId: string, text: string }): Promise<Comment> {
-  const postRef = adminDb.collection('posts').doc(postId);
-  
-  const newComment = {
-    ...comment,
-    timestamp: new Date(), // This becomes a Firestore Timestamp in the DB
-    id: adminDb.collection('tmp').doc().id
-  };
-
-  await postRef.update({
-    comments: FieldValue.arrayUnion(newComment)
-  });
-  
-  const post = await getPostById(postId);
-  if (post) {
-      if (post.user.id !== comment.userId) {
-          await createActivity({
-              type: 'comment',
-              actorId: comment.userId,
-              notifiedUserId: post.user.id,
-              postId: postId,
-          });
-      }
-      await processMentions(comment.text, comment.userId, postId);
-  }
-
-  const user = await getUserById(comment.userId);
-  if(!user) throw new Error("Comment user not found");
-
-  // Explicitly build the final object to return to the client
-  const finalComment: Comment = {
-      id: newComment.id,
-      text: newComment.text,
-      userId: newComment.userId,
-      user: user,
-      timestamp: newComment.timestamp.getTime() // Ensure it's a number
-  };
-
-  return finalComment;
 }
 
 export async function getPostsByHashtag(tag: string): Promise<Post[]> {
@@ -265,7 +372,7 @@ export async function getLikedPostsByUserId(userId: string): Promise<Post[]> {
     try {
       const postsCollection = adminDb.collection('posts');
       const q = postsCollection
-          .where('likedBy', 'array-contains', userId)
+          .where('likedBy', 'array-contains', 'userId')
           .where('status', '==', 'published')
           .orderBy('timestamp', 'desc');
       const querySnapshot = await q.get();
@@ -290,4 +397,36 @@ export async function getSavedPosts(postIds: string[]): Promise<Post[]> {
         console.error("Error fetching saved posts:", error);
         return [];
     }
+}
+
+export async function getPostsForUserFeed(userId: string): Promise<Post[]> {
+  try {
+    const likedPosts = await getLikedPostsByUserId(userId);
+    if (likedPosts.length === 0) {
+      return [];
+    }
+
+    const similarUserIds = new Set<string>();
+    likedPosts.forEach(post => {
+      post.likedBy.forEach(likerId => {
+        if (likerId !== userId) {
+          similarUserIds.add(likerId);
+        }
+      });
+    });
+
+    let recommendedPosts: Post[] = [];
+    for (const similarUserId of Array.from(similarUserIds)) {
+      const posts = await getLikedPostsByUserId(similarUserId);
+      recommendedPosts.push(...posts);
+    }
+
+    const uniquePosts = Array.from(new Map(recommendedPosts.map(post => [post.id, post])).values());
+    const sortedPosts = uniquePosts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    return sortedPosts;
+  } catch (error) {
+    console.error("Error generating user feed:", error);
+    return [];
+  }
 }

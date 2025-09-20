@@ -36,8 +36,12 @@ function ConversationListSkeleton() {
 }
 
 function ConversationItem({ convo, authUserId }: { convo: Conversation, authUserId: string | undefined }) {
-    const otherUser = convo.users.find((u) => u.id !== authUserId);
-    if (!otherUser) return null;
+    const otherUser = !convo.isGroup ? convo.users.find((u) => u.id !== authUserId) : null;
+    
+    const name = convo.isGroup ? convo.groupName : otherUser?.name;
+    const avatar = convo.isGroup ? convo.groupAvatar : otherUser?.avatar;
+
+    if (!name) return null; // Should not happen if data is correct
 
     const isActive = Math.random() > 0.5; // Mocking active status
 
@@ -46,16 +50,18 @@ function ConversationItem({ convo, authUserId }: { convo: Conversation, authUser
             <div className="flex items-center gap-4 p-4">
                 <div className="relative">
                     <Avatar className="h-14 w-14">
-                        <AvatarImage src={otherUser.avatar} />
-                        <AvatarFallback>{otherUser.name.charAt(0)}</AvatarFallback>
+                       {avatar ? <AvatarImage src={avatar} /> : 
+                          <AvatarFallback>
+                            {convo.isGroup ? <Icons.users className="h-6 w-6" /> : name.charAt(0)}
+                          </AvatarFallback>}
                     </Avatar>
-                    {isActive && (
+                    {/* {isActive && (
                         <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-background rounded-full" />
-                    )}
+                    )} */}
                 </div>
                 <div className="flex-1 overflow-hidden">
                     <div className="flex justify-between items-center">
-                        <p className={cn("font-semibold truncate", isActive && "text-primary")}>{otherUser.name}</p>
+                        <p className={cn("font-semibold truncate", isActive && "text-primary")}>{name}</p>
                         {convo.lastMessage?.timestamp && (
                              <p className="text-xs text-muted-foreground">
                                 {formatDistanceToNow(new Date((convo.lastMessage.timestamp as any).seconds * 1000), { addSuffix: true })}
@@ -88,15 +94,15 @@ export function ConversationList({ initialConversations }: { initialConversation
 
   useEffect(() => {
     const results = conversations.filter(convo => {
+        if (convo.isGroup) {
+            return convo.groupName?.toLowerCase().includes(searchQuery.toLowerCase());
+        }
         const otherUser = convo.users.find(u => u.id !== authUser?.uid);
         return otherUser?.name.toLowerCase().includes(searchQuery.toLowerCase()) || otherUser?.username.toLowerCase().includes(searchQuery.toLowerCase());
     });
     setFilteredConversations(results);
   }, [searchQuery, conversations, authUser]);
 
-  const handleNewMessageClick = () => {
-      router.push('/search');
-  }
 
   if (loading) {
     return <ConversationListSkeleton />;
@@ -117,18 +123,11 @@ export function ConversationList({ initialConversations }: { initialConversation
 
   return (
     <div className="flex flex-col h-full bg-card text-card-foreground">
-      <header className="p-4 border-b flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
-        <Button variant="ghost" size="icon" onClick={handleNewMessageClick}>
-            <Icons.pencil className="h-5 w-5" />
-            <span className="sr-only">New Message</span>
-        </Button>
-      </header>
       <div className="p-4">
         <div className="relative">
             <Icons.search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input 
-              placeholder="Search" 
+              placeholder="Search conversations..." 
               className="pl-10 bg-muted border-none" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -141,16 +140,10 @@ export function ConversationList({ initialConversations }: { initialConversation
         ) : (
           <div className="text-center text-muted-foreground py-24 px-4">
             <Icons.messages className="mx-auto h-12 w-12" />
-            <p className="mt-4 font-semibold">No Messages</p>
-            <p className="text-sm">Start a conversation by messaging someone from their profile.</p>
+            <p className="mt-4 font-semibold">No Conversations</p>
+            <p className="text-sm">Your conversations will appear here.</p>
           </div>
         )}
-      </div>
-      <div className="absolute bottom-6 right-6">
-          <Button size="lg" className="rounded-full h-16 w-16 bg-primary hover:bg-primary/90 shadow-lg" onClick={handleNewMessageClick}>
-                <Icons.plus className="h-8 w-8" />
-                <span className="sr-only">New Message</span>
-          </Button>
       </div>
     </div>
   );

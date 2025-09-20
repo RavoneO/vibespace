@@ -1,42 +1,39 @@
+
 "use client";
 
 import type { Ad } from "@/lib/types";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Image from "next/image";
-import Link from "next/link";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
+import { Card, CardContent, CardFooter, CardHeader } from "./ui/card";
 
-export function AdCard({ ad }: { ad: Ad }) {
+interface AdCardProps {
+  ad: Ad;
+}
+
+export function AdCard({ ad }: AdCardProps) {
   return (
-    <div className="p-4">
-        <Card className="overflow-hidden border-2 border-dashed border-accent">
-        <CardHeader>
-            <div className="flex justify-between items-start">
-                <div>
-                    <CardTitle>{ad.headline}</CardTitle>
-                    <CardDescription>{ad.description}</CardDescription>
-                </div>
-                <Badge variant="outline">Ad</Badge>
+    <Card className="overflow-hidden animate-fade-in bg-transparent border-0 border-b rounded-none shadow-none">
+        <CardHeader className="flex flex-row items-center gap-3 p-4">
+            <div className="grid gap-0.5 text-sm">
+                <span className="font-semibold text-primary">Sponsored</span>
             </div>
         </CardHeader>
-        <CardContent className="p-0">
-            <div className="relative w-full aspect-video">
-                 <Image
+        <CardContent className="px-4 py-0">
+            <div className="relative w-full overflow-hidden rounded-lg">
+                <Image
                     src={ad.imageUrl}
                     alt={ad.headline}
-                    fill
-                    className="object-cover"
-                    data-ai-hint="advertisement background"
+                    width={400}
+                    height={400}
+                    className="object-cover w-full"
                 />
             </div>
         </CardContent>
-        <CardFooter className="p-4 bg-secondary/50">
-            <Button asChild className="w-full">
-                <Link href="#">Learn More</Link>
-            </Button>
+        <CardFooter className="p-4 flex flex-col items-start gap-2">
+            <h3 className="font-semibold">{ad.headline}</h3>
+            <p className="text-sm text-muted-foreground">{ad.description}</p>
+            <Button size="sm" className="mt-2">Learn More</Button>
         </CardFooter>
-        </Card>
-    </div>
+    </Card>
   );
 }

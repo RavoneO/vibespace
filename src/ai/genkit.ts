@@ -1,8 +1,9 @@
+
 /**
  * @fileOverview Centralized Genkit AI initialization.
  */
 
-import {genkit} from 'genkit';
+import {genkit, ai} from 'genkit';
 import {googleAI} from '@genkit-ai/google-genai';
 import {logger} from 'genkit/logging';
 
@@ -28,3 +29,5 @@ genkit({
     }),
   ],
 });
+
+export {ai};

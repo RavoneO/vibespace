@@ -37,6 +37,8 @@ import {
   Play,
   Edit,
   HeartHandshake,
+  DollarSign,
+  UserSearch,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -80,8 +82,10 @@ export const Icons = {
   grid: Grid,
   menu: Menu,
   play: Play,
+  dollar: DollarSign,
+  billing: DollarSign,
+  sponsor: Star,
+  userSearch: UserSearch,
 };
 
 export type Icon = LucideIcon;
-
-    

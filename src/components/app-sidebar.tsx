@@ -111,6 +111,14 @@ export function AppSidebar() {
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 mb-2">
+                 <DropdownMenuItem onClick={() => router.push('/settings')}>
+                   <Icons.settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                 </DropdownMenuItem>
+                 <DropdownMenuItem onClick={() => router.push('/settings/payments')}>
+                   <Icons.billing className="mr-2 h-4 w-4" />
+                    <span>Billing</span>
+                 </DropdownMenuItem>
                  <DropdownMenuItem onClick={handleLogout}>
                    <Icons.logout className="mr-2 h-4 w-4" />
                     <span>Log out</span>
@@ -120,7 +128,7 @@ export function AppSidebar() {
         ) : (
             <div className={cn("text-center space-y-2", sidebarState === 'collapsed' && "hidden")}>
                 <p className="text-sm">Sign in to get the full experience.</p>
-                <Button size="sm" className="w-full" onClick={() => router.push('/login')}>
+                <Button size="sm" className="w-inll" onClick={() => router.push('/login')}>
                     Sign In
                 </Button>
             </div>
