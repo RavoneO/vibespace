@@ -29,5 +29,3 @@ export const ai = genkit({
     }),
   ],
 });
-
-export {ai};
