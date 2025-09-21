@@ -8,7 +8,8 @@ import { redirect } from 'next/navigation';
 import { User } from '@/lib/types';
 
 async function getCurrentUser(): Promise<User | null> {
-  const session = cookies().get("session")?.value;
+  const cookieStore = await cookies();
+  const session = cookieStore.get("session")?.value;
   if (!session) return null;
 
   try {

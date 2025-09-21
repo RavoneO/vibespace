@@ -1,18 +1,7 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
-
-const SuggestHashtagsInputSchema = z.object({
-  mediaDataUri: z.string().describe('The media to suggest hashtags for, as a data uri.'),
-  description: z.string().optional().describe('An optional user-provided description of the media.'),
-});
-export type SuggestHashtagsInput = z.infer<typeof SuggestHashtagsInputSchema>;
-
-const SuggestHashtagsOutputSchema = z.object({
-    hashtags: z.array(z.string()).describe('A list of 5-10 relevant hashtags, each starting with #.')
-});
-export type SuggestHashtagsOutput = z.infer<typeof SuggestHashtagsOutputSchema>;
+import { SuggestHashtagsInputSchema, SuggestHashtagsOutputSchema, SuggestHashtagsInput, SuggestHashtagsOutput } from '@/lib/types';
 
 const suggestHashtagsFlow = ai.defineFlow(
   {
@@ -20,7 +9,7 @@ const suggestHashtagsFlow = ai.defineFlow(
     inputSchema: SuggestHashtagsInputSchema,
     outputSchema: SuggestHashtagsOutputSchema,
   },
-  async (input) => {
+  async (input: SuggestHashtagsInput): Promise<SuggestHashtagsOutput> => {
     const llmResponse = await ai.generate({
       prompt: `Suggest 5-10 relevant and trending hashtags for a social media post with the following image and description. Make sure each tag starts with a '#'.
 

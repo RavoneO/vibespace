@@ -4,12 +4,14 @@
 import { addComment as addCommentServer, likePost as likePostServer, unlikePost as unlikePostServer } from './postService.server';
 
 // This is a client-side function that securely calls the server action to create a post.
+import type { PostTag } from '@/lib/types';
+
 export async function createPost(postData: {
     userId: string;
     type: 'image' | 'video';
     caption: string;
     hashtags: string[];
-    tags?: { userId: string; x: number; y: number; }[];
+    tags?: PostTag[];
     collaboratorIds?: string[];
 }) {
     const response = await fetch('/api/posts/create', {

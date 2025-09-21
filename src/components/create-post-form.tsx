@@ -10,7 +10,6 @@ import * as z from "zod";
 import { useDebounce } from "use-debounce";
 import { useAuth } from "@/hooks/use-auth";
 
-import type { DetectObjectsOutput } from "@/ai/flows/ai-object-detection";
 import { createPost, updatePost } from "@/services/postService";
 import { uploadFile } from "@/services/storageService";
 import { searchUsers } from "@/services/userService";
@@ -35,7 +34,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { PostTag, User } from "@/lib/types";
+import type { PostTag, User, DetectObjectsOutput } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const formSchema = z.object({

@@ -56,7 +56,7 @@ export async function searchUsers(searchText: string): Promise<User[]> {
     }
 }
 
-export async function updateUserSettings(userId: string, settings: Partial<Pick<User, 'isPrivate' | 'showActivityStatus'>>) {
+export async function updateUserSettings(userId: string, settings: Partial<Pick<User, 'isPrivate' | 'showActivityStatus' | 'interests' | 'notifications'>>) {
     try {
         const userRef = doc(db, 'users', userId);
         await updateDoc(userRef, settings);
@@ -75,7 +75,7 @@ export async function updateUserProfile(userId: string, data: { name: string; bi
     };
     
     if (data.avatarFile) {
-        const avatarUrl = await uploadFile(data.avatarFile, `avatars/${userId}_${data.avatarFile.name}`);
+        const { downloadURL: avatarUrl } = await uploadFile(data.avatarFile, `avatars/${userId}_${data.avatarFile.name}`);
         updateData.avatar = avatarUrl;
     }
 
