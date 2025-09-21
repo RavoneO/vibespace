@@ -1,10 +1,10 @@
 
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import { firestore } from '@/lib/firebase-admin';
 import { processSponsorship } from '@/services/paymentService.server';
-import { getPostById } from '@/services/postService.server';
+import { getPostById } from '@/services/postService';
 
-export async function POST(request: Request, { params }: any) {
+export async function POST(request: Request, { params }: { params: { postId: string } }) {
   try {
     const { postId } = params;
     const { userId } = await request.json();
@@ -13,7 +13,7 @@ export async function POST(request: Request, { params }: any) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const postRef = adminDb.collection('posts').doc(postId);
+    const postRef = firestore.collection('posts').doc(postId);
     const postDoc = await postRef.get();
 
     if (!postDoc.exists) {
@@ -21,10 +21,6 @@ export async function POST(request: Request, { params }: any) {
     }
 
     const post = postDoc.data();
-
-    if (!post) {
-        return new NextResponse('Post data not found', { status: 404 });
-    }
 
     if (post.user.id !== userId) {
         return new NextResponse('Forbidden', { status: 403 });

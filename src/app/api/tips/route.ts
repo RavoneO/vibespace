@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import { firestore } from '@/lib/firebase-admin';
 import { processTip } from '@/services/paymentService.server';
 import { Tip } from '@/lib/types';
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       timestamp: Date.now(),
     };
 
-    const tipRef = await adminDb.collection('tips').add(tip);
+    const tipRef = await firestore.collection('tips').add(tip);
 
     return NextResponse.json({ success: true, transactionId, tipId: tipRef.id });
   } catch (error) {

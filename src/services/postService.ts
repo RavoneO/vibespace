@@ -1,16 +1,7 @@
 
 'use client';
 
-import { addComment as addCommentServer, likePost as likePostServer, unlikePost as unlikePostServer, updatePost as updatePostServer } from './postService.server';
-
-export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed', dataAiHint?: string }>) {
-    try {
-        await updatePostServer(postId, data);
-    } catch (error) {
-        console.error('Failed to update post:', error);
-        throw new Error('Could not update the post.');
-    }
-}
+import { addComment as addCommentServer, likePost as likePostServer, unlikePost as unlikePostServer } from './postService.server';
 
 // This is a client-side function that securely calls the server action to create a post.
 export async function createPost(postData: {
