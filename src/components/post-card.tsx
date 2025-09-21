@@ -49,7 +49,6 @@ import { Textarea } from "./ui/textarea";
 import { CaptionWithLinks } from "./caption-with-links";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import { getPostById } from "@/services/postService";
 import { processTip } from "@/services/paymentService.server";
 
 interface PostCardProps {
@@ -260,9 +259,10 @@ const PostCardComponent = ({ post: initialPost }: PostCardProps) => {
       comments: [...prev.comments, newComment as any]
     }));
 
-    const updatedPost = await getPostById(post.id);
-    if (updatedPost) {
-      setPost(updatedPost);
+    const response = await fetch(`/api/posts/${post.id}`);
+    if (response.ok) {
+        const updatedPost = await response.json();
+        setPost(updatedPost);
     }
   }, [post.id, userProfile]);
 
