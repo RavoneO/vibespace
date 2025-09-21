@@ -123,7 +123,7 @@ export function UploadReelForm() {
             const contentUrl = await uploadFile(file, `reels/${userProfile.id}/${postId}_${file.name}`);
             
             await updatePost(postId, {
-                contentUrl,
+                contentUrl: contentUrl.downloadURL,
                 status: 'published'
             });
 

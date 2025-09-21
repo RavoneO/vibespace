@@ -1,11 +1,9 @@
-
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { Post, PostTag, User, Comment } from '@/lib/types';
 import { getUserById, getUserByUsername } from './userService.server';
-import { checkAndModerateContent } from './contentModerationService';
 
 // Note: createActivity is removed as its logic is now inside batches.
 
@@ -102,11 +100,6 @@ export async function createPost(postData: {
     tags?: PostTag[];
     collaboratorIds?: string[];
 }) {
-    const isHarmful = await checkAndModerateContent(postData.caption);
-    if (isHarmful) {
-        throw new Error('Your post has been flagged as harmful and cannot be published.');
-    }
-    
     const batch = adminDb.batch();
     const postRef = adminDb.collection('posts').doc();
 
@@ -193,11 +186,6 @@ export async function unlikePost(postId: string, userId: string) {
 
 
 export async function addComment(postId: string, comment: { userId: string, text: string }): Promise<Comment> {
-    const isHarmful = await checkAndModerateContent(comment.text);
-    if (isHarmful) {
-        throw new Error('Your comment has been flagged as harmful and cannot be published.');
-    }
-
     const postRef = adminDb.collection('posts').doc(postId);
     const user = await getUserById(comment.userId);
     if (!user) throw new Error("Comment user not found");
@@ -296,6 +284,9 @@ export async function getPosts(): Promise<Post[]> {
     return [];
   }
 }
+
+export const getPostsForUser = getPostsByUserId;
+export const getLikedPosts = getLikedPostsByUserId;
 
 export async function getReels(): Promise<Post[]> {
   try {

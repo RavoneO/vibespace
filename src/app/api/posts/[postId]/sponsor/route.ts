@@ -1,12 +1,11 @@
-
 import { NextResponse } from 'next/server';
-import { firestore } from '@/lib/firebase-admin';
+import { adminDb as firestore } from '@/lib/firebase-admin';
 import { processSponsorship } from '@/services/paymentService.server';
 import { getPostById } from '@/services/postService';
 
-export async function POST(request: Request, { params }: { params: { postId: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ postId: string }> }) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     const { userId } = await request.json();
 
     if (!userId) {
@@ -21,6 +20,10 @@ export async function POST(request: Request, { params }: { params: { postId: str
     }
 
     const post = postDoc.data();
+
+    if (!post) {
+      return new NextResponse('Post data not found', { status: 404 });
+    }
 
     if (post.user.id !== userId) {
         return new NextResponse('Forbidden', { status: 403 });

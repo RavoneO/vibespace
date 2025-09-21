@@ -2,6 +2,8 @@
 import 'server-only';
 import * as admin from 'firebase-admin';
 
+export { admin };
+
 function ensureServer() {
   if (typeof window !== 'undefined') {
     throw new Error('firebase-admin must only be used on the server');
