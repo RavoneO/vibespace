@@ -12,19 +12,6 @@
  * @param amount - The amount of the tip in cents.
  * @returns A simulated transaction ID.
  */
-export async function processSponsorship(userId: string, postId: string, amount: number): Promise<string> {
-  console.log(`Processing sponsorship of $${amount / 100} for post ${postId} by user ${userId}`);
-
-  // Simulate a delay for the payment processing
-  await new Promise(resolve => setTimeout(resolve, 1500));
-
-  const transactionId = `txn_${new Date().getTime()}_${Math.random().toString(36).substring(2, 9)}`;
-
-  console.log(`Successfully processed sponsorship. Transaction ID: ${transactionId}`);
-
-  return transactionId;
-}
-
 export async function processTip(fromUserId: string, toUserId: string, amount: number): Promise<string> {
   console.log(`Processing tip of $${amount / 100} from user ${fromUserId} to user ${toUserId}`);
 

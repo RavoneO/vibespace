@@ -1,9 +1,12 @@
+
 "use client";
 
 import { PostCard } from "@/components/post-card";
 import { AdCard } from "@/components/ad-card";
-import type { Post, Ad, FeedItem } from '@/lib/types';
+import type { Post, Ad } from '@/lib/types';
 import { Icons } from './icons';
+
+type FeedItem = (Post & { type: 'post' }) | (Ad & { type: 'ad' });
 
 export function ForYouFeed({ items }: { items: FeedItem[] }) {
   if (items.length === 0) {
@@ -19,10 +22,10 @@ export function ForYouFeed({ items }: { items: FeedItem[] }) {
   return (
     <div className="space-y-1">
       {items.map(item => {
-        if (item.feedItemType === 'post') {
+        if (item.type === 'post') {
           return <PostCard key={item.id} post={item} />;
         }
-        if (item.feedItemType === 'ad') {
+        if (item.type === 'ad') {
           return <AdCard key={item.id} ad={item} />;
         }
         return null;

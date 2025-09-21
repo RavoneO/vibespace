@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { adminDb as firestore } from '@/lib/firebase-admin';
+import { firestore } from '@/lib/firebase-admin';
 import { processTip } from '@/services/paymentService.server';
 import { Tip } from '@/lib/types';
 

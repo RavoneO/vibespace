@@ -1,7 +1,7 @@
 
 'use server';
 
-import { adminDb, admin } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { User } from '@/lib/types';
 import { createActivity } from './activityService.server';
@@ -157,45 +157,3 @@ export async function toggleFollow(currentUserId: string, targetUserId: string):
 
     return isFollowing;
 }
-
-export async function getBlockedUsers(userId: string): Promise<User[]> {
-    if (!userId) return [];
-    try {
-        const userDocRef = adminDb.collection('users').doc(userId);
-        const userDoc = await userDocRef.get();
-        if (!userDoc.exists) {
-            return [];
-        }
-        const userData = userDoc.data() as User;
-        const blockedUserIds = userData.blockedUsers || [];
-
-        if (blockedUserIds.length === 0) {
-            return [];
-        }
-
-        const blockedUserDocs = await adminDb.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', blockedUserIds).get();
-        const blockedUsers = blockedUserDocs.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-
-        return blockedUsers;
-    } catch (error) {
-        console.error(`Error fetching blocked users for user ID (${userId}):`, error);
-        return [];
-    }
-}
-
-export async function unblockUser(currentUserId: string, userIdToUnblock: string): Promise<void> {
-    if (!currentUserId || !userIdToUnblock) {
-        throw new Error("User IDs must be provided.");
-    }
-    try {
-        const userRef = adminDb.collection('users').doc(currentUserId);
-        await userRef.update({
-            blockedUsers: FieldValue.arrayRemove(userIdToUnblock)
-        });
-    } catch (error) {
-        console.error(`Error unblocking user (${userIdToUnblock}) for user (${currentUserId}):`, error);
-        throw new Error("Failed to unblock user.");
-    }
-}
-
-export const getUserProfile = getUserById;

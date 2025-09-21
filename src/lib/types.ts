@@ -11,20 +11,8 @@ export type User = {
   followers?: string[];
   following?: string[];
   savedPosts?: string[];
-  blockedUsers?: string[];
-  interests?: string[];
   isPrivate?: boolean;
   showActivityStatus?: boolean;
-  dataSaver?: boolean;
-  increaseContrast?: boolean;
-  reduceMotion?: boolean;
-  notifications?: {
-    push?: boolean;
-    email?: boolean;
-    inApp?: boolean;
-  };
-  filterSensitiveContent?: boolean;
-  twoFactorAuth?: boolean;
 };
 
 export type Comment = {
@@ -57,7 +45,6 @@ export type Post = {
   status?: 'processing' | 'published' | 'failed';
   dataAiHint?: string;
   isSponsored?: boolean;
-  isReel?: boolean;
 };
 
 export type Story = {
@@ -120,4 +107,4 @@ export type Tip = {
   timestamp: number;
 };
 
-export type FeedItem = (Post & { feedItemType: 'post' }) | (Ad & { feedItemType: 'ad' });
+export type FeedItem = (Post & { type: 'post' }) | (Ad & { type: 'ad' });

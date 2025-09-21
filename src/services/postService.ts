@@ -1,8 +1,6 @@
+
 'use client';
 
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Post, PostTag } from '@/lib/types';
 import { addComment as addCommentServer, likePost as likePostServer, unlikePost as unlikePostServer } from './postService.server';
 
 // This is a client-side function that securely calls the server action to create a post.
@@ -11,9 +9,8 @@ export async function createPost(postData: {
     type: 'image' | 'video';
     caption: string;
     hashtags: string[];
-    tags?: PostTag[];
+    tags?: { userId: string; x: number; y: number; }[];
     collaboratorIds?: string[];
-    isReel?: boolean;
 }) {
     const response = await fetch('/api/posts/create', {
         method: 'POST',
@@ -61,30 +58,5 @@ export async function addComment(postId: string, comment: { userId: string, text
         console.error('Failed to add comment:', error);
         // Optionally, show a toast to the user.
         throw new Error('Could not add the comment.');
-    }
-}
-
-export async function getPostById(postId: string): Promise<Post | null> {
-  if (!postId) return null;
-  try {
-    const postDocRef = doc(db, 'posts', postId);
-    const postDoc = await getDoc(postDocRef);
-    if (postDoc.exists()) {
-      return { id: postDoc.id, ...postDoc.data() } as Post;
-    }
-    return null;
-  } catch (error) {
-    console.error(`Error fetching post by ID (${postId}):`, error);
-    return null;
-  }
-}
-
-export async function updatePost(postId: string, data: Partial<Post>) {
-    try {
-        const postRef = doc(db, 'posts', postId);
-        await updateDoc(postRef, data);
-    } catch (error) {
-        console.error(`Error updating post (${postId}):`, error);
-        throw new Error('Failed to update post.');
     }
 }
