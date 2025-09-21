@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deletePost as deletePostService, updatePost as updatePostService, addComment as addCommentService } from '@/services/postService.server';
+import { getPostById as getPostByIdServer, deletePost as deletePostService, updatePost as updatePostService, addComment as addCommentService } from '@/services/postService.server';
 import { toggleLike, toggleBookmark } from '@/services/userService.server';
 
-interface RouteContext {
-  params: {
-    postId: string;
-  };
+// GET a post by ID
+export async function GET(req: NextRequest, { params }: any) {
+  try {
+    const { postId } = params;
+    const post = await getPostByIdServer(postId);
+    if (!post) {
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    }
+    return NextResponse.json(post);
+  } catch (error) {
+    console.error(`Error fetching post:`, error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
 }
 
 // DELETE a post
-export async function DELETE(req: NextRequest, { params }: RouteContext) {
+export async function DELETE(req: NextRequest, { params }: any) {
   try {
     const { postId } = params;
     // TODO: Add validation to ensure the user has permission to delete the post
@@ -22,7 +31,7 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
 }
 
 // PATCH a post (e.g., update caption)
-export async function PATCH(req: NextRequest, { params }: RouteContext) {
+export async function PATCH(req: NextRequest, { params }: any) {
   try {
     const { postId } = params;
     const { caption } = await req.json();
@@ -38,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 }
 
 // POST to a post (like, bookmark, comment)
-export async function POST(req: NextRequest, { params }: RouteContext) {
+export async function POST(req: NextRequest, { params }: any) {
   try {
     const { postId } = params;
     const { action, userId, text } = await req.json();
