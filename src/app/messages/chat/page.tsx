@@ -66,7 +66,7 @@ function ChatBubble({ message, isOwnMessage, sender, isRead }: { message: Messag
             case 'file':
                 return (
                     <a href={message.contentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-secondary p-3 rounded-lg hover:bg-muted">
-                        <Icons.file className="h-8 w-8"/>
+                        <Icons.hiddenWords className="h-8 w-8" />
                         <div>
                             <p className="font-semibold">{message.fileName}</p>
                             <p className="text-sm text-muted-foreground">{message.fileSize ? `${(message.fileSize / 1024).toFixed(2)} KB` : ''}</p>
@@ -226,7 +226,7 @@ function ChatPageContent() {
                     </Button>
                     <Avatar>
                         {conversation?.isGroup ? 
-                          <AvatarFallback><Icons.users className="h-5 w-5"/></AvatarFallback> : 
+                              <AvatarFallback><Icons.profile className="h-5 w-5"/></AvatarFallback> :
                           <>
                             <AvatarImage src={otherUser?.avatar} />
                             <AvatarFallback>{otherUser?.name.charAt(0)}</AvatarFallback>
@@ -235,8 +235,8 @@ function ChatPageContent() {
                     <h2 className="font-semibold flex-1">{conversation?.isGroup ? conversation.groupName : otherUser?.name}</h2>
                     {!conversation?.isGroup && (
                         <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="icon"><Icons.phone className="h-5 w-5" /></Button>
-                            <Button variant="ghost" size="icon"><Icons.video className="h-5 w-5" /></Button>
+                             <Button variant="ghost" size="icon"><Icons.reels className="h-5 w-5" /></Button>
+                             <Button variant="ghost" size="icon"><Icons.reels className="h-5 w-5" /></Button>
                         </div>
                     )}
                 </header>
@@ -270,7 +270,7 @@ function ChatPageContent() {
                     )}
                     {mediaFile && !mediaPreview && (
                          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-                            <Icons.file className="h-8 w-8"/>
+                             <Icons.hiddenWords className="h-8 w-8"/>
                             <div>
                                 <p className="font-semibold text-sm">{mediaFile.name}</p>
                                 <p className="text-xs text-muted-foreground">{(mediaFile.size / 1024).toFixed(2)} KB</p>
@@ -294,7 +294,7 @@ function ChatPageContent() {
                                     Photo or Video
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>
-                                    <Icons.file className="mr-2 h-4 w-4" />
+                                     <Icons.hiddenWords className="mr-2 h-4 w-4" />
                                     Document
                                 </DropdownMenuItem>
                             </DropdownMenuContent>

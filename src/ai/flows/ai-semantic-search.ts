@@ -2,25 +2,7 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
-
-const PostContentSchema = z.object({
-  id: z.string(),
-  caption: z.string(),
-});
-
-export const SemanticSearchInputSchema = z.object({
-  query: z.string().describe('The user-provided search query.'),
-  posts: z.array(PostContentSchema).describe('The list of posts to search through.'),
-});
-export type SemanticSearchInput = z.infer<typeof SemanticSearchInputSchema>;
-
-export const SemanticSearchOutputSchema = z.object({
-  sortedPostIds: z.array(z.string()).describe(
-    'An array of post IDs, sorted by their semantic relevance to the query (most relevant first).'
-  ),
-});
-export type SemanticSearchOutput = z.infer<typeof SemanticSearchOutputSchema>;
+import { SemanticSearchInputSchema, SemanticSearchOutputSchema, SemanticSearchInput, SemanticSearchOutput } from '@/lib/types';
 
 const semanticSearchFlow = ai.defineFlow(
   {
@@ -28,7 +10,7 @@ const semanticSearchFlow = ai.defineFlow(
     inputSchema: SemanticSearchInputSchema,
     outputSchema: SemanticSearchOutputSchema,
   },
-  async (input) => {
+  async (input: SemanticSearchInput): Promise<SemanticSearchOutput> => {
     const llmResponse = await ai.generate({
       prompt: `
         You are a semantic search engine. Your task is to reorder a list of social media posts based on their relevance to a user's search query.

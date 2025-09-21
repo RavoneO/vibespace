@@ -52,7 +52,7 @@ function ConversationItem({ convo, authUserId }: { convo: Conversation, authUser
                     <Avatar className="h-14 w-14">
                        {avatar ? <AvatarImage src={avatar} /> : 
                           <AvatarFallback>
-                            {convo.isGroup ? <Icons.users className="h-6 w-6" /> : name.charAt(0)}
+                             {convo.isGroup ? <Icons.profile className="h-6 w-6" /> : name.charAt(0)}
                           </AvatarFallback>}
                     </Avatar>
                     {/* {isActive && (

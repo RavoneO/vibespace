@@ -99,7 +99,7 @@ export async function createPost(postData: {
     type: 'image' | 'video';
     caption: string;
     hashtags: string[];
-    tags?: PostTag[];
+    tags?: any[];
     collaboratorIds?: string[];
 }) {
     const isHarmful = await checkAndModerateContent(postData.caption);

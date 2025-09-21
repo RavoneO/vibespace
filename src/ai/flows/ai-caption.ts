@@ -1,17 +1,7 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
-
-const GenerateCaptionInputSchema = z.object({
-  mediaDataUri: z.string().describe('The media to generate a caption for, as a data uri.'),
-});
-export type GenerateCaptionInput = z.infer<typeof GenerateCaptionInputSchema>;
-
-const GenerateCaptionOutputSchema = z.object({
-  captions: z.array(z.string()).describe('A list of 3-5 suggested captions for the media.'),
-});
-export type GenerateCaptionOutput = z.infer<typeof GenerateCaptionOutputSchema>;
+import { GenerateCaptionInputSchema, GenerateCaptionOutputSchema, GenerateCaptionInput, GenerateCaptionOutput } from '@/lib/types';
 
 const generateCaptionFlow = ai.defineFlow(
   {
@@ -19,7 +9,7 @@ const generateCaptionFlow = ai.defineFlow(
     inputSchema: GenerateCaptionInputSchema,
     outputSchema: GenerateCaptionOutputSchema,
   },
-  async (input) => {
+  async (input: GenerateCaptionInput): Promise<GenerateCaptionOutput> => {
     const llmResponse = await ai.generate({
       prompt: `Generate 3-5 creative and engaging captions for the following image. The captions should be suitable for a social media post. Vary the tone and style.
 

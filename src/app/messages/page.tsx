@@ -19,7 +19,7 @@ export default async function MessagesPage() {
           <h1 className="text-2xl font-bold">Messages</h1>
           <Button asChild variant="ghost" size="icon">
             <Link href="/messages/new-group">
-              <Icons.users className="h-6 w-6" />
+               <Icons.profile className="h-6 w-6" />
               <span className="sr-only">New Group</span>
             </Link>
           </Button>

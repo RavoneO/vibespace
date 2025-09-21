@@ -69,11 +69,12 @@ export function Stories({ stories: initialStories }: StoriesProps) {
               duration: fileType === 'video' ? 15 : 5, // Example duration
             });
 
-            const contentUrl = await uploadFile(file, `stories/${userProfile.id}/${storyId}_${file.name}`);
+            const { downloadURL, caption } = await uploadFile(file, `stories/${userProfile.id}/${storyId}_${file.name}`, file.type.startsWith('image'));
     
             await updateStory(storyId, {
-              contentUrl,
-              status: 'published'
+              contentUrl: downloadURL,
+              status: 'published',
+              ...(caption && { dataAiHint: caption })
             });
     
             toast({ title: "Story posted successfully!" });

@@ -10,8 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { searchUsers, toggleFollow } from "@/services/userService";
-import type { SemanticSearchOutput } from "@/ai/flows/ai-semantic-search";
-import type { User, Post } from "@/lib/types";
+import type { User, Post, SemanticSearchOutput } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -129,7 +128,7 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebounce(query, 500);
   const [userResults, setUserResults] = useState<User[]>([]);
-  const [postResults, setPostResults] = useState<SemanticSearchOutput['results']>([]);
+  const [postResults, setPostResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isTransitioning, startTransition] = useTransition();
 
@@ -147,7 +146,7 @@ export function ExploreClient({ initialExplorePosts }: { initialExplorePosts: Po
             const [users, searchResult] = await Promise.all([userPromise, postPromise]);
             
             setUserResults(users);
-            setPostResults(searchResult.results || []);
+            setPostResults(searchResult.sortedPostIds || []);
 
           } catch (error) {
              console.error("Search failed", error);

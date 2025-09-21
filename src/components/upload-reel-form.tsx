@@ -117,14 +117,14 @@ export function UploadReelForm() {
                 type: 'video',
                 caption: values.caption,
                 hashtags,
-                isReel: true,
             });
     
-            const contentUrl = await uploadFile(file, `reels/${userProfile.id}/${postId}_${file.name}`);
+            const { downloadURL, caption } = await uploadFile(file, `reels/${userProfile.id}/${postId}_${file.name}`, true);
             
             await updatePost(postId, {
-                contentUrl,
-                status: 'published'
+                contentUrl: downloadURL,
+                status: 'published',
+                ...(caption && { dataAiHint: caption })
             });
 
         } catch (error) {
