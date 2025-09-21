@@ -1,4 +1,3 @@
-
 import {
   Home,
   Video,
@@ -39,6 +38,8 @@ import {
   HeartHandshake,
   DollarSign,
   UserSearch,
+  Users,
+  Phone,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -67,6 +68,7 @@ export const Icons = {
   blocked: Ban,
   hideStory: EyeOff,
   restrictedAccounts: UserX,
+  file: FileText,
   hiddenWords: FileText,
   tagsAndMentions: AtSign,
   sharingAndReuse: Repeat,
@@ -86,6 +88,8 @@ export const Icons = {
   billing: DollarSign,
   sponsor: Star,
   userSearch: UserSearch,
+  users: Users,
+  phone: Phone,
 };
 
 export type Icon = LucideIcon;

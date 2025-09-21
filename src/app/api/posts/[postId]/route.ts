@@ -1,17 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { deletePost as deletePostService, updatePost as updatePostService, addComment as addCommentService } from '@/services/postService.server';
 import { toggleLike, toggleBookmark } from '@/services/userService.server';
 
-interface RouteContext {
-  params: {
-    postId: string;
-  };
-}
-
 // DELETE a post
-export async function DELETE(req: NextRequest, { params }: RouteContext) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ postId: string }> }) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     // TODO: Add validation to ensure the user has permission to delete the post
     await deletePostService(postId);
     return NextResponse.json({ message: 'Post deleted successfully' });
@@ -22,9 +16,9 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
 }
 
 // PATCH a post (e.g., update caption)
-export async function PATCH(req: NextRequest, { params }: RouteContext) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ postId: string }> }) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     const { caption } = await req.json();
     if (typeof caption !== 'string') {
       return NextResponse.json({ error: 'Invalid caption' }, { status: 400 });
@@ -38,9 +32,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 }
 
 // POST to a post (like, bookmark, comment)
-export async function POST(req: NextRequest, { params }: RouteContext) {
+export async function POST(req: Request, { params }: { params: Promise<{ postId: string }> }) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     const { action, userId, text } = await req.json();
 
     switch (action) {

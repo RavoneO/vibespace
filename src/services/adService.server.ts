@@ -1,8 +1,4 @@
-
 'use server'
-
-import { z } from 'zod';
-import { selectAdWithAi } from '@/ai/flows/ai-ad-selector';
 
 export interface Ad {
     id: string;
@@ -86,18 +82,5 @@ export async function selectAd(availableAds: Ad[], recentCaptions: string[]): Pr
         throw new Error('No ads available to select from.');
     }
 
-    if (recentCaptions.length === 0) {
-        // If there are no recent captions, fall back to a random ad.
-        return availableAds[Math.floor(Math.random() * availableAds.length)];
-    }
-
-    try {
-        const { bestAdId } = await selectAdWithAi({ ads: availableAds, recentCaptions });
-        const selectedAd = availableAds.find(ad => ad.id === bestAdId);
-        return selectedAd || availableAds[Math.floor(Math.random() * availableAds.length)];
-    } catch (error) {
-        console.error("AI ad selection failed:", error);
-        // Fallback to random ad in case of AI error
-        return availableAds[Math.floor(Math.random() * availableAds.length)];
-    }
+    return availableAds[Math.floor(Math.random() * availableAds.length)];
 }

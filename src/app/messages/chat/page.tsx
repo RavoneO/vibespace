@@ -236,7 +236,7 @@ function ChatPageContent() {
                     {!conversation?.isGroup && (
                         <div className="flex items-center gap-2">
                             <Button variant="ghost" size="icon"><Icons.phone className="h-5 w-5" /></Button>
-                            <Button variant="ghost" size="icon"><Icons.video className="h-5 w-5" /></Button>
+                            <Button variant="ghost" size="icon"><Icons.reels className="h-5 w-5" /></Button>
                         </div>
                     )}
                 </header>

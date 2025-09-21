@@ -1,4 +1,3 @@
-
 "use client";
 
 import AppLayout from "@/components/app-layout";
@@ -12,8 +11,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Suspense, useState, useEffect, useTransition } from "react";
-import { getAvailableAds, selectAd } from "@/services/adService.server";
-import type { Ad, Post, FeedItem } from "@/lib/types";
+import type { Post, FeedItem } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +48,7 @@ export default function FeedPage() {
   async function fetchAndSetFeed() {
     setLoading(true);
     const storiesData = getStories();
-    const postsData = useNewFeed && user ? getPostsForUserFeed(user.id) : getPosts();
+    const postsData = useNewFeed && user ? getPostsForUserFeed(user.uid) : getPosts();
     
     const [storiesResult, postsResult] = await Promise.all([storiesData, postsData]);
 
@@ -60,18 +58,7 @@ export default function FeedPage() {
     const regularPosts = postsResult.filter(p => !p.isSponsored);
     const orderedPosts = [...sponsoredPosts, ...regularPosts];
     
-    const items: FeedItem[] = [];
-    const availableAds = await getAvailableAds();
-
-    for(let i = 0; i < orderedPosts.length; i++) {
-        items.push({ ...orderedPosts[i], type: 'post' });
-        const adIndex = i + 1;
-        if(adIndex % 4 === 0 && availableAds.length > 0) {
-            const recentCaptions = orderedPosts.slice(Math.max(0, i - 3), i).map(p => p.caption);
-            const ad = await selectAd(availableAds, recentCaptions);
-            items.push({ ...ad, type: 'ad' });
-        }
-    }
+    const items: FeedItem[] = orderedPosts.map(post => ({ ...post, feedItemType: 'post' }));
     setFeedItems(items);
     setLoading(false);
   }
@@ -81,25 +68,7 @@ export default function FeedPage() {
   }, [useNewFeed, user]);
 
   const handleSearch = async () => {
-    if (!searchQuery) {
-      fetchAndSetFeed();
-      return;
-    }
-    startTransition(async () => {
-      const posts = feedItems.filter(item => item.type === 'post') as Post[];
-      const response = await fetch('/api/ai', {
-        method: 'POST',
-        body: JSON.stringify({ 
-          action: 'semantic-search', 
-          payload: { query: searchQuery, posts: posts.map(({id, caption}) => ({id, caption})) }
-        }),
-      });
-      const { sortedPostIds } = await response.json();
-      const sortedPosts = sortedPostIds.map((id: string) => posts.find(p => p.id === id)).filter(Boolean) as Post[];
-      
-      const newFeedItems: FeedItem[] = sortedPosts.map(post => ({ ...post, type: 'post' }));
-      setFeedItems(newFeedItems);
-    });
+    // Semantic search is removed for now
   };
 
   return (
@@ -128,7 +97,7 @@ export default function FeedPage() {
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
               <Button onClick={handleSearch} disabled={isPending}>
-                {isPending ? <Icons.loader className="h-4 w-4 animate-spin" /> : <Icons.search />}
+                {isPending ? <Icons.spinner className="h-4 w-4 animate-spin" /> : <Icons.search />}
               </Button>
             </div>
           </div>

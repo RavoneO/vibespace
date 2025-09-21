@@ -117,7 +117,7 @@ export default function InterestsPage() {
                                                 onClick={() => handleToggleInterest(interest)}
                                             >
                                                 {interest}
-                                                <Icons.x className="h-3 w-3" />
+                                                <Icons.close className="h-3 w-3" />
                                             </Badge>
                                         ))
                                     ) : (

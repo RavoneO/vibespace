@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation';
 import { User } from '@/lib/types';
 
 async function getCurrentUser(): Promise<User | null> {
-  const session = cookies().get("session")?.value;
+  const session = (await cookies()).get("session")?.value;
   if (!session) return null;
 
   try {
@@ -32,7 +32,7 @@ export default async function ProfilePage() {
   // Fetch all data in parallel
   const [posts, savedPosts, likedPosts] = await Promise.all([
     getPostsForUser(user.id),
-    getSavedPosts(user.id),
+    getSavedPosts(user.savedPosts || []),
     getLikedPosts(user.id)
   ]);
 
