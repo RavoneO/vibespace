@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from '@/lib/firebase';
@@ -55,7 +56,7 @@ export async function searchUsers(searchText: string): Promise<User[]> {
     }
 }
 
-export async function updateUserSettings(userId: string, settings: Partial<Pick<User, 'isPrivate' | 'showActivityStatus' | 'interests' | 'dataSaver' | 'increaseContrast' | 'reduceMotion' | 'notifications' | 'filterSensitiveContent' | 'twoFactorAuth'>>) {
+export async function updateUserSettings(userId: string, settings: Partial<Pick<User, 'isPrivate' | 'showActivityStatus'>>) {
     try {
         const userRef = doc(db, 'users', userId);
         await updateDoc(userRef, settings);
@@ -65,22 +66,17 @@ export async function updateUserSettings(userId: string, settings: Partial<Pick<
     }
 }
 
-export async function getUserInterests(userId: string): Promise<string[]> {
-    const user = await getUserById(userId);
-    return user?.interests || [];
-}
-
 export async function updateUserProfile(userId: string, data: { name: string; bio: string; avatarFile?: File }) {
     const userRef = doc(db, 'users', userId);
     
-    const updateData: { name:string; bio: string; avatar?: string } = {
+    const updateData: { name: string; bio: string; avatar?: string } = {
         name: data.name,
         bio: data.bio,
     };
     
     if (data.avatarFile) {
         const avatarUrl = await uploadFile(data.avatarFile, `avatars/${userId}_${data.avatarFile.name}`);
-        updateData.avatar = avatarUrl.downloadURL;
+        updateData.avatar = avatarUrl;
     }
 
     await updateDoc(userRef, updateData);
@@ -100,24 +96,4 @@ export async function toggleFollow(currentUserId: string, targetUserId: string):
 
     const { isFollowing } = await response.json();
     return isFollowing;
-}
-
-export async function getBlockedUsers(userId: string): Promise<User[]> {
-    const response = await fetch(`/api/users/blocked?userId=${userId}`);
-    if (!response.ok) {
-        throw new Error('Failed to fetch blocked users');
-    }
-    return response.json();
-}
-
-export async function unblockUser(currentUserId: string, userIdToUnblock: string): Promise<void> {
-    const response = await fetch('/api/users/unblock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentUserId, userIdToUnblock }),
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to unblock user');
-    }
 }

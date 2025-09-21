@@ -69,21 +69,3 @@ export async function markAllActivitiesAsRead(userId: string): Promise<void> {
 
     await batch.commit();
 }
-
-export async function createActivity(activity: {
-    type: 'like' | 'comment' | 'follow' | 'mention';
-    actorId: string;
-    notifiedUserId: string;
-    postId?: string;
-}) {
-    if (activity.actorId === activity.notifiedUserId) {
-        return; // Don't create activity for actions on own content
-    }
-
-    const activityRef = adminDb.collection('activity').doc();
-    await activityRef.set({
-        ...activity,
-        timestamp: FieldValue.serverTimestamp(),
-        seen: false,
-    });
-}

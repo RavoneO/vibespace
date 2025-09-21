@@ -72,7 +72,7 @@ export function Stories({ stories: initialStories }: StoriesProps) {
             const contentUrl = await uploadFile(file, `stories/${userProfile.id}/${storyId}_${file.name}`);
     
             await updateStory(storyId, {
-              contentUrl: contentUrl.downloadURL,
+              contentUrl,
               status: 'published'
             });
     
