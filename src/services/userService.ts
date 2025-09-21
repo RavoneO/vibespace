@@ -2,7 +2,6 @@
 'use client';
 
 import { db } from '@/lib/firebase';
-import { getBlockedUsers as getBlockedUsersServer, unblockUser as unblockUserServer, getUserInterests as getUserInterestsServer } from './userService.server';
 import { 
     collection, 
     doc, 
@@ -81,33 +80,6 @@ export async function updateUserProfile(userId: string, data: { name: string; bi
     }
 
     await updateDoc(userRef, updateData);
-}
-
-export async function getBlockedUsers(userId: string): Promise<User[]> {
-    try {
-        return await getBlockedUsersServer(userId);
-    } catch (error) {
-        console.error('Failed to get blocked users:', error);
-        throw new Error('Could not get blocked users.');
-    }
-}
-
-export async function unblockUser(currentUserId: string, targetUserId: string): Promise<void> {
-    try {
-        await unblockUserServer(currentUserId, targetUserId);
-    } catch (error) {
-        console.error('Failed to unblock user:', error);
-        throw new Error('Could not unblock user.');
-    }
-}
-
-export async function getUserInterests(userId: string): Promise<string[]> {
-    try {
-        return await getUserInterestsServer(userId);
-    } catch (error) {
-        console.error('Failed to get user interests:', error);
-        throw new Error('Could not get user interests.');
-    }
 }
 
 // Client-side toggle follow, calls our API route

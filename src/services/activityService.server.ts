@@ -50,15 +50,7 @@ export async function getActivity(userId: string): Promise<Activity[]> {
     return activities.filter((a): a is Activity => a !== null);
 }
 
-export async function createActivity(activity: { type: string, actorId: string, notifiedUserId: string, postId?: string }) {
-    await adminDb.collection('activity').add({
-        ...activity,
-        timestamp: FieldValue.serverTimestamp(),
-        seen: false,
-    });
-}
-
-export async function markAllActivitiesAsRead(userId:string): Promise<void> {
+export async function markAllActivitiesAsRead(userId: string): Promise<void> {
     const activityCollection = adminDb.collection('activity');
     const q = activityCollection
         .where('notifiedUserId', '==', userId)

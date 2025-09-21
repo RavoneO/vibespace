@@ -7,7 +7,7 @@ import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { logger } from 'genkit/logging';
 
-logger.setLogLevel('debug');
+logger.setLevel('debug');
 
 const googleApiKey = process.env.GOOGLE_API_KEY;
 if (!googleApiKey) {

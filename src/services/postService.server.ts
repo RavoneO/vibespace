@@ -132,7 +132,7 @@ export async function createPost(postData: {
     return postRef.id;
 }
 
-export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed', dataAiHint?: string }>) {
+export async function updatePost(postId: string, data: Partial<{ caption: string, contentUrl: string, status: 'published' | 'failed' }>) {
     const postRef = adminDb.collection('posts').doc(postId);
     await postRef.update(data);
 }
