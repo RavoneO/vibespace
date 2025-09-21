@@ -157,3 +157,21 @@ export async function toggleFollow(currentUserId: string, targetUserId: string):
 
     return isFollowing;
 }
+
+export async function getBlockedUsers(userId: string): Promise<User[]> {
+    // This is a placeholder implementation.
+    // The User type needs to be updated to include a blockedUsers field.
+    return [];
+}
+
+export async function unblockUser(currentUserId: string, targetUserId: string): Promise<void> {
+    // This is a placeholder implementation.
+    // The User type needs to be updated to include a blockedUsers field.
+    console.log(`User ${currentUserId} unblocked user ${targetUserId}`);
+}
+
+export async function getUserInterests(userId: string): Promise<string[]> {
+    // This is a placeholder implementation.
+    // The User type needs to be updated to include an interests field.
+    return [];
+}

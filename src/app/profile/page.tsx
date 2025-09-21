@@ -1,8 +1,8 @@
 
 import { cookies } from 'next/headers';
 import { adminAuth } from '@/lib/firebase-admin';
-import { getUserProfile } from '@/services/userService.server';
-import { getPostsForUser, getSavedPosts, getLikedPosts } from '@/services/postService.server';
+import { getUserById } from '@/services/userService.server';
+import { getPostsByUserId, getSavedPosts, getLikedPostsByUserId } from '@/services/postService.server';
 import { ProfileClientPage } from './[username]/profile-client-page';
 import { redirect } from 'next/navigation';
 import { User } from '@/lib/types';
@@ -13,7 +13,7 @@ async function getCurrentUser(): Promise<User | null> {
 
   try {
     const decodedToken = await adminAuth.verifySessionCookie(session, true);
-    const userProfile = await getUserProfile(decodedToken.uid);
+    const userProfile = await getUserById(decodedToken.uid);
     return userProfile;
   } catch (error) {
     console.error("Error fetching current user:", error);
@@ -31,9 +31,9 @@ export default async function ProfilePage() {
 
   // Fetch all data in parallel
   const [posts, savedPosts, likedPosts] = await Promise.all([
-    getPostsForUser(user.id),
-    getSavedPosts(user.id),
-    getLikedPosts(user.id)
+    getPostsByUserId(user.id),
+    getSavedPosts(user.savedPosts || []),
+    getLikedPostsByUserId(user.id)
   ]);
 
   return (
