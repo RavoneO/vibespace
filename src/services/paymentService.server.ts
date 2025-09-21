@@ -41,3 +41,11 @@ export async function getUserEarnings(userId: string): Promise<number> {
     console.log(`Fetching earnings for user ${userId}`);
     return 5000; //  dummy value of $50
 }
+
+export async function processSponsorship(userId: string, postId: string, amount: number): Promise<string> {
+    console.log(`Processing sponsorship of $${amount / 100} for post ${postId} by user ${userId}`);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    const transactionId = `txn_${new Date().getTime()}_${Math.random().toString(36).substring(2, 9)}`;
+    console.log(`Successfully processed sponsorship. Transaction ID: ${transactionId}`);
+    return transactionId;
+}

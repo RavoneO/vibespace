@@ -56,7 +56,7 @@
     "firebase": "^12.2.1",
     "firebase-admin": "^12.2.0",
     "framer-motion": "^11.3.12",
-    "genkit": "1.19.2",
+    "genkit": "^1.19.2",
     "lucide-react": "^0.475.0",
     "next": "^15.0.0",
     "next-auth": "^5.0.0-beta.19",
